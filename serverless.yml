@@ -39,9 +39,10 @@ provider:
   runtime: python3.9
   stage: dev
   region: eu-central-1
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - dynamodb:Query
-        - dynamodb:Scan
-      Resource: arn:aws:dynamodb:eu-central-1:345693395407:table/dev-posts
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:*
+          Resource: arn:aws:dynamodb:eu-central-1:345693395407:table/dev-posts
