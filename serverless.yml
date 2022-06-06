@@ -7,7 +7,7 @@ plugins:
 
 custom:
   pythonRequirements:
-    dockerizePip: true
+    dockerizePip: false
     layer: true
   serverless-offline:
     httpsProtocol: false
