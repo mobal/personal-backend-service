@@ -5,10 +5,11 @@ from fastapi_camelcase import CamelModel
 
 
 class Post(CamelModel):
-    uuid: str
+    id: str
     author: str
     title: str
     content: str
-    created_at: datetime
-    deleted_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    _created_at: datetime
+    deleted_at: Optional[datetime] = None
+    published_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None

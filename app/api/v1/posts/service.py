@@ -1,15 +1,40 @@
 from typing import List
 
-import pendulum
+import boto3
+from boto3.dynamodb.conditions import Key, Attr
 
 from app.api.v1.posts.models import Post
+from app.config import Configuration
 
 
 class PostService:
-    def get_all_posts(self) -> List[Post]:
-        post = self.get_post_by_uuid('8aad3ce9-fbae-48b5-8a40-3d7b3c501df9')
-        return [post]
+    config = Configuration()
+    session = boto3.Session()
+    dynamodb = session.resource('dynamodb')
+    table = dynamodb.Table(f'{config.app_stage}-posts')
 
-    def get_post_by_uuid(self, uuid: str) -> Post:
-        return Post(uuid=uuid, author='Cicero', title='Lorem ipsum', content='Lorem ipsum',
-                    created_at=pendulum.now('Europe/Budapest'), deleted_at=None, updated_at=None)
+    def _get_all_posts_from_db(self) -> List:
+        response = self.table.scan(FilterExpression=Attr('deleted_at').eq(None))
+        data = response['Items']
+        while 'LastEvaluatedKey' in response:
+            response = self.table.scan(
+                ExclusiveStartKey=response['LastEvaluatedKey'],
+                FilterExpression=Attr('deleted_at').eq(None)
+            )
+            data.extend(response['Items'])
+        return data
+
+    def get_all_posts(self) -> List[Post]:
+        posts = []
+        for post in self._get_all_posts_from_db():
+            posts.append(Post.parse_obj(post))
+        return posts
+
+    def get_post_by_id(self, uuid: str) -> Post:
+        post = self.table.query(
+            KeyConditionExpression=Key('id').eq(uuid),
+            FilterExpression=Attr('deleted_at').eq(None)
+        )
+        if post['Count'] > 1:
+            raise ValueError(f'There is more than one post with this id {uuid}')
+        return Post.parse_obj(post['Items'][0])

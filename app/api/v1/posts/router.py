@@ -13,4 +13,4 @@ async def posts():
 
 @router.get('/{uuid}')
 async def post(uuid: str):
-    return post_service.get_post_by_uuid(uuid)
+    return post_service.get_post_by_id(uuid)
