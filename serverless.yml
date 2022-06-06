@@ -1,0 +1,40 @@
+service: personal-backend-service
+frameworkVersion: '3'
+
+plugins:
+  - serverless-offline
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    layer: true
+  serverless-offline:
+    httpsProtocol: false
+
+functions:
+  app:
+    events:
+      - httpApi: '*'
+    handler: app.main.handler
+    layers:
+      - Ref: PythonRequirementsLambdaLayer
+
+package:
+  patterns:
+    - '!.gitignore'
+    - '!.idea/**'
+    - '!.serverless/**'
+    - '.venv/**'
+    - '!node_modules/**'
+    - 'package.json'
+    - 'package-lock.json'
+    - 'Pipfile'
+    - 'Pipfile.lock'
+    - 'serverless.yml'
+
+provider:
+  name: aws
+  runtime: python3.9
+  stage: dev
+  region: eu-central-1
