@@ -21,6 +21,7 @@ async def delete_post(uuid: str) -> Any:
     post_service.delete_post(uuid)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
+
 @router.get('')
 async def get_all_posts() -> List[Post]:
     return post_service.get_all_posts()
