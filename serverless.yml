@@ -44,5 +44,8 @@ provider:
       statements:
         - Effect: Allow
           Action:
-            - dynamodb:*
+            - dynamodb:PutItem
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:UpdateItem
           Resource: arn:aws:dynamodb:eu-central-1:345693395407:table/dev-posts
