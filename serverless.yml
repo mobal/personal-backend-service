@@ -1,17 +1,20 @@
 service: personal-backend-service
 frameworkVersion: '3'
-
 plugins:
   - serverless-offline
   - serverless-python-requirements
-
+  - serverless-dotenv-plugin
 custom:
+  dotenv:
+    exclude:
+      - AWS_ACCESS_KEY_ID
+      - AWS_REGION
+      - AWS_SECRET_ACCESS_KEY
   pythonRequirements:
-    dockerizePip: true
+    dockerizePip: false
     layer: true
   serverless-offline:
     httpsProtocol: false
-
 functions:
   app:
     events:
@@ -19,7 +22,6 @@ functions:
     handler: app.main.handler
     layers:
       - Ref: PythonRequirementsLambdaLayer
-
 package:
   patterns:
     - '!.gitignore'
@@ -32,9 +34,18 @@ package:
     - 'Pipfile'
     - 'Pipfile.lock'
     - 'serverless.yml'
-
 provider:
   name: aws
   runtime: python3.9
   stage: dev
   region: eu-central-1
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:UpdateItem
+          Resource: arn:aws:dynamodb:eu-central-1:345693395407:table/dev-posts
