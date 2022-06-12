@@ -1,5 +1,6 @@
 import logging
 import uuid
+from typing import List
 from urllib.request import Request
 
 import uvicorn
@@ -28,6 +29,10 @@ class ErrorResponse(CamelModel):
     message: str
 
 
+class ValidationErrorResponse(ErrorResponse):
+    errors: List[dict]
+
+
 @app.exception_handler(ClientError)
 async def client_error_handler(request: Request, error: ClientError):
     error_id = uuid.uuid4()
@@ -54,12 +59,14 @@ async def http_exception_handler(request: Request, error: HTTPException):
 async def validation_error_handler(request: Request, error: ValidationError):
     error_id = uuid.uuid4()
     error_message = str(error)
-    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    status_code = status.HTTP_400_BAD_REQUEST
     logger.error(f'{error_message} with status_code={status_code}, error_id={error_id} and request={request}')
     return JSONResponse(
-        content=jsonable_encoder(ErrorResponse(status=status_code, id=error_id, message=error_message)),
+        content=jsonable_encoder(ValidationErrorResponse(status=status_code, id=error_id, message=str(error),
+                                                         errors=error.errors())),
         status_code=status_code
     )
 
+
 if __name__ == '__main__':
-    uvicorn.run(app, host='127.0.0.1', port=8000)
+    uvicorn.run(app, host='127.0.0.1', port=3000)

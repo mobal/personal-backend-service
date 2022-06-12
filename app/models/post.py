@@ -1,11 +1,7 @@
-from datetime import datetime
 from typing import Optional
 
 from fastapi_camelcase import CamelModel
-
-
-class Meta(CamelModel):
-    reading_time: int
+from pydantic import conlist
 
 
 class Post(CamelModel):
@@ -13,9 +9,9 @@ class Post(CamelModel):
     author: str
     title: str
     content: str
-    created_at: datetime = datetime.now().isoformat()
-    deleted_at: Optional[datetime]
-    published_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    created_at: str
+    deleted_at: Optional[str]
+    published_at: Optional[str]
+    updated_at: Optional[str]
     slug: str
-    meta: Optional[Meta]
+    tags: Optional[conlist(item_type=str, min_items=1)]
