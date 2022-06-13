@@ -17,12 +17,12 @@ class JWTToken(BaseModel):
     iat: int
 
 
-class JWTBearer(HTTPBearer):
+class JWTAuth(HTTPBearer):
     config = Configuration()
     logger = logging.getLogger(__name__)
 
     async def __call__(self, request: Request):
-        credentials = await super(JWTBearer, self).__call__(request)
+        credentials = await super(JWTAuth, self).__call__(request)
         if credentials:
             if credentials.scheme != 'Bearer':
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Invalid authentication scheme')
