@@ -4,7 +4,7 @@ import logging
 import pendulum
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer
-from jwt import InvalidSignatureError
+from jwt import InvalidSignatureError, ExpiredSignatureError
 from pydantic import BaseModel
 from starlette import status
 
@@ -19,7 +19,7 @@ class JWTToken(BaseModel):
 
 class JWTAuth(HTTPBearer):
     config = Configuration()
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger()
 
     async def __call__(self, request: Request):
         credentials = await super(JWTAuth, self).__call__(request)
@@ -38,7 +38,7 @@ class JWTAuth(HTTPBearer):
     def validate_token(self, token: str) -> bool:
         try:
             decoded_token = jwt.decode(token, self.config.jwt_secret, algorithms='HS256')
-        except InvalidSignatureError as error:
-            self.logger.error(f'Failed to validate JWT token signature error={error}')
+        except (ExpiredSignatureError, InvalidSignatureError) as error:
+            self.logger.error(f'error={error}')
             return False
         return True if pendulum.from_timestamp(decoded_token['exp']) > pendulum.now() else False
