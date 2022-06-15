@@ -20,7 +20,7 @@ def _slugify(title: str) -> str:
 
 
 class PostService:
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger()
     config = Configuration()
     session = boto3.Session()
     dynamodb = session.resource('dynamodb')

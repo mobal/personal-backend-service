@@ -15,7 +15,7 @@ from starlette.responses import JSONResponse
 
 from app.api.api_v1.api import router
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
 
 app = FastAPI()
 app.include_router(router, prefix='/api/v1')
