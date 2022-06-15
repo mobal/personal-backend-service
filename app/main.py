@@ -14,10 +14,12 @@ from starlette import status
 from starlette.responses import JSONResponse
 
 from app.api.api_v1.api import router
+from app.config import Configuration
 
+config = Configuration()
 logger = logging.getLogger()
 
-app = FastAPI()
+app = FastAPI(debug=config.app_stage == 'dev')
 app.include_router(router, prefix='/api/v1')
 
 handler = Mangum(app)
@@ -34,7 +36,7 @@ class ValidationErrorResponse(ErrorResponse):
 
 
 @app.exception_handler(ClientError)
-async def client_error_handler(request: Request, error: ClientError):
+async def client_error_handler(request: Request, error: ClientError) -> JSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error)
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -46,7 +48,7 @@ async def client_error_handler(request: Request, error: ClientError):
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, error: HTTPException):
+async def http_exception_handler(request: Request, error: HTTPException) -> JSONResponse:
     error_id = uuid.uuid4()
     logger.error(f'{error.detail} with status_code={error.status_code}, error_id={error_id} and request={request}')
     return JSONResponse(
@@ -56,7 +58,7 @@ async def http_exception_handler(request: Request, error: HTTPException):
 
 
 @app.exception_handler(ValidationError)
-async def validation_error_handler(request: Request, error: ValidationError):
+async def validation_error_handler(request: Request, error: ValidationError) -> JSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error)
     status_code = status.HTTP_400_BAD_REQUEST
@@ -64,6 +66,18 @@ async def validation_error_handler(request: Request, error: ValidationError):
     return JSONResponse(
         content=jsonable_encoder(ValidationErrorResponse(status=status_code, id=error_id, message=str(error),
                                                          errors=error.errors())),
+        status_code=status_code
+    )
+
+
+@app.exception_handler(Exception)
+async def exception_handler(request: Request, error: NameError) -> JSONResponse:
+    error_id = uuid.uuid4()
+    error_message = str(error)
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    logger.error(f'{error_message} with status_code={status_code}, error_id={error_id} and request={request}')
+    return JSONResponse(
+        content=jsonable_encoder(ErrorResponse(status=status_code, id=error_id, message=error_message)),
         status_code=status_code
     )
 
