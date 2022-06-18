@@ -5,12 +5,18 @@ plugins:
   - serverless-python-requirements
 custom:
   pythonRequirements:
-    dockerizePip: false
+    dockerizePip: true
     layer: true
+    zip: true
   serverless-offline:
     httpsProtocol: false
 functions:
   app:
+    environment:
+      APP_NAME: ${env:APP_NAME}
+      APP_STAGE: ${env:APP_STAGE}
+      APP_TIMEZONE: ${env:APP_TIMEZONE}
+      JWT_SECRET: ${env:JWT_SECRET}
     events:
       - httpApi: '*'
     handler: app.main.handler
