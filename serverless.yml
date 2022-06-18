@@ -3,13 +3,7 @@ frameworkVersion: '3'
 plugins:
   - serverless-offline
   - serverless-python-requirements
-  - serverless-dotenv-plugin
 custom:
-  dotenv:
-    exclude:
-      - AWS_ACCESS_KEY_ID
-      - AWS_REGION
-      - AWS_SECRET_ACCESS_KEY
   pythonRequirements:
     dockerizePip: false
     layer: true
@@ -48,4 +42,5 @@ provider:
             - dynamodb:Query
             - dynamodb:Scan
             - dynamodb:UpdateItem
-          Resource: arn:aws:dynamodb:eu-central-1:345693395407:table/dev-posts
+          Resource: ${env:AWS_ARN_DYNAMODB}
+useDotenv: true
