@@ -429,3 +429,5 @@ cython_debug/
 .serverless
 
 # End of https://www.toptal.com/developers/gitignore/api/node,macos,python,dotenv,serverless,pycharm+all
+
+.requirements.zip
