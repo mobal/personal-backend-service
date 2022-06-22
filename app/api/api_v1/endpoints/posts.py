@@ -3,7 +3,7 @@ from typing import List, Any
 from fastapi import APIRouter, status, Depends
 from starlette.responses import Response
 
-from app.auth import JWTAuth, JWTToken
+from app.auth import JWTAuth
 from app.models.post import Post
 from app.schemas.post import CreatePost, UpdatePost
 from app.services.post import PostService
@@ -12,8 +12,8 @@ router = APIRouter()
 post_service = PostService()
 
 
-@router.post('')
-async def create_post(data: CreatePost, token: JWTToken = Depends(JWTAuth())) -> Any:
+@router.post('', dependencies=[Depends(JWTAuth())])
+async def create_post(data: CreatePost) -> Any:
     post = post_service.create_post(data.dict())
     return Response(status_code=status.HTTP_201_CREATED, headers={'Location': f'/api/v1/posts/{post.id}'})
 
