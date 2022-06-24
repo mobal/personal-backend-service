@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 
 import jwt
 import logging
@@ -16,9 +16,11 @@ from app.services.cache import CacheService
 
 
 class JWTToken(BaseModel):
-    sub: str
     exp: int
     iat: int
+    iss: str
+    jti: str
+    sub: Any
 
 
 class User(CamelModel):

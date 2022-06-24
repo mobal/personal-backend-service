@@ -74,17 +74,5 @@ async def validation_error_handler(request: Request, error: ValidationError) -> 
     )
 
 
-@app.exception_handler(Exception)
-async def exception_handler(request: Request, error: NameError) -> JSONResponse:
-    error_id = uuid.uuid4()
-    error_message = str(error)
-    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    logger.error(f'{error_message} with status_code={status_code}, error_id={error_id} and request={request}')
-    return JSONResponse(
-        content=jsonable_encoder(ErrorResponse(status=status_code, id=error_id, message=error_message)),
-        status_code=status_code
-    )
-
-
 if __name__ == '__main__':
     uvicorn.run('app.main:app', host='localhost', port=3000, reload=True)
