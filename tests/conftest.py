@@ -3,7 +3,7 @@ import pytest
 from moto import mock_dynamodb
 from starlette.testclient import TestClient
 
-from app.auth import JWTToken, JWTAuth
+from app.auth import JWTToken
 from app.config import Configuration
 from app.main import app
 from app.services.cache import CacheService
