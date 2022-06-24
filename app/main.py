@@ -15,7 +15,7 @@ from starlette import status
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
-from app.api.api_v1.api import router
+from app.api.v1.api import router
 from app.config import Configuration
 
 config = Configuration()
