@@ -1,5 +1,3 @@
-import uuid
-
 import pendulum
 import pytest
 from starlette import status
