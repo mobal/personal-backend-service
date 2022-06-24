@@ -7,17 +7,21 @@ import uvicorn
 from botocore.exceptions import ClientError
 from fastapi import FastAPI, HTTPException
 from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi_camelcase import CamelModel
 from mangum import Mangum
 from pydantic import ValidationError
 from starlette import status
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
 from app.api.api_v1.api import router
+from app.config import Configuration
 
-logger = logging.getLogger(__name__)
+config = Configuration()
+logger = logging.getLogger()
 
-app = FastAPI()
+app = FastAPI(debug=config.app_stage == 'dev')
 app.include_router(router, prefix='/api/v1')
 
 handler = Mangum(app)
@@ -34,7 +38,7 @@ class ValidationErrorResponse(ErrorResponse):
 
 
 @app.exception_handler(ClientError)
-async def client_error_handler(request: Request, error: ClientError):
+async def client_error_handler(request: Request, error: ClientError) -> JSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error)
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -46,7 +50,8 @@ async def client_error_handler(request: Request, error: ClientError):
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, error: HTTPException):
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, error: HTTPException) -> JSONResponse:
     error_id = uuid.uuid4()
     logger.error(f'{error.detail} with status_code={error.status_code}, error_id={error_id} and request={request}')
     return JSONResponse(
@@ -55,8 +60,9 @@ async def http_exception_handler(request: Request, error: HTTPException):
     )
 
 
+@app.exception_handler(RequestValidationError)
 @app.exception_handler(ValidationError)
-async def validation_error_handler(request: Request, error: ValidationError):
+async def validation_error_handler(request: Request, error: ValidationError) -> JSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error)
     status_code = status.HTTP_400_BAD_REQUEST

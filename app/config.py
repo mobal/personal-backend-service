@@ -1,4 +1,4 @@
-from pydantic import BaseSettings, BaseModel
+from pydantic import BaseSettings
 
 
 class Configuration(BaseSettings):
@@ -6,6 +6,7 @@ class Configuration(BaseSettings):
     app_stage: str
     app_timezone: str
     jwt_secret: str
+    cache_service_base_url: str
 
     class Config:
         env_file = '.env'

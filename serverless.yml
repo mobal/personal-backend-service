@@ -3,20 +3,20 @@ frameworkVersion: '3'
 plugins:
   - serverless-offline
   - serverless-python-requirements
-  - serverless-dotenv-plugin
 custom:
-  dotenv:
-    exclude:
-      - AWS_ACCESS_KEY_ID
-      - AWS_REGION
-      - AWS_SECRET_ACCESS_KEY
   pythonRequirements:
-    dockerizePip: false
+    dockerizePip: true
     layer: true
+    zip: true
   serverless-offline:
     httpsProtocol: false
 functions:
   app:
+    environment:
+      APP_NAME: ${env:APP_NAME}
+      APP_STAGE: ${env:APP_STAGE}
+      APP_TIMEZONE: ${env:APP_TIMEZONE}
+      JWT_SECRET: ${env:JWT_SECRET}
     events:
       - httpApi: '*'
     handler: app.main.handler
@@ -48,4 +48,5 @@ provider:
             - dynamodb:Query
             - dynamodb:Scan
             - dynamodb:UpdateItem
-          Resource: arn:aws:dynamodb:eu-central-1:345693395407:table/dev-posts
+          Resource: ${env:AWS_ARN_DYNAMODB}
+useDotenv: true
