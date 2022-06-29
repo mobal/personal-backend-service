@@ -33,7 +33,8 @@ async def get_all_posts() -> List[Post]:
 async def get_post_by_uuid(uuid: str) -> Post:
     post = await post_service.get_post(uuid)
     if not post:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f'The requested post was not found with id {uuid}')
+        raise HTTPException(status.HTTP_404_NOT_FOUND,
+                            f'The requested post was not found with id {uuid}')
     return post
 
 
