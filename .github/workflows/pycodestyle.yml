@@ -8,6 +8,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
+      id: python
       uses: actions/setup-python@v3
       with:
         python-version: "3.9"
@@ -15,7 +16,7 @@ jobs:
       id: cache
       with:
         path: ~/.local/share/virtualenvs
-        key: ${{ runner.os }}-python-${{ steps.setup-python.outputs.python-version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
+        key: ${{ runner.os }}-python-${{ steps.python.outputs.python-version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
     - name: Install pipenv
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
