@@ -17,4 +17,4 @@ jobs:
         pipenv install
     - name: Analysing the code with pycodestyle
       run: |
-        pycodestyle --ignore=E501 app/ tests/
+        pipenv run pycodestyle --ignore=E501 app/ tests/
