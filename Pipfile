@@ -3,6 +3,10 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
+[scripts]
+codestyle = "pycodestyle --ignore=E501 app/ tests/"
+pytest = "pytest tests/"
+
 [packages]
 fastapi = "==0.78.0"
 uvicorn = "==0.17.6"
