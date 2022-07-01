@@ -1,0 +1,15 @@
+name: Pytest
+
+on:
+  workflow_run:
+    workflows: ["Pycodestyle"]
+    types:
+      - completed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Running tests
+        run: |
+          pipenv run pytest tests/
