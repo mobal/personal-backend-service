@@ -3,8 +3,8 @@ name: Workflow
 on: [push]
 
 jobs:
-  pycodestyle:
-    name: Pycodestyle
+  pycodestyle-and-pytest:
+    name: Run Pycodestyle and Pytest
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -28,11 +28,7 @@ jobs:
     - name: Analysing the code with Pycodestyle
       run: |
         pipenv run pycodestyle --ignore=E501 app/ tests/
-  pytest:
-    name: Pytest
-    runs-on: ubuntu-latest
-    steps:
-      - name: Running tests with Pytest
+    - name: Running tests with Pytest
       run: |
         pipenv run pytest tests/
       env:
