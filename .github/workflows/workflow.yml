@@ -1,9 +1,9 @@
-name: Pycodestyle
+name: Workflow
 
 on: [push]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -27,3 +27,6 @@ jobs:
     - name: Analysing the code with pycodestyle
       run: |
         pipenv run pycodestyle --ignore=E501 app/ tests/
+    - name: Running tests
+      run: |
+        pipenv run pytest tests/
