@@ -28,5 +28,11 @@ jobs:
       run: |
         pipenv run pycodestyle --ignore=E501 app/ tests/
     - name: Running tests
+      env:
+        app_name: "personal-backend-service"
+        app_stage: "test"
+        app_timezone: "Europe/Budapest"
+        jwt_secret: "x4mfd4KMaY5Mc6vIcTVJxAouH4CnfPsz"
+        cache_service_base_url: "https://localhost"
       run: |
         pipenv run pytest tests/
