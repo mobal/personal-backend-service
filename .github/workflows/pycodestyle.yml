@@ -8,7 +8,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.9
-      id: python-3.9
+      id: python-3_9
       uses: actions/setup-python@v3
       with:
         python-version: "3.9"
@@ -19,7 +19,7 @@ jobs:
       id: cache-pipenv
       with:
         path: ~/.local/share/virtualenvs
-        key: ${{ runner.os }}-python-${{ steps.python-3.9.outputs.python-version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
+        key: ${{ runner.os }}-python-${{ steps.python-3_99.outputs.python-version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
     - name: Install packages
       if: steps.cache-pipenv.outputs.cache-hit != 'true'
       run: |
