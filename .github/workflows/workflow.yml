@@ -38,3 +38,15 @@ jobs:
         app_timezone: "Europe/Budapest"
         jwt_secret: "x4mfd4KMaY5Mc6vIcTVJxAouH4CnfPsz"
         cache_service_base_url: "https://localhost"
+  sonarcloud:
+    name: Scan code with SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Sonar scan
+        uses: sonarsource/sonarcloud-github-actions@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKE }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
