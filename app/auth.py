@@ -1,8 +1,7 @@
+import logging
 from typing import Optional, Any
 
 import jwt
-import logging
-
 import pendulum
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer
@@ -42,16 +41,20 @@ class JWTAuth(HTTPBearer):
         credentials = await super(JWTAuth, self).__call__(request)
         if credentials:
             if not await self._validate_token(credentials.credentials):
-                self.logger.error(f'Invalid authentication token credentials={credentials}')
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Invalid authentication token')
+                self.logger.error(
+                    f'Invalid authentication token credentials={credentials}')
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, detail='Invalid authentication token')
             return self.decoded_token
         else:
             self.logger.error(f'Credentials missing during authentications')
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     async def _validate_token(self, token: str) -> bool:
         try:
-            decoded_token = jwt.decode(token, self.config.jwt_secret, algorithms='HS256')
+            decoded_token = jwt.decode(
+                token, self.config.jwt_secret, algorithms='HS256')
         except (ExpiredSignatureError, InvalidSignatureError) as error:
             self.logger.error(f'error={error}')
             return False

@@ -9,8 +9,8 @@ import pendulum
 from boto3.dynamodb.conditions import Key, Attr
 from slugify import slugify
 
-from app.models.post import Post
 from app.config import Configuration
+from app.models.post import Post
 
 
 def create_slug(title: str) -> str:
@@ -31,7 +31,8 @@ class PostService:
         self.table.put_item(Item=post.dict())
 
     async def _get_all_posts(self) -> List:
-        response = self.table.scan(FilterExpression=Attr('deleted_at').eq(None))
+        response = self.table.scan(
+            FilterExpression=Attr('deleted_at').eq(None))
         data = response['Items']
         while 'LastEvaluatedKey' in response:
             response = self.table.scan(

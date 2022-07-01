@@ -1,0 +1,53 @@
+name: Workflow
+
+on: [push]
+
+jobs:
+  pycodestyle-and-pytest:
+    name: Run Pycodestyle and Pytest
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.9
+      id: python-3_9
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.9"
+    - name: Install pipenv
+      run: |
+        python -m pip install --upgrade pipenv wheel
+    - uses: actions/cache@v3
+      id: cache-pipenv
+      with:
+        path: ~/.local/share/virtualenvs
+        key: ${{ runner.os }}-python-${{ steps.python-3_99.outputs.python-version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
+    - name: Install packages
+      if: steps.cache-pipenv.outputs.cache-hit != 'true'
+      run: |
+        pipenv install --dev
+    - name: Analysing the code with Pycodestyle
+      run: |
+        pipenv run pycodestyle --ignore=E501 app/ tests/
+    - name: Running tests with Pytest
+      run: |
+        pipenv run pytest tests/
+      env:
+        AWS_DEFAULT_REGION: "eu-central-1"
+        app_name: ${{ github.event.repository.name }}
+        app_stage: "test"
+        app_timezone: "Europe/Budapest"
+        jwt_secret: "x4mfd4KMaY5Mc6vIcTVJxAouH4CnfPsz"
+        cache_service_base_url: "https://localhost"
+  sonarcloud:
+    name: Scan code with SonarCloud
+    needs: pycodestyle-and-pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Sonar scan
+        uses: sonarsource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKE }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

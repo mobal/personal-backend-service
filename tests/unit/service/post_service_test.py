@@ -13,8 +13,10 @@ class TestPostService:
     def init_db(self, config, dynamodb_client, post) -> None:
         table_name = f'{config.app_stage}-posts'
         dynamodb_client.create_table(TableName=table_name,
-                                     KeySchema=[{'AttributeName': 'id', 'KeyType': 'HASH'}],
-                                     AttributeDefinitions=[{'AttributeName': 'id', 'AttributeType': 'S'}],
+                                     KeySchema=[
+                                         {'AttributeName': 'id', 'KeyType': 'HASH'}],
+                                     AttributeDefinitions=[
+                                         {'AttributeName': 'id', 'AttributeType': 'S'}],
                                      ProvisionedThroughput={'ReadCapacityUnits': 1, 'WriteCapacityUnits': 1})
         table = dynamodb_client.Table(table_name)
         table.put_item(Item=post)
