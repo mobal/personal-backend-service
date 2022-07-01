@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   pycodestyle-and-pytest:
-    name: Run Pycodestyle and Pytest
+    name: Run Pycodestyle, Pytest and Sonar scanner
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -30,7 +30,7 @@ jobs:
         pipenv run pycodestyle --ignore=E501 app/ tests/
     - name: Running tests with Pytest
       run: |
-        pipenv run pytest tests/
+        pipenv run pytest --cov-report xml --cov=app tests/
       env:
         AWS_DEFAULT_REGION: "eu-central-1"
         app_name: ${{ github.event.repository.name }}
@@ -38,16 +38,8 @@ jobs:
         app_timezone: "Europe/Budapest"
         jwt_secret: "x4mfd4KMaY5Mc6vIcTVJxAouH4CnfPsz"
         cache_service_base_url: "https://localhost"
-  sonarcloud:
-    name: Scan code with SonarCloud
-    needs: pycodestyle-and-pytest
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Sonar scan
-        uses: sonarsource/sonarcloud-github-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKE }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    - name: Scan with Sonar scanner
+      uses: sonarsource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKE }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
