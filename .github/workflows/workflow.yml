@@ -3,7 +3,8 @@ name: Workflow
 on: [push]
 
 jobs:
-  test:
+  pycodestyle:
+    name: Pycodestyle
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -24,16 +25,20 @@ jobs:
       if: steps.cache-pipenv.outputs.cache-hit != 'true'
       run: |
         pipenv install --dev
-    - name: Analysing the code with pycodestyle
+    - name: Analysing the code with Pycodestyle
       run: |
         pipenv run pycodestyle --ignore=E501 app/ tests/
-    - name: Running tests
+  pytest:
+    name: Pytest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Running tests with Pytest
+      run: |
+        pipenv run pytest tests/
       env:
         AWS_DEFAULT_REGION: "eu-central-1"
-        app_name: "personal-backend-service"
+        app_name: ${{ github.event.repository.name }}
         app_stage: "test"
         app_timezone: "Europe/Budapest"
         jwt_secret: "x4mfd4KMaY5Mc6vIcTVJxAouH4CnfPsz"
         cache_service_base_url: "https://localhost"
-      run: |
-        pipenv run pytest tests/
