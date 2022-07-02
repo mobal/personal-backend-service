@@ -38,16 +38,17 @@ jobs:
         app_timezone: "Europe/Budapest"
         jwt_secret: "x4mfd4KMaY5Mc6vIcTVJxAouH4CnfPsz"
         cache_service_base_url: "https://localhost"
-    - uses: warchant/setup-sonar-scanner@v3
     - name: Scan with Sonar scanner
-      run: |
-        sonar-scanner
-        -Dsonar.host.url=https://sonarcloud.io
-        -Dsonar.language=python
-        -Dsonar.login=${{ secrets.SONAR_TOKEN }}
-        -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
-        -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
-        -Dsonar.python.coverage.reportPaths=coverage.xml
-        -Dsonar.python.version=3.9
-        -Dsonar.sources=${{ env.GITHUB_WORKSPACE }}/app
-        -Dsonar.tests=${{ env.GITHUB_WORKSPACE }}/tests
+      uses: sonarsource/sonarqube-scan-action@master
+      with:
+        args: >
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.language=python
+          -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+          -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+          -Dsonar.python.coverage.reportPaths=coverage.xml
+          -Dsonar.python.version=3.9
+          -Dsonar.sources=${{ env.GITHUB_WORKSPACE }}/app
+          -Dsonar.tests=${{ env.GITHUB_WORKSPACE }}/tests
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
