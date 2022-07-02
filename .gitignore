@@ -1,6 +1,5 @@
-
-# Created by https://www.toptal.com/developers/gitignore/api/node,macos,python,dotenv,serverless,pycharm+all
-# Edit at https://www.toptal.com/developers/gitignore?templates=node,macos,python,dotenv,serverless,pycharm+all
+# Created by https://www.toptal.com/developers/gitignore/api/node,macos,python,dotenv,serverless,pycharm+all,sonarqube
+# Edit at https://www.toptal.com/developers/gitignore?templates=node,macos,python,dotenv,serverless,pycharm+all,sonarqube
 
 ### dotenv ###
 .env
@@ -428,6 +427,17 @@ cython_debug/
 # Ignore build directory
 .serverless
 
-# End of https://www.toptal.com/developers/gitignore/api/node,macos,python,dotenv,serverless,pycharm+all
+### SonarQube ###
+# SonarQube ignore files.
+#
+# https://docs.sonarqube.org/display/SCAN/Analyzing+with+SonarQube+Scanner
+# Sonar Scanner working directories
+.sonar/
+.sonarqube/
+.scannerwork/
 
-.requirements.zip
+# http://www.sonarlint.org/commandline/
+# SonarLint working directories, configuration files (including credentials)
+.sonarlint/
+
+# End of https://www.toptal.com/developers/gitignore/api/node,macos,python,dotenv,serverless,pycharm+all,sonarqube

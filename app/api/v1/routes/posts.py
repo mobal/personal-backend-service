@@ -14,8 +14,8 @@ router = APIRouter()
 
 
 @router.post('', dependencies=[Depends(jwt_auth)])
-async def create_post(data: CreatePost) -> Response:
-    post = await post_service.create_post(data.dict())
+async def create_post(body: CreatePost) -> Response:
+    post = await post_service.create_post(body.dict())
     return Response(status_code=status.HTTP_201_CREATED, headers={'Location': f'/api/v1/posts/{post.id}'})
 
 
