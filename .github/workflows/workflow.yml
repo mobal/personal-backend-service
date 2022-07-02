@@ -30,7 +30,7 @@ jobs:
         pipenv run pycodestyle --ignore=E501 app/ tests/
     - name: Running tests with Pytest
       run: |
-        pipenv run pytest --cov-report term-missing --cov-report xml --cov=app tests/
+        pipenv run pytest --cov-report term --cov-report xml --cov=app tests/
       env:
         AWS_DEFAULT_REGION: "eu-central-1"
         app_name: ${{ github.event.repository.name }}
@@ -38,8 +38,18 @@ jobs:
         app_timezone: "Europe/Budapest"
         jwt_secret: "x4mfd4KMaY5Mc6vIcTVJxAouH4CnfPsz"
         cache_service_base_url: "https://localhost"
+    - uses: warchant/setup-sonar-scanner@v3
     - name: Scan with Sonar scanner
-      uses: sonarsource/sonarcloud-github-action@master
+      run: |
+        sonar-scanner
+        -Dsonar.host.url=${{ secret.SONAR_URL }}
+        -Dsonar.language=python
+        -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+        -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+        -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+        -Dsonar.python.coverage.reportPaths=coverage.xml
+        -Dsonar.python.version=3.9
+        -Dsonar.sources=${{ env.GITHUB_WORKSPACE }}/app
+        -Dsonar.tests=${{ env.GITHUB_WORKSPACE }}/tests
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKE }}
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
