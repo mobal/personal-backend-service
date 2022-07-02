@@ -1,11 +1,9 @@
 import boto3
 import pytest
 from moto import mock_dynamodb
-from starlette.testclient import TestClient
 
 from app.auth import JWTToken
 from app.config import Configuration
-from app.main import app
 from app.services.cache import CacheService
 
 
@@ -33,8 +31,3 @@ def jwt_token() -> JWTToken:
                                                                      'roles': ['root'],
                                                                      'created_at': '2022-06-23T20:49:17Z',
                                                                      'deleted_at': None, 'updated_at': None})
-
-
-@pytest.fixture
-def test_client() -> TestClient:
-    return TestClient(app, raise_server_exceptions=False)

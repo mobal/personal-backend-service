@@ -4,6 +4,7 @@ from starlette import status
 from starlette.testclient import TestClient
 
 from app.api.v1.routes.posts import jwt_auth
+from app.main import app
 from app.models.post import Post
 from app.schemas.post import CreatePost
 from app.services.post import PostService
@@ -36,6 +37,11 @@ def post_model(body) -> Post:
 @pytest.fixture
 def post_service() -> PostService:
     return PostService()
+
+
+@pytest.fixture
+def test_client() -> TestClient:
+    return TestClient(app, raise_server_exceptions=False)
 
 
 @pytest.mark.asyncio
