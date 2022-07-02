@@ -47,8 +47,8 @@ jobs:
           -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
           -Dsonar.python.coverage.reportPaths=coverage.xml
           -Dsonar.python.version=3.9
-          -Dsonar.sources=${{ env.GITHUB_WORKSPACE }}/app
-          -Dsonar.tests=${{ env.GITHUB_WORKSPACE }}/tests
+          -Dsonar.sources=app/
+          -Dsonar.tests=tests/
       env:
         SONAR_HOST_URL: https://sonarcloud.io
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
