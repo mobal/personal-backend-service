@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   pycodestyle-and-pytest:
-    name: Run Pycodestyle, Pytest and Sonar scanner
+    name: Check codestyle, test and analyze
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -30,9 +30,9 @@ jobs:
     - name: Analysing the code with Pycodestyle
       run: |
         pipenv run pycodestyle --ignore=E501 app/ tests/
-    - name: Running tests with Pytest
+    - name: Running tests with Pytest and generate coverage
       run: |
-        pipenv run pytest --cov-report=term --cov-report=xml --cov=
+        pipenv run pytest --cov-report=term --cov-report=xml --cov=app
       env:
         AWS_DEFAULT_REGION: "eu-central-1"
         app_name: ${{ github.event.repository.name }}
@@ -40,6 +40,9 @@ jobs:
         app_timezone: "Europe/Budapest"
         jwt_secret: "x4mfd4KMaY5Mc6vIcTVJxAouH4CnfPsz"
         cache_service_base_url: "https://localhost"
+    - name: Fix source path in coverage.xml
+      run: |
+        sed -i 's@'$GITHUB_WORKSPACE'@/github/workspace/@g' coverage.xml
     - name: Scan with Sonar scanner
       uses: sonarsource/sonarqube-scan-action@master
       with:
