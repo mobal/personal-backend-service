@@ -42,7 +42,6 @@ jobs:
       uses: sonarsource/sonarqube-scan-action@master
       with:
         args: >
-          -Dsonar.host.url=https://sonarcloud.io
           -Dsonar.language=python
           -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
           -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
@@ -51,4 +50,5 @@ jobs:
           -Dsonar.sources=${{ env.GITHUB_WORKSPACE }}/app
           -Dsonar.tests=${{ env.GITHUB_WORKSPACE }}/tests
       env:
+        SONAR_HOST_URL: https://sonarcloud.io
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
