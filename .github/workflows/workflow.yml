@@ -42,7 +42,7 @@ jobs:
     - name: Scan with Sonar scanner
       run: |
         sonar-scanner
-        -Dsonar.host.url=${{ secrets.SONAR_URL }}
+        -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
         -Dsonar.language=python
         -Dsonar.login=${{ secrets.SONAR_TOKEN }}
         -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
@@ -51,5 +51,3 @@ jobs:
         -Dsonar.python.version=3.9
         -Dsonar.sources=${{ env.GITHUB_WORKSPACE }}/app
         -Dsonar.tests=${{ env.GITHUB_WORKSPACE }}/tests
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
