@@ -32,7 +32,7 @@ jobs:
         pipenv run pycodestyle --ignore=E501 app/ tests/
     - name: Running tests with Pytest
       run: |
-        pipenv run pytest --cov-report term --cov-report xml --cov=app tests/
+        pipenv run pytest --cov-report=term --cov-report=xml --cov=
       env:
         AWS_DEFAULT_REGION: "eu-central-1"
         app_name: ${{ github.event.repository.name }}
