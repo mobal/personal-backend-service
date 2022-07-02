@@ -43,6 +43,7 @@ jobs:
     - name: Fix source path in coverage.xml
       run: |
         sed -i 's@'$GITHUB_WORKSPACE'@/github/workspace/@g' coverage.xml
+        cat coverage.xml
     - name: Scan with Sonar scanner
       uses: sonarsource/sonarqube-scan-action@master
       with:
@@ -54,7 +55,6 @@ jobs:
           -Dsonar.python.version=3.9
           -Dsonar.sources=app
           -Dsonar.tests=tests
-          -Dsonar.verbose=true
       env:
         SONAR_HOST_URL: https://sonarcloud.io
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
