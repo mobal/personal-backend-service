@@ -4,10 +4,13 @@ from starlette import status
 from starlette.testclient import TestClient
 
 from app.api.v1.routes.posts import jwt_auth
+from app.auth import JWTToken
 from app.main import app
 from app.models.post import Post
 from app.schemas.post import CreatePost
 from app.services.post import PostService
+
+NOT_AUTHENTICATED = 'Not authenticated'
 
 
 @pytest.fixture
@@ -24,6 +27,16 @@ def before(test_client):
 @pytest.fixture
 def body() -> dict:
     return {'author': 'root', 'title': 'Lorem ipsum', 'content': 'Lorem ipsum'}
+
+
+@pytest.fixture
+def jwt_token() -> JWTToken:
+    return JWTToken(exp=1655925518, iat=1655921918, iss='https://netcode.hu',
+                    jti='7a93ffe1-34b8-42d1-b3da-90d5273da171', sub={'id': 'b5d21631-1c27-4e00-99ad-9de532daaca2',
+                                                                     'email': 'info@netcode.hu', 'display_name': 'root',
+                                                                     'roles': ['root'],
+                                                                     'created_at': '2022-06-23T20:49:17Z',
+                                                                     'deleted_at': None, 'updated_at': None})
 
 
 @pytest.fixture
@@ -124,9 +137,11 @@ async def test_successfully_delete_post(mocker, authenticated_test_client, jwt_t
 
 
 @pytest.mark.asyncio
-async def test_fail_to_update_post_due_to_authorization_error(test_client, post_model):
+async def test_fail_to_update_post_due_to_missing_authorization_header(test_client, post_model):
     response = test_client.put(f'/api/v1/posts/{post_model.id}')
+    assert NOT_AUTHENTICATED == response.json()['message']
     assert status.HTTP_403_FORBIDDEN == response.status_code
+    assert len(response.json()) == 3
 
 
 @pytest.mark.asyncio
@@ -135,6 +150,24 @@ async def test_fail_to_update_post_due_to_validation_error(authenticated_test_cl
         f'/api/v1/posts/{post_model.id}', json={})
     assert status.HTTP_400_BAD_REQUEST == response.status_code
     assert len(response.json()) == 4
+
+
+@pytest.mark.asyncio
+async def test_fail_to_update_post_due_to_empty_authorization_header(test_client, body, post_model):
+    response = test_client.put(
+        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': 'asd'})
+    assert status.HTTP_403_FORBIDDEN == response.status_code
+    assert NOT_AUTHENTICATED == response.json()['message']
+    assert len(response.json()) == 3
+
+
+@pytest.mark.asyncio
+async def test_fail_to_update_post_due_to_invalid_authorization_header(test_client, body, post_model):
+    response = test_client.put(
+        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': ''})
+    assert status.HTTP_403_FORBIDDEN == response.status_code
+    assert NOT_AUTHENTICATED == response.json()['message']
+    assert len(response.json()) == 3
 
 
 @pytest.mark.asyncio
