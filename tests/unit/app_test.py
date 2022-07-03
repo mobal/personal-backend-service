@@ -7,7 +7,6 @@ from starlette import status
 from starlette.testclient import TestClient
 
 from app.api.v1.routes.posts import jwt_auth
-from app.auth import JWTToken
 from app.main import app
 from app.models.cache import Cache
 from app.models.post import Post
@@ -24,25 +23,14 @@ def authenticated_test_client(jwt_token, test_client) -> TestClient:
     return test_client
 
 
-@pytest.fixture(autouse=True)
-def before(test_client):
-    test_client.app.dependency_overrides = {}
-
-
 @pytest.fixture
 def body() -> dict:
     return {'author': 'root', 'title': 'Lorem ipsum', 'content': 'Lorem ipsum'}
 
 
-@pytest.fixture
-def jwt_token() -> JWTToken:
-    now = pendulum.now()
-    return JWTToken(exp=now.add(hours=1).int_timestamp, iat=now.int_timestamp, iss='https://netcode.hu',
-                    jti='7a93ffe1-34b8-42d1-b3da-90d5273da171', sub={'id': 'b5d21631-1c27-4e00-99ad-9de532daaca2',
-                                                                     'email': 'info@netcode.hu', 'display_name': 'root',
-                                                                     'roles': ['root'],
-                                                                     'created_at': now.to_iso8601_string(),
-                                                                     'deleted_at': None, 'updated_at': None})
+@pytest.fixture(autouse=True)
+def clear_dependency_overrides(test_client):
+    test_client.app.dependency_overrides = {}
 
 
 @pytest.fixture

@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock
 
 import jwt
-import pendulum
 import pytest
 from fastapi import HTTPException
 from starlette import status
@@ -18,25 +17,14 @@ def jwt_auth() -> JWTAuth:
 
 
 @pytest.fixture
-def jwt_token() -> JWTToken:
-    now = pendulum.now()
-    return JWTToken(exp=now.add(hours=1).int_timestamp, iat=now.int_timestamp, iss='https://netcode.hu',
-                    jti='7a93ffe1-34b8-42d1-b3da-90d5273da171', sub={'id': 'b5d21631-1c27-4e00-99ad-9de532daaca2',
-                                                                     'email': 'info@netcode.hu', 'display_name': 'root',
-                                                                     'roles': ['root'],
-                                                                     'created_at': now.to_iso8601_string(),
-                                                                     'deleted_at': None, 'updated_at': None})
-
-
-def _encode_jwt_token(jwt_token: JWTToken, key: str) -> str:
-    return jwt.encode(jwt_token.dict(), key)
-
-
-@pytest.fixture
 def empty_request(mocker) -> MagicMock:
     request = mocker.patch('starlette.requests.Request')
     request.headers = {}
     return request
+
+
+def _encode_jwt_token(jwt_token: JWTToken, key: str) -> str:
+    return jwt.encode(jwt_token.dict(), key)
 
 
 @pytest.fixture
