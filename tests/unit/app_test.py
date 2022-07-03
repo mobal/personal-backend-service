@@ -1,3 +1,6 @@
+import copy
+
+import jwt
 import pendulum
 import pytest
 from starlette import status
@@ -10,6 +13,7 @@ from app.models.post import Post
 from app.schemas.post import CreatePost
 from app.services.post import PostService
 
+INVALID_AUTHENTICATION_TOKEN = 'Invalid authentication token'
 NOT_AUTHENTICATED = 'Not authenticated'
 
 
@@ -31,11 +35,12 @@ def body() -> dict:
 
 @pytest.fixture
 def jwt_token() -> JWTToken:
-    return JWTToken(exp=1655925518, iat=1655921918, iss='https://netcode.hu',
+    now = pendulum.now()
+    return JWTToken(exp=now.add(hours=1).int_timestamp, iat=now.int_timestamp, iss='https://netcode.hu',
                     jti='7a93ffe1-34b8-42d1-b3da-90d5273da171', sub={'id': 'b5d21631-1c27-4e00-99ad-9de532daaca2',
                                                                      'email': 'info@netcode.hu', 'display_name': 'root',
                                                                      'roles': ['root'],
-                                                                     'created_at': '2022-06-23T20:49:17Z',
+                                                                     'created_at': now.to_iso8601_string(),
                                                                      'deleted_at': None, 'updated_at': None})
 
 
@@ -162,6 +167,21 @@ async def test_fail_to_update_post_due_to_empty_authorization_header(test_client
 
 
 @pytest.mark.asyncio
+async def test_fail_to_update_post_due_to_expired_bearer_token(test_client, body, config, jwt_token, post_model):
+    expired_jwt_token = copy.deepcopy(jwt_token)
+    past = pendulum.now().subtract(months=1)
+    expired_jwt_token.exp = past.add(hours=1).int_timestamp
+    expired_jwt_token.iat = past.int_timestamp
+    expired_jwt_token.sub['created_at'] = past.to_iso8601_string()
+    token = jwt.encode(expired_jwt_token.dict(), key=config.jwt_secret)
+    response = test_client.put(
+        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': f'Bearer {token}'})
+    assert status.HTTP_403_FORBIDDEN == response.status_code
+    assert INVALID_AUTHENTICATION_TOKEN == response.json()['message']
+    assert len(response.json()) == 3
+
+
+@pytest.mark.asyncio
 async def test_fail_to_update_post_due_to_invalid_authorization_header(test_client, body, post_model):
     response = test_client.put(
         f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': 'asdf'})
@@ -175,7 +195,7 @@ async def test_fail_to_update_post_due_to_invalid_bearer_token(test_client, body
     response = test_client.put(
         f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': 'Bearer asdf'})
     assert status.HTTP_403_FORBIDDEN == response.status_code
-    assert 'Invalid authentication token' == response.json()['message']
+    assert INVALID_AUTHENTICATION_TOKEN == response.json()['message']
     assert len(response.json()) == 3
 
 
