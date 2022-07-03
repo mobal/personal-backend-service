@@ -6,7 +6,7 @@ import pendulum
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer
 from fastapi_camelcase import CamelModel
-from jwt import InvalidSignatureError, ExpiredSignatureError, DecodeError
+from jwt import ExpiredSignatureError, DecodeError
 from pydantic import BaseModel, EmailStr
 from starlette import status
 
