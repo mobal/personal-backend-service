@@ -100,6 +100,7 @@ async def test_fail_to_authorize_request_due_to_missing_credentials(empty_reques
     assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
     assert NOT_AUTHENTICATED == excinfo.value.detail
 
+
 @pytest.mark.asyncio
 async def test_successfully_authorize_request(mocker, cache_service, jwt_auth, jwt_token, valid_request):
     mocker.patch('app.services.cache.CacheService.get', return_value=None)
