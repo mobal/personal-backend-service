@@ -155,7 +155,7 @@ async def test_fail_to_update_post_due_to_validation_error(authenticated_test_cl
 @pytest.mark.asyncio
 async def test_fail_to_update_post_due_to_empty_authorization_header(test_client, body, post_model):
     response = test_client.put(
-        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': 'asd'})
+        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': ''})
     assert status.HTTP_403_FORBIDDEN == response.status_code
     assert NOT_AUTHENTICATED == response.json()['message']
     assert len(response.json()) == 3
@@ -164,9 +164,18 @@ async def test_fail_to_update_post_due_to_empty_authorization_header(test_client
 @pytest.mark.asyncio
 async def test_fail_to_update_post_due_to_invalid_authorization_header(test_client, body, post_model):
     response = test_client.put(
-        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': ''})
+        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': 'asdf'})
     assert status.HTTP_403_FORBIDDEN == response.status_code
     assert NOT_AUTHENTICATED == response.json()['message']
+    assert len(response.json()) == 3
+
+
+@pytest.mark.asyncio
+async def test_fail_to_update_post_due_to_invalid_bearer_token(test_client, body, post_model):
+    response = test_client.put(
+        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': 'Bearer asdf'})
+    assert status.HTTP_403_FORBIDDEN == response.status_code
+    assert 'Invalid authentication token' == response.json()['message']
     assert len(response.json()) == 3
 
 

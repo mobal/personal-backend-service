@@ -6,7 +6,7 @@ import pendulum
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer
 from fastapi_camelcase import CamelModel
-from jwt import InvalidSignatureError, ExpiredSignatureError
+from jwt import InvalidSignatureError, ExpiredSignatureError, DecodeError
 from pydantic import BaseModel, EmailStr
 from starlette import status
 
@@ -55,7 +55,7 @@ class JWTAuth(HTTPBearer):
         try:
             decoded_token = jwt.decode(
                 token, self.config.jwt_secret, algorithms='HS256')
-        except (ExpiredSignatureError, InvalidSignatureError) as error:
+        except (DecodeError, ExpiredSignatureError, InvalidSignatureError) as error:
             self.logger.error(f'error={error}')
             return False
         if pendulum.from_timestamp(decoded_token['exp']) > pendulum.now() \
