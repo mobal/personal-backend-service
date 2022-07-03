@@ -9,6 +9,7 @@ from starlette.testclient import TestClient
 from app.api.v1.routes.posts import jwt_auth
 from app.auth import JWTToken
 from app.main import app
+from app.models.cache import Cache
 from app.models.post import Post
 from app.schemas.post import CreatePost
 from app.services.post import PostService
@@ -187,6 +188,20 @@ async def test_fail_to_update_post_due_to_invalid_authorization_header(test_clie
         f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': 'asdf'})
     assert status.HTTP_403_FORBIDDEN == response.status_code
     assert NOT_AUTHENTICATED == response.json()['message']
+    assert len(response.json()) == 3
+
+
+@pytest.mark.asyncio
+async def test_fail_to_update_post_due_to_blacklisted_bearer_token(mocker, test_client, body, config, jwt_token,
+                                                                   post_model):
+    now = pendulum.now()
+    mocker.patch('app.services.cache.CacheService.get',
+                 return_value=Cache(key='jti', value=jwt_token.jti, expired_at=now.add(years=1).to_iso8601_string()))
+    token = jwt.encode(jwt_token.dict(), key=config.jwt_secret)
+    response = test_client.put(
+        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': f'Bearer {token}'})
+    assert status.HTTP_403_FORBIDDEN == response.status_code
+    assert INVALID_AUTHENTICATION_TOKEN == response.json()['message']
     assert len(response.json()) == 3
 
 
