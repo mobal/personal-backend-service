@@ -55,7 +55,7 @@ class JWTAuth(HTTPBearer):
         try:
             decoded_token = jwt.decode(
                 token, self.config.jwt_secret, algorithms='HS256')
-        except (DecodeError, ExpiredSignatureError, InvalidSignatureError) as error:
+        except (DecodeError, ExpiredSignatureError) as error:
             self.logger.error(f'error={error}')
             return False
         if pendulum.from_timestamp(decoded_token['exp']) > pendulum.now() \
