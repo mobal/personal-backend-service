@@ -48,7 +48,7 @@ class JWTAuth(HTTPBearer):
         else:
             self.logger.error(f'Credentials missing during authentications')
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                status_code=status.HTTP_403_FORBIDDEN, detail='Not authenticated')
 
     async def _validate_token(self, token: str) -> bool:
         try:
