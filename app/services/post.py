@@ -1,6 +1,5 @@
-import encodings.utf_8
-import hashlib
 import logging
+import random
 import uuid
 from typing import List, Optional
 
@@ -14,7 +13,7 @@ from app.models.post import Post
 
 
 def create_slug(title: str) -> str:
-    return f'{slugify(title)}-{hashlib.sha1(title.encode(encodings.utf_8.getregentry().name)).hexdigest()[:10]}'
+    return f'{slugify(title)}-{random.randint(1000, 9999)}'
 
 
 class PostService:
