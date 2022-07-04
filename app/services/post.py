@@ -1,5 +1,4 @@
 import logging
-import random
 import uuid
 from typing import List, Optional
 
@@ -12,8 +11,8 @@ from app.config import Configuration
 from app.models.post import Post
 
 
-def create_slug(title: str) -> str:
-    return f'{slugify(title)}-{random.randint(1000, 9999)}'
+def create_slug(title: str, uuid: str) -> str:
+    return f'{slugify(title)}-{uuid}'
 
 
 class PostService:
@@ -49,9 +48,10 @@ class PostService:
         return Post.parse_obj(response['Items'][0]) if response['Count'] != 0 else None
 
     async def create_post(self, data: dict) -> Post:
-        post = Post(id=str(uuid.uuid4()), author=data['author'], title=data['title'], content=data['content'],
+        random_uuid = str(uuid.uuid4())
+        post = Post(id=random_uuid, author=data['author'], title=data['title'], content=data['content'],
                     created_at=pendulum.now().to_iso8601_string(), published_at=data['published_at'],
-                    slug=create_slug(data['title']))
+                    slug=create_slug(data['title'], random_uuid))
         self.table.put_item(Item=post.dict())
         self.logger.info(f'Post successfully created post={post}')
         return post
