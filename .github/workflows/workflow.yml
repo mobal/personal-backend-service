@@ -42,7 +42,7 @@ jobs:
         cache_service_base_url: "https://localhost"
     - name: Fix source path in coverage.xml
       run: |
-        sed -i 's@'$GITHUB_WORKSPACE'@/github/workspace@g' coverage.xml
+        python utils/coverage.py --coverage-file coverage.xml --find $GITHUB_WORKSPACE --replace /github/workspace
     - name: Scan with Sonar scanner
       uses: sonarsource/sonarqube-scan-action@master
       with:
