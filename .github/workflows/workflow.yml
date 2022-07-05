@@ -11,21 +11,13 @@ jobs:
       with:
         fetch-depth: 0
     - name: Set up Python 3.9
-      id: python-3_9
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
+        cache: "pipenv"
         python-version: "3.9"
-    - name: Install pipenv
+    - name: Install Pipenv
       run: |
         python -m pip install --upgrade pipenv wheel
-    - uses: actions/cache@v3
-      id: cache-pipenv
-      with:
-        path: ~/.local/share/virtualenvs
-        key: ${{ runner.os }}-python-${{ steps.python-3_99.outputs.python-version }}-pipenv-${{ hashFiles('Pipfile.lock') }}
-    - name: Install packages
-      if: steps.cache-pipenv.outputs.cache-hit != 'true'
-      run: |
         pipenv install --dev
     - name: Analysing the code with Pycodestyle
       run: |

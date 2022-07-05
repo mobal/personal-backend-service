@@ -36,9 +36,19 @@ def clear_dependency_overrides(test_client):
 @pytest.fixture
 def post_model(body) -> Post:
     now = pendulum.now()
-    return Post(id='2fa3f28e-553d-4398-93c8-fd434436657b', author=body['author'], title=body['title'],
-                content=body['content'], created_at=now.to_iso8601_string(), deleted_at=None,
-                published_at=now.to_iso8601_string(), updated_at=None, slug='lorem-ipsum', tags=['lorem', 'ipsum'])
+    return Post(
+        id='2fa3f28e-553d-4398-93c8-fd434436657b',
+        author=body['author'],
+        title=body['title'],
+        content=body['content'],
+        created_at=now.to_iso8601_string(),
+        deleted_at=None,
+        published_at=now.to_iso8601_string(),
+        updated_at=None,
+        slug='lorem-ipsum',
+        tags=[
+            'lorem',
+            'ipsum'])
 
 
 @pytest.fixture
@@ -149,7 +159,10 @@ async def test_fail_to_update_post_due_to_validation_error(authenticated_test_cl
 @pytest.mark.asyncio
 async def test_fail_to_update_post_due_to_empty_authorization_header(test_client, body, post_model):
     response = test_client.put(
-        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': ''})
+        f'/api/v1/posts/{post_model.id}',
+        json=body,
+        headers={
+            'Authorization': ''})
     assert status.HTTP_403_FORBIDDEN == response.status_code
     assert NOT_AUTHENTICATED == response.json()['message']
     assert len(response.json()) == 3
@@ -164,7 +177,10 @@ async def test_fail_to_update_post_due_to_expired_bearer_token(test_client, body
     expired_jwt_token.sub['created_at'] = past.to_iso8601_string()
     token = jwt.encode(expired_jwt_token.dict(), key=config.jwt_secret)
     response = test_client.put(
-        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': f'Bearer {token}'})
+        f'/api/v1/posts/{post_model.id}',
+        json=body,
+        headers={
+            'Authorization': f'Bearer {token}'})
     assert status.HTTP_403_FORBIDDEN == response.status_code
     assert INVALID_AUTHENTICATION_TOKEN == response.json()['message']
     assert len(response.json()) == 3
@@ -173,7 +189,10 @@ async def test_fail_to_update_post_due_to_expired_bearer_token(test_client, body
 @pytest.mark.asyncio
 async def test_fail_to_update_post_due_to_invalid_authorization_header(test_client, body, post_model):
     response = test_client.put(
-        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': 'asdf'})
+        f'/api/v1/posts/{post_model.id}',
+        json=body,
+        headers={
+            'Authorization': 'asdf'})
     assert status.HTTP_403_FORBIDDEN == response.status_code
     assert NOT_AUTHENTICATED == response.json()['message']
     assert len(response.json()) == 3
@@ -183,11 +202,19 @@ async def test_fail_to_update_post_due_to_invalid_authorization_header(test_clie
 async def test_fail_to_update_post_due_to_blacklisted_bearer_token(mocker, test_client, body, config, jwt_token,
                                                                    post_model):
     now = pendulum.now()
-    mocker.patch('app.services.cache.CacheService.get',
-                 return_value=Cache(key='jti', value=jwt_token.jti, expired_at=now.add(years=1).to_iso8601_string()))
+    mocker.patch(
+        'app.services.cache.CacheService.get',
+        return_value=Cache(
+            key='jti',
+            value=jwt_token.jti,
+            expired_at=now.add(
+                years=1).to_iso8601_string()))
     token = jwt.encode(jwt_token.dict(), key=config.jwt_secret)
     response = test_client.put(
-        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': f'Bearer {token}'})
+        f'/api/v1/posts/{post_model.id}',
+        json=body,
+        headers={
+            'Authorization': f'Bearer {token}'})
     assert status.HTTP_403_FORBIDDEN == response.status_code
     assert INVALID_AUTHENTICATION_TOKEN == response.json()['message']
     assert len(response.json()) == 3
@@ -196,7 +223,10 @@ async def test_fail_to_update_post_due_to_blacklisted_bearer_token(mocker, test_
 @pytest.mark.asyncio
 async def test_fail_to_update_post_due_to_invalid_bearer_token(test_client, body, post_model):
     response = test_client.put(
-        f'/api/v1/posts/{post_model.id}', json=body, headers={'Authorization': 'Bearer asdf'})
+        f'/api/v1/posts/{post_model.id}',
+        json=body,
+        headers={
+            'Authorization': 'Bearer asdf'})
     assert status.HTTP_403_FORBIDDEN == response.status_code
     assert INVALID_AUTHENTICATION_TOKEN == response.json()['message']
     assert len(response.json()) == 3

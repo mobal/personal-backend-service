@@ -73,10 +73,13 @@ async def validation_error_handler(request: Request, error: ValidationError) -> 
     logger.error(
         f'{error_message} with status_code={status_code}, error_id={error_id} and request={request}')
     return JSONResponse(
-        content=jsonable_encoder(ValidationErrorResponse(status=status_code, id=error_id, message=str(error),
-                                                         errors=error.errors())),
-        status_code=status_code
-    )
+        content=jsonable_encoder(
+            ValidationErrorResponse(
+                status=status_code,
+                id=error_id,
+                message=str(error),
+                errors=error.errors())),
+        status_code=status_code)
 
 
 if __name__ == '__main__':
