@@ -45,13 +45,21 @@ class PostService:
             KeyConditionExpression=Key('id').eq(post_uuid),
             FilterExpression=Attr('deleted_at').eq(None)
         )
-        return Post.parse_obj(response['Items'][0]) if response['Count'] != 0 else None
+        return Post.parse_obj(
+            response['Items'][0]) if response['Count'] != 0 else None
 
     async def create_post(self, data: dict) -> Post:
         post_uuid = str(uuid.uuid4())
-        post = Post(id=post_uuid, author=data['author'], title=data['title'], content=data['content'],
-                    created_at=pendulum.now().to_iso8601_string(), published_at=data['published_at'],
-                    slug=create_slug(data['title'], post_uuid))
+        post = Post(
+            id=post_uuid,
+            author=data['author'],
+            title=data['title'],
+            content=data['content'],
+            created_at=pendulum.now().to_iso8601_string(),
+            published_at=data['published_at'],
+            slug=create_slug(
+                data['title'],
+                post_uuid))
         self.table.put_item(Item=post.dict())
         self.logger.info(f'Post successfully created post={post}')
         return post

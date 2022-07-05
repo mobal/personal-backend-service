@@ -43,12 +43,14 @@ class JWTAuth(HTTPBearer):
                 self.logger.error(
                     f'Invalid authentication token credentials={credentials}')
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, detail='Invalid authentication token')
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail='Invalid authentication token')
             return self.decoded_token
         else:
             self.logger.error(f'Credentials missing during authentications')
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail='Not authenticated')
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Not authenticated')
 
     async def _validate_token(self, token: str) -> bool:
         try:

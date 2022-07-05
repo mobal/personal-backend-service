@@ -13,19 +13,30 @@ class TestPostService:
     def init_db(self, config, dynamodb_client, post) -> None:
         table_name = f'{config.app_stage}-posts'
         dynamodb_client.create_table(TableName=table_name,
-                                     KeySchema=[
-                                         {'AttributeName': 'id', 'KeyType': 'HASH'}],
-                                     AttributeDefinitions=[
-                                         {'AttributeName': 'id', 'AttributeType': 'S'}],
-                                     ProvisionedThroughput={'ReadCapacityUnits': 1, 'WriteCapacityUnits': 1})
+                                     KeySchema=[{'AttributeName': 'id',
+                                                 'KeyType': 'HASH'}],
+                                     AttributeDefinitions=[{'AttributeName': 'id',
+                                                            'AttributeType': 'S'}],
+                                     ProvisionedThroughput={'ReadCapacityUnits': 1,
+                                                            'WriteCapacityUnits': 1})
         table = dynamodb_client.Table(table_name)
         table.put_item(Item=post)
 
     @pytest.fixture
     def post(self) -> dict:
-        return {'id': 'aad76f13-6d99-4e03-843a-aa03876e1197', 'author': 'mobal', 'content': 'Lorem ipsum',
-                'created_at': '2022-06-23T20:49:17Z', 'deleted_at': None, 'published_at': None,
-                'slug': 'lorem-ipsum', 'tags': ['lorem', 'ipsum'], 'title': 'Lorem ipsum', 'updated_at': None}
+        return {
+            'id': 'aad76f13-6d99-4e03-843a-aa03876e1197',
+            'author': 'mobal',
+            'content': 'Lorem ipsum',
+            'created_at': '2022-06-23T20:49:17Z',
+            'deleted_at': None,
+            'published_at': None,
+            'slug': 'lorem-ipsum',
+            'tags': [
+                'lorem',
+                'ipsum'],
+            'title': 'Lorem ipsum',
+            'updated_at': None}
 
     @pytest.fixture
     def post_service(self, init_db) -> PostService:
@@ -36,8 +47,11 @@ class TestPostService:
         return dynamodb_client.Table(f'{config.app_stage}-posts')
 
     async def test_successfully_create_post(self, post_service) -> None:
-        data = {'author': 'root', 'title': 'Random title', 'content': 'Some random content',
-                'published_at': pendulum.now().to_iso8601_string()}
+        data = {
+            'author': 'root',
+            'title': 'Random title',
+            'content': 'Some random content',
+            'published_at': pendulum.now().to_iso8601_string()}
         result = await post_service.create_post(data)
         assert result.id is not None
         assert result.created_at is not None

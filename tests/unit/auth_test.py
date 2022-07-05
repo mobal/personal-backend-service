@@ -72,7 +72,9 @@ async def test_fail_to_authorize_request_due_to_bearer_token_is_missing(empty_re
 @pytest.mark.asyncio
 async def test_fail_to_authorize_request_due_to_blacklisted_token(mocker, cache_service, jwt_auth, jwt_token,
                                                                   valid_request):
-    mocker.patch('app.services.cache.CacheService.get', return_value=jwt_token.jti)
+    mocker.patch(
+        'app.services.cache.CacheService.get',
+        return_value=jwt_token.jti)
     with (pytest.raises(HTTPException)) as excinfo:
         await jwt_auth(valid_request)
     assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
