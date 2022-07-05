@@ -59,7 +59,9 @@ class PostService:
             published_at=data['published_at'],
             slug=create_slug(
                 data['title'],
-                post_uuid))
+                post_uuid),
+            tags=data['tags'],
+            meta=data['meta'])
         self.table.put_item(Item=post.dict())
         self.logger.info(f'Post successfully created post={post}')
         return post

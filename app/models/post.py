@@ -4,6 +4,13 @@ from fastapi_camelcase import CamelModel
 from pydantic import conlist
 
 
+class Meta(CamelModel):
+    description: Optional[str]
+    language: Optional[str]
+    keywords: Optional[conlist(item_type=str, min_items=1)]
+    title: Optional[str]
+
+
 class Post(CamelModel):
     id: str
     author: str
@@ -15,3 +22,4 @@ class Post(CamelModel):
     updated_at: Optional[str]
     slug: str
     tags: Optional[conlist(item_type=str, min_items=1)]
+    meta: Optional[Meta]
