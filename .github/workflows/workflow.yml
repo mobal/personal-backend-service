@@ -36,7 +36,8 @@ jobs:
     name: Analyze code with SonarQube
     needs: pycodestyle-and-pytest
     runs-on: ubuntu-latest
-      - name: Fix source path in coverage.xml
+    steps:
+      - name: Fix source path(s) in coverage.xml
         run: |
           python utils/coverage.py --coverage-file coverage.xml --find $GITHUB_WORKSPACE --replace /github/workspace
       - name: Scan with Sonar scanner
