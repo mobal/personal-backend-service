@@ -1,13 +1,8 @@
 name: SonarQube
 
-on:
-  workflow_run:
-    workflows: ["Check codestyle and test"]
-    types:
-      - completed
-
 jobs:
   name: Analyze code with SonarQube
+  needs: pycodestyle-and-pytest
     - name: Fix source path in coverage.xml
       run: |
         python utils/coverage.py --coverage-file coverage.xml --find $GITHUB_WORKSPACE --replace /github/workspace
