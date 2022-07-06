@@ -4,8 +4,10 @@ on: [push]
 
 jobs:
   pycodestyle-and-pytest:
-    name: Check codestyle, test and analyze
+    name: Setup, test, check codestyle and analyze with SonarQube
     runs-on: ubuntu-latest
+    env:
+      Coverage_File: coverage.xml
     steps:
     - uses: actions/checkout@v3
       with:
@@ -13,8 +15,8 @@ jobs:
     - name: Set up Python 3.9
       uses: actions/setup-python@v4
       with:
-        cache: "pipenv"
-        python-version: "3.9"
+        cache: pipenv
+        python-version: 3.9
     - name: Install Pipenv
       run: |
         python -m pip install --upgrade pipenv wheel
@@ -24,15 +26,15 @@ jobs:
         pipenv run pycodestyle --ignore=E501 app/ tests/
     - name: Running tests with Pytest and generate coverage
       run: |
-        pipenv run pytest --cov-report=term --cov-report=xml --cov=app
+        pipenv run pytest --cov-report=term --cov-report=xml:$Coverage_File --cov=app
       env:
-        AWS_DEFAULT_REGION: "eu-central-1"
+        AWS_DEFAULT_REGION: eu-central-1
         app_name: ${{ github.event.repository.name }}
-        app_stage: "test"
-        app_timezone: "Europe/Budapest"
-        jwt_secret: "x4mfd4KMaY5Mc6vIcTVJxAouH4CnfPsz"
-        cache_service_base_url: "https://localhost"
-    - name: Fix source path in coverage.xml
+        app_stage: test
+        app_timezone: Europe/Budapest
+        jwt_secret: x4mfd4KMaY5Mc6vIcTVJxAouH4CnfPsz
+        cache_service_base_url: https://localhost
+    - name: Fix source path(s) in coverage.xml
       run: |
         python utils/coverage.py --coverage-file coverage.xml --find $GITHUB_WORKSPACE --replace /github/workspace
     - name: Scan with Sonar scanner

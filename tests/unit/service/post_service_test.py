@@ -42,14 +42,15 @@ class TestPostService:
 
     @pytest.fixture
     def post_model(self, post_dict: dict) -> Post:
+        post_uuid = str(uuid.uuid4())
         return Post.parse_obj({
-            'id': 'aad76f13-6d99-4e03-843a-aa03876e1197',
+            'id': post_uuid,
             'author': post_dict['author'],
             'content': post_dict['content'],
             'created_at': pendulum.now().to_iso8601_string(),
             'deleted_at': None,
             'published_at': post_dict['published_at'],
-            'slug': 'some-random-title-aad76f13-6d99-4e03-843a-aa03876e1197',
+            'slug': f'some-random-title-{post_uuid}',
             'tags': post_dict['tags'],
             'title': post_dict['title'],
             'updated_at': None,
