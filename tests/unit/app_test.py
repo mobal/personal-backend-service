@@ -1,4 +1,5 @@
 import copy
+import uuid
 
 import jwt
 import pendulum
@@ -36,7 +37,7 @@ def clear_dependency_overrides(test_client):
 def post_model() -> Post:
     now = pendulum.now()
     return Post(
-        id='2fa3f28e-553d-4398-93c8-fd434436657b',
+        id=str(uuid.uuid4()),
         author=BODY['author'],
         title=BODY['title'],
         content=BODY['content'],
