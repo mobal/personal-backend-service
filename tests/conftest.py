@@ -21,7 +21,7 @@ def config() -> Configuration:
 
 
 @pytest.fixture
-def dynamodb_client():
+def dynamodb_resource():
     with mock_dynamodb():
         yield boto3.resource('dynamodb')
 
