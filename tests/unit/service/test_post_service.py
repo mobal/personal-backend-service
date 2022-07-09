@@ -11,18 +11,8 @@ from app.services.post import PostService
 @pytest.mark.asyncio
 class TestPostService:
     @pytest.fixture
-    def dynamodb_table(self, config, dynamodb_resource, post_model: Post):
-        table_name = f'{config.app_stage}-posts'
-        dynamodb_resource.create_table(TableName=table_name,
-                                       KeySchema=[{'AttributeName': 'id',
-                                                   'KeyType': 'HASH'}],
-                                       AttributeDefinitions=[{'AttributeName': 'id',
-                                                              'AttributeType': 'S'}],
-                                       ProvisionedThroughput={'ReadCapacityUnits': 1,
-                                                              'WriteCapacityUnits': 1})
-        table = dynamodb_resource.Table(table_name)
-        table.put_item(Item=post_model.dict())
-        return table
+    def dynamodb_table(self, settings, dynamodb_resource):
+        return dynamodb_resource.Table(f'{settings.app_stage}-posts')
 
     @pytest.fixture
     def post_dict(self) -> dict:
@@ -61,6 +51,23 @@ class TestPostService:
     def post_service(self) -> PostService:
         return PostService()
 
+    @pytest.fixture(autouse=True)
+    def setup_table(
+            self,
+            settings,
+            dynamodb_resource,
+            dynamodb_table,
+            post_model: Post):
+        table_name = f'{settings.app_stage}-posts'
+        dynamodb_resource.create_table(TableName=table_name,
+                                       KeySchema=[{'AttributeName': 'id',
+                                                   'KeyType': 'HASH'}],
+                                       AttributeDefinitions=[{'AttributeName': 'id',
+                                                              'AttributeType': 'S'}],
+                                       ProvisionedThroughput={'ReadCapacityUnits': 1,
+                                                              'WriteCapacityUnits': 1})
+        dynamodb_table.put_item(Item=post_model.dict())
+
     async def test_successfully_create_post(self, post_dict: dict, post_service: PostService) -> None:
         result = await post_service.create_post(post_dict)
         assert post_dict.items() <= result.dict().items()
@@ -73,12 +80,12 @@ class TestPostService:
         )
         assert response['Count'] == 0
 
-    async def test_successfully_get_all_posts(self, dynamodb_table, post_service, post_model) -> None:
+    async def test_successfully_get_all_posts(self, post_service, post_model) -> None:
         result = await post_service.get_all_posts()
         assert len(result) == 1
         assert post_model == result[0]
 
-    async def test_successfully_get_post_by_uuid(self, dynamodb_table, post_service, post_model) -> None:
+    async def test_successfully_get_post_by_uuid(self, post_service, post_model) -> None:
         result = await post_service.get_post(post_model.id)
         assert post_model == result
 

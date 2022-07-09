@@ -5,7 +5,7 @@ plugins:
   - serverless-python-requirements
 custom:
   pythonRequirements:
-    dockerizePip: true
+    dockerizePip: false
     layer: true
     zip: true
   serverless-offline:

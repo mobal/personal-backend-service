@@ -28,14 +28,14 @@ def _encode_jwt_token(jwt_token: JWTToken, key: str) -> str:
 
 
 @pytest.fixture
-def valid_request(config, empty_request, jwt_token) -> MagicMock:
-    token = _encode_jwt_token(jwt_token, config.jwt_secret)
+def valid_request(settings, empty_request, jwt_token) -> MagicMock:
+    token = _encode_jwt_token(jwt_token, settings.jwt_secret)
     empty_request.headers = {'Authorization': f'Bearer {token}'}
     return empty_request
 
 
 @pytest.mark.asyncio
-async def test_fail_to_authorize_request_due_to_authorization_header_is_empty(empty_request, jwt_auth, jwt_token):
+async def test_fail_to_authorize_request_due_to_authorization_header_is_empty(empty_request, jwt_auth):
     empty_request.headers = {'Authorization': ''}
     with pytest.raises(HTTPException) as excinfo:
         await jwt_auth(empty_request)
@@ -44,7 +44,7 @@ async def test_fail_to_authorize_request_due_to_authorization_header_is_empty(em
 
 
 @pytest.mark.asyncio
-async def test_fail_to_authorize_request_due_to_authorization_header_is_missing(empty_request, jwt_auth, jwt_token):
+async def test_fail_to_authorize_request_due_to_authorization_header_is_missing(empty_request, jwt_auth):
     with pytest.raises(HTTPException) as excinfo:
         await jwt_auth(empty_request)
     assert NOT_AUTHENTICATED == excinfo.value.detail
@@ -52,7 +52,7 @@ async def test_fail_to_authorize_request_due_to_authorization_header_is_missing(
 
 
 @pytest.mark.asyncio
-async def test_fail_to_authorize_request_due_to_bearer_token_is_invalid(empty_request, jwt_auth, jwt_token):
+async def test_fail_to_authorize_request_due_to_bearer_token_is_invalid(empty_request, jwt_auth):
     empty_request.headers = {'Authorization': 'Bearer asdf'}
     with pytest.raises(HTTPException) as excinfo:
         await jwt_auth(empty_request)
@@ -61,7 +61,7 @@ async def test_fail_to_authorize_request_due_to_bearer_token_is_invalid(empty_re
 
 
 @pytest.mark.asyncio
-async def test_fail_to_authorize_request_due_to_bearer_token_is_missing(empty_request, jwt_auth, jwt_token):
+async def test_fail_to_authorize_request_due_to_bearer_token_is_missing(empty_request, jwt_auth):
     empty_request.headers = {'Authorization': 'Bearer '}
     with pytest.raises(HTTPException) as excinfo:
         await jwt_auth(empty_request)

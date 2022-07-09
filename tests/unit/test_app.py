@@ -131,7 +131,7 @@ async def test_fail_to_delete_post_due_to_authorization_error(test_client, post_
 
 
 @pytest.mark.asyncio
-async def test_successfully_delete_post(mocker, authenticated_test_client, jwt_token, post_model, post_service):
+async def test_successfully_delete_post(mocker, authenticated_test_client, post_model, post_service):
     mocker.patch('app.services.post.PostService.delete_post',
                  return_value=None)
     response = authenticated_test_client.delete(
@@ -169,13 +169,13 @@ async def test_fail_to_update_post_due_to_empty_authorization_header(test_client
 
 
 @pytest.mark.asyncio
-async def test_fail_to_update_post_due_to_expired_bearer_token(test_client, config, jwt_token, post_model):
+async def test_fail_to_update_post_due_to_expired_bearer_token(test_client, settings, jwt_token, post_model):
     expired_jwt_token = copy.deepcopy(jwt_token)
     past = pendulum.now().subtract(months=1)
     expired_jwt_token.exp = past.add(hours=1).int_timestamp
     expired_jwt_token.iat = past.int_timestamp
     expired_jwt_token.sub['created_at'] = past.to_iso8601_string()
-    token = jwt.encode(expired_jwt_token.dict(), key=config.jwt_secret)
+    token = jwt.encode(expired_jwt_token.dict(), key=settings.jwt_secret)
     response = test_client.put(
         f'/api/v1/posts/{post_model.id}',
         json=BODY,
@@ -199,7 +199,7 @@ async def test_fail_to_update_post_due_to_invalid_authorization_header(test_clie
 
 
 @pytest.mark.asyncio
-async def test_fail_to_update_post_due_to_blacklisted_bearer_token(mocker, test_client, config, jwt_token, post_model):
+async def test_fail_to_update_post_due_to_blacklisted_bearer_token(mocker, test_client, settings, jwt_token, post_model):
     now = pendulum.now()
     mocker.patch(
         'app.services.cache.CacheService.get',
@@ -208,7 +208,7 @@ async def test_fail_to_update_post_due_to_blacklisted_bearer_token(mocker, test_
             value=jwt_token.jti,
             expired_at=now.add(
                 years=1).to_iso8601_string()))
-    token = jwt.encode(jwt_token.dict(), key=config.jwt_secret)
+    token = jwt.encode(jwt_token.dict(), key=settings.jwt_secret)
     response = test_client.put(
         f'/api/v1/posts/{post_model.id}',
         json=BODY,
