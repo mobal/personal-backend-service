@@ -14,12 +14,12 @@ class TestPostService:
     def dynamodb_table(self, config, dynamodb_resource, post_model: Post):
         table_name = f'{config.app_stage}-posts'
         dynamodb_resource.create_table(TableName=table_name,
-                                     KeySchema=[{'AttributeName': 'id',
-                                                 'KeyType': 'HASH'}],
-                                     AttributeDefinitions=[{'AttributeName': 'id',
-                                                            'AttributeType': 'S'}],
-                                     ProvisionedThroughput={'ReadCapacityUnits': 1,
-                                                            'WriteCapacityUnits': 1})
+                                       KeySchema=[{'AttributeName': 'id',
+                                                   'KeyType': 'HASH'}],
+                                       AttributeDefinitions=[{'AttributeName': 'id',
+                                                              'AttributeType': 'S'}],
+                                       ProvisionedThroughput={'ReadCapacityUnits': 1,
+                                                              'WriteCapacityUnits': 1})
         table = dynamodb_resource.Table(table_name)
         table.put_item(Item=post_model.dict())
         return table
