@@ -24,7 +24,7 @@ class JWTAuth(HTTPBearer):
     def __init__(
             self,
             *,
-            bearerFormat: Optional[str] = None,
+            bearerFormat: Optional[str] = None,  # NOSONAR
             scheme_name: Optional[str] = None,
             description: Optional[str] = None,
             auto_error: bool = True):
