@@ -87,7 +87,9 @@ class TestApp:
 
     @pytest.mark.asyncio
     async def test_fail_to_get_post(self, mocker, test_client, post_model, post_service):
-        mocker.patch('app.services.post.PostService.get_post', return_value=None)
+        mocker.patch(
+            'app.services.post.PostService.get_post',
+            return_value=None)
         response = test_client.get(f'/api/v1/posts/{post_model.id}')
         assert status.HTTP_404_NOT_FOUND == response.status_code
         json = response.json()
