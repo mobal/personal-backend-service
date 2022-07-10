@@ -28,6 +28,6 @@ def settings() -> Settings:
 @pytest.fixture
 def dynamodb_resource(settings):
     with mock_dynamodb():
-        yield boto3.resource('dynamodb', region_name=settings.aws_region_name,
+        yield boto3.resource('dynamodb', region_name='eu-central-1',
                              aws_access_key_id=settings.aws_access_key_id,
                              aws_secret_access_key=settings.aws_secret_access_key)
