@@ -16,12 +16,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
 from app.api.v1.api import router
-from app.settings import Settings
 
-settings = Settings()
 logger = logging.getLogger()
 
-app = FastAPI(debug=settings.app_stage == 'dev')
+app = FastAPI(debug=True)
 app.include_router(router, prefix='/api/v1')
 
 handler = Mangum(app)
