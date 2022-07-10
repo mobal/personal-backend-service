@@ -4,12 +4,11 @@ from typing import Optional, Any
 import jwt
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer
-from fastapi_camelcase import CamelModel
 from jwt import ExpiredSignatureError, DecodeError
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from starlette import status
 
-from app.config import Configuration
+from app.settings import Settings
 from app.services.cache import CacheService
 
 
@@ -21,20 +20,22 @@ class JWTToken(BaseModel):
     sub: Any
 
 
-class User(CamelModel):
-    id: str
-    email: EmailStr
-    display_name: str
-    roles: Optional[list[str]]
-    created_at: str
-    deleted_at: Optional[str]
-    updated_at: Optional[str]
-
-
 class JWTAuth(HTTPBearer):
-    cache_service = CacheService()
-    config = Configuration()
-    logger = logging.getLogger()
+    def __init__(
+            self,
+            *,
+            bearerFormat: Optional[str] = None,  # NOSONAR
+            scheme_name: Optional[str] = None,
+            description: Optional[str] = None,
+            auto_error: bool = True):
+        self.logger = logging.getLogger()
+        super().__init__(
+            bearerFormat=bearerFormat,
+            scheme_name=scheme_name,
+            description=description,
+            auto_error=auto_error)
+        self.cache_service = CacheService()
+        self.config = Settings()
 
     async def __call__(self, request: Request) -> Optional[JWTToken]:
         credentials = await super(JWTAuth, self).__call__(request)

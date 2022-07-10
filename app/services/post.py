@@ -7,7 +7,7 @@ import pendulum
 from boto3.dynamodb.conditions import Key, Attr
 from slugify import slugify
 
-from app.config import Configuration
+from app.settings import Settings
 from app.models.post import Post
 
 
@@ -18,10 +18,10 @@ def create_slug(title: str, post_uuid: str) -> str:
 class PostService:
     def __init__(self) -> None:
         self.logger = logging.getLogger()
-        config = Configuration()
+        settings = Settings()
         session = boto3.Session()
         dynamodb = session.resource('dynamodb')
-        self.table = dynamodb.Table(f'{config.app_stage}-posts')
+        self.table = dynamodb.Table(f'{settings.app_stage}-posts')
 
     async def _delete_post_by_uuid(self, post_uuid: str) -> None:
         post = await self._get_post_by_uuid(post_uuid)

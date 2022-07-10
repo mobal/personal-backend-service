@@ -21,7 +21,7 @@ jobs:
       run: |
         python -m pip install --upgrade pipenv wheel
         pipenv install --dev
-    - name: Analysing the code with Pycodestyle
+    - name: Analyze code using Pycodestyle
       run: |
         pipenv run pycodestyle --ignore=E501 app/ tests/
     - name: Running tests with Pytest and generate coverage
