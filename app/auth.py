@@ -21,9 +21,19 @@ class JWTToken(BaseModel):
 
 
 class JWTAuth(HTTPBearer):
-    def __init__(self, auto_error=False):
+    def __init__(
+            self,
+            *,
+            bearerFormat: Optional[str] = None,
+            scheme_name: Optional[str] = None,
+            description: Optional[str] = None,
+            auto_error: bool = True):
         self.logger = logging.getLogger()
-        super().__init__(auto_error=auto_error)
+        super().__init__(
+            bearerFormat=bearerFormat,
+            scheme_name=scheme_name,
+            description=description,
+            auto_error=auto_error)
         self.cache_service = CacheService()
         self.config = Settings()
 
