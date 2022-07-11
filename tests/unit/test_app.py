@@ -4,6 +4,7 @@ import uuid
 import jwt
 import pendulum
 import pytest
+from fastapi import HTTPException
 from starlette import status
 from starlette.testclient import TestClient
 
@@ -89,7 +90,9 @@ class TestApp:
     async def test_fail_to_get_post(self, mocker, test_client, post_model, post_service):
         mocker.patch(
             'app.services.post.PostService.get_post',
-            return_value=None)
+            side_effect=HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f'The requested post was not found with id {post_model.id}'))
         response = test_client.get(f'/api/v1/posts/{post_model.id}')
         assert status.HTTP_404_NOT_FOUND == response.status_code
         json = response.json()
