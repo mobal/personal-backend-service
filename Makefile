@@ -7,6 +7,9 @@ install:
 install-dev:
 	pipenv install --dev
 
+pycodestyle:
+	pipenv run pycodestyle --ignore=E501 app/ tests/
+
 sls-deploy:
 	pipenv run sls deploy
 
