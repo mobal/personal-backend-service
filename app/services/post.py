@@ -5,7 +5,9 @@ from typing import List, Optional
 import boto3
 import pendulum
 from boto3.dynamodb.conditions import Key, Attr
+from fastapi import HTTPException
 from slugify import slugify
+from starlette import status
 
 from app.settings import Settings
 from app.models.post import Post
@@ -45,8 +47,10 @@ class PostService:
             KeyConditionExpression=Key('id').eq(post_uuid),
             FilterExpression=Attr('deleted_at').eq(None)
         )
-        return Post.parse_obj(
-            response['Items'][0]) if response['Count'] != 0 else None
+        if response['Count'] != 0:
+            return Post.parse_obj(response['Items'][0])
+        error_message = f'The requested post was not found with id {uuid}'
+        raise HTTPException(status.HTTP_404_NOT_FOUND, error_message)
 
     async def create_post(self, data: dict) -> Post:
         post_uuid = str(uuid.uuid4())

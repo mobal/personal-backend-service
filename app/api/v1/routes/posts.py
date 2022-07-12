@@ -34,11 +34,7 @@ async def get_all_posts() -> List[Post]:
 
 @router.get('/{uuid}', status_code=status.HTTP_200_OK)
 async def get_post_by_uuid(uuid: str) -> Post:
-    post = await post_service.get_post(uuid)
-    if not post:
-        raise HTTPException(status.HTTP_404_NOT_FOUND,
-                            f'The requested post was not found with id {uuid}')
-    return post
+    return await post_service.get_post(uuid)
 
 
 @router.put('/{uuid}',

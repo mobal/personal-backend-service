@@ -2,6 +2,9 @@ import uuid
 
 import pendulum
 import pytest
+from fastapi import HTTPException
+from starlette import status
+
 from app.models.post import Post
 from boto3.dynamodb.conditions import Key, Attr
 
@@ -90,8 +93,10 @@ class TestPostService:
         assert post_model == result
 
     async def test_fail_to_get_post_by_uuid(self, post_service) -> None:
-        result = await post_service.get_post(str(uuid.uuid4()))
-        assert result is None
+        with pytest.raises(HTTPException) as excinfo:
+            await post_service.get_post(str(uuid.uuid4()))
+        assert HTTPException.__name__ == excinfo.typename
+        assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
 
     async def test_successfully_update_post(self, dynamodb_table, post_service, post_model) -> None:
         await post_service.update_post(post_model.id, {'content': 'Updated content'})
