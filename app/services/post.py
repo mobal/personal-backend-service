@@ -49,7 +49,7 @@ class PostService:
         )
         if response['Count'] != 0:
             return Post.parse_obj(response['Items'][0])
-        error_message = f'The requested post was not found with id {uuid}'
+        error_message = f'The requested post was not found with id {post_uuid}'
         raise HTTPException(status.HTTP_404_NOT_FOUND, error_message)
 
     async def create_post(self, data: dict) -> Post:
