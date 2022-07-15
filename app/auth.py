@@ -35,7 +35,7 @@ class JWTAuth(HTTPBearer):
             description=description,
             auto_error=auto_error)
         self.cache_service = CacheService()
-        self.config = Settings()
+        self.settings = Settings()
 
     async def __call__(self, request: Request) -> Optional[JWTToken]:
         credentials = await super(JWTAuth, self).__call__(request)
@@ -56,7 +56,7 @@ class JWTAuth(HTTPBearer):
     async def _validate_token(self, token: str) -> bool:
         try:
             decoded_token = jwt.decode(
-                token, self.config.jwt_secret, algorithms='HS256')
+                token, self.settings.jwt_secret, algorithms='HS256')
         except (DecodeError, ExpiredSignatureError) as error:
             self.logger.error(f'error={error}')
             return False
