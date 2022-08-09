@@ -23,7 +23,7 @@ jobs:
         pipenv install --dev
     - name: Analyze code using Pycodestyle
       run: |
-        pipenv run pycodestyle --ignore=E501 app/ tests/
+        pipenv run pycodestyle --ignore=E501,W503 app/ tests/
     - name: Running tests with Pytest and generate coverage
       run: |
         pipenv run pytest --cov-report=term --cov-report=xml:$Coverage_File --cov=app
