@@ -5,8 +5,10 @@ plugins:
   - serverless-python-requirements
 custom:
   pythonRequirements:
-    dockerizePip: false
+    dockerImage: mlupin/docker-lambda:python3.9-build
+    dockerizePip: true
     layer: true
+    strip: false
     zip: true
   serverless-offline:
     httpsProtocol: false
@@ -25,16 +27,21 @@ functions:
       - Ref: PythonRequirementsLambdaLayer
 package:
   patterns:
+    - '!.git/**'
     - '!.gitignore'
-    - '!.idea/**'
+    - '!.DS_Store'
+    - '!npm-debug.log'
     - '!.serverless/**'
-    - '.venv/**'
+    - '!.serverless_plugins/**'
+    - '!.github/**'
+    - '!.idea/**'
+    - '!.pytest_cache/**'
+    - '!.vscode/**'
+    - '!.venv/**'
     - '!node_modules/**'
-    - 'package.json'
-    - 'package-lock.json'
-    - 'Pipfile'
-    - 'Pipfile.lock'
-    - 'serverless.yml'
+    - '!htmlcov/**'
+    - '!.coverage'
+    - '!coverage.xml'
 provider:
   name: aws
   runtime: python3.9

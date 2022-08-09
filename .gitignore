@@ -2,7 +2,7 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=node,macos,python,dotenv,sonarqube,serverless,pycharm+all,visualstudiocode
 
 ### dotenv ###
-.env.example
+.env
 
 ### macOS ###
 # General
@@ -466,3 +466,5 @@ cython_debug/
 *.code-workspace
 
 # End of https://www.toptal.com/developers/gitignore/api/node,macos,python,dotenv,sonarqube,serverless,pycharm+all,visualstudiocode
+
+.requirements.zip
