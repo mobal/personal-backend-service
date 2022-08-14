@@ -5,7 +5,7 @@ on: [push]
 jobs:
   pycodestyle-and-pytest:
     name: Setup, test, check codestyle and analyze with SonarQube
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       Coverage_File: coverage.xml
     steps:
