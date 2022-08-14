@@ -22,18 +22,20 @@ class JWTToken(BaseModel):
 
 class JWTAuth(HTTPBearer):
     def __init__(
-            self,
-            *,
-            bearerFormat: Optional[str] = None,  # NOSONAR
-            scheme_name: Optional[str] = None,
-            description: Optional[str] = None,
-            auto_error: bool = True):
+        self,
+        *,
+        bearerFormat: Optional[str] = None,  # NOSONAR
+        scheme_name: Optional[str] = None,
+        description: Optional[str] = None,
+        auto_error: bool = True,
+    ):
         self.logger = logging.getLogger()
         super().__init__(
             bearerFormat=bearerFormat,
             scheme_name=scheme_name,
             description=description,
-            auto_error=auto_error)
+            auto_error=auto_error,
+        )
         self.cache_service = CacheService()
         self.settings = Settings()
 
@@ -42,21 +44,24 @@ class JWTAuth(HTTPBearer):
         if credentials:
             if not await self._validate_token(credentials.credentials):
                 self.logger.error(
-                    f'Invalid authentication token credentials={credentials}')
+                    f'Invalid authentication token credentials={credentials}'
+                )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail='Invalid authentication token')
+                    detail='Invalid authentication token',
+                )
             return self.decoded_token
         else:
             self.logger.error(f'Credentials missing during authentications')
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail='Not authenticated')
+                status_code=status.HTTP_403_FORBIDDEN, detail='Not authenticated'
+            )
 
     async def _validate_token(self, token: str) -> bool:
         try:
             decoded_token = jwt.decode(
-                token, self.settings.jwt_secret, algorithms='HS256')
+                token, self.settings.jwt_secret, algorithms='HS256'
+            )
         except (DecodeError, ExpiredSignatureError) as error:
             self.logger.error(f'error={error}')
             return False

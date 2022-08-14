@@ -21,18 +21,17 @@ def jwt_auth() -> JWTAuth:
 def jwt_token() -> JWTToken:
     now = pendulum.now()
     return JWTToken(
-        exp=now.add(
-            hours=1).int_timestamp,
+        exp=now.add(hours=1).int_timestamp,
         iat=now.int_timestamp,
         iss='https://netcode.hu',
-        jti=str(
-            uuid.uuid4()),
+        jti=str(uuid.uuid4()),
         sub={
-            'id': str(
-                uuid.uuid4()),
+            'id': str(uuid.uuid4()),
             'email': 'info@netcode.hu',
             'display_name': 'root',
             'roles': ['root'],
             'created_at': now.to_iso8601_string(),
             'deleted_at': None,
-            'updated_at': None})
+            'updated_at': None,
+        },
+    )
