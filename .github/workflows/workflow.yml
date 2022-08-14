@@ -19,7 +19,7 @@ jobs:
         python-version: 3.9
     - name: Install Pipenv
       run: |
-        python -m pip install --upgrade certifi pipenv wheel
+        python -m pip install --upgrade pipenv wheel
         pipenv install --dev
         pipenv graph
     - name: Analyze code using Pycodestyle
