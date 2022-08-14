@@ -15,7 +15,9 @@ class CacheService:
 
     async def get(self, key: str) -> Optional[Cache]:
         async with httpx.AsyncClient() as client:
-            response = await client.get(f'{self.settings.cache_service_base_url}/api/cache/{key}')
+            response = await client.get(
+                f'{self.settings.cache_service_base_url}/api/cache/{key}'
+            )
         if response.status_code == status.HTTP_200_OK:
             return Cache.parse_obj(response.json())
         return None

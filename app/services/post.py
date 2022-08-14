@@ -19,7 +19,7 @@ def create_slug(title: str, post_uuid: str) -> str:
 
 class PostService:
     def __init__(self) -> None:
-        self.logger = logging.getLogger()
+        self._logger = logging.getLogger()
         settings = Settings()
         session = boto3.Session()
         dynamodb = session.resource('dynamodb')
@@ -31,13 +31,12 @@ class PostService:
         self.table.put_item(Item=post.dict())
 
     async def _get_all_posts(self) -> List:
-        response = self.table.scan(
-            FilterExpression=Attr('deleted_at').eq(None))
+        response = self.table.scan(FilterExpression=Attr('deleted_at').eq(None))
         data = response['Items']
         while 'LastEvaluatedKey' in response:
             response = self.table.scan(
                 ExclusiveStartKey=response['LastEvaluatedKey'],
-                FilterExpression=Attr('deleted_at').eq(None)
+                FilterExpression=Attr('deleted_at').eq(None),
             )
             data.extend(response['Items'])
         return data
@@ -45,7 +44,7 @@ class PostService:
     async def _get_post_by_uuid(self, post_uuid: str) -> Optional[Post]:
         response = self.table.query(
             KeyConditionExpression=Key('id').eq(post_uuid),
-            FilterExpression=Attr('deleted_at').eq(None)
+            FilterExpression=Attr('deleted_at').eq(None),
         )
         if response['Count'] != 0:
             return Post.parse_obj(response['Items'][0])
@@ -61,18 +60,17 @@ class PostService:
             content=data['content'],
             created_at=pendulum.now().to_iso8601_string(),
             published_at=data['published_at'],
-            slug=create_slug(
-                data['title'],
-                post_uuid),
+            slug=create_slug(data['title'], post_uuid),
             tags=data['tags'],
-            meta=data['meta'])
+            meta=data['meta'],
+        )
         self.table.put_item(Item=post.dict())
-        self.logger.info(f'Post successfully created post={post}')
+        self._logger.info(f'Post successfully created post={post}')
         return post
 
     async def delete_post(self, post_uuid: str) -> None:
         await self._delete_post_by_uuid(post_uuid)
-        self.logger.info(f'Post successfully deleted uuid={post_uuid}')
+        self._logger.info(f'Post successfully deleted uuid={post_uuid}')
 
     async def get_all_posts(self) -> List[Post]:
         posts = []
@@ -88,4 +86,4 @@ class PostService:
         post = post.copy(update=data)
         post.updated_at = pendulum.now().to_iso8601_string()
         self.table.put_item(Item=post.dict())
-        self.logger.info(f'Post successfully updated post={post}')
+        self._logger.info(f'Post successfully updated post={post}')
