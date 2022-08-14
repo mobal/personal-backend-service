@@ -15,7 +15,7 @@ jobs:
     - name: Set up Python 3.9
       uses: actions/setup-python@v4
       with:
-        cache: false
+        cache: pipenv
         python-version: 3.9
     - name: Install Pipenv
       run: |
