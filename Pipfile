@@ -19,6 +19,7 @@ python-slugify = "==6.1.2"
 pyjwt = "==2.4.0"
 pydantic = {extras = ["email"], version = "1.9.1"}
 httpx = "==0.23.0"
+aws-lambda-powertools = "==1.27.0"
 
 [dev-packages]
 pytest = "==7.1.2"
