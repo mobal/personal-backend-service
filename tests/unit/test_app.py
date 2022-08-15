@@ -23,7 +23,6 @@ NOT_AUTHENTICATED = 'Not authenticated'
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason='Adding aws-lambda-powertools package break this tests')
 class TestApp:
     @pytest.fixture
     def authenticated_test_client(self, jwt_token, test_client) -> TestClient:
