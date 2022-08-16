@@ -1,33 +1,33 @@
 import uuid
 from typing import List
-from urllib.request import Request
 
 import uvicorn
 from aws_lambda_powertools import Logger
 from botocore.exceptions import ClientError
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException,  Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi_camelcase import CamelModel
 from mangum import Mangum
 from pydantic import ValidationError
 from starlette import status
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.exceptions import HTTPException as StarletteHTTPException, ExceptionMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import JSONResponse
 
 from app.api.v1.api import router
-from app.middleware import CorrelationIdMiddleware
+from app.settings import Settings
 
-logger = Logger()
+settings = Settings()
+_logger = Logger(service=settings.app_name)
 
 app = FastAPI(debug=True)
 app.add_middleware(GZipMiddleware)
-app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(ExceptionMiddleware,handlers=app.exception_handlers)
 app.include_router(router, prefix='/api/v1')
 
 handler = Mangum(app)
-handler = logger.inject_lambda_context(handler, clear_state=True)
+handler = _logger.inject_lambda_context(handler, clear_state=True)
 
 
 class ErrorResponse(CamelModel):
@@ -40,12 +40,27 @@ class ValidationErrorResponse(ErrorResponse):
     errors: List[dict]
 
 
+@app.middleware('http')
+async def correlation_id_middleware(request: Request, call_next) -> Response:
+    correlation_id = request.headers.get('x-correlation-id')
+    if not correlation_id:
+        correlation_id = (
+            request.scope.get('aws_context').aws_request_id
+            if request.scope.get('aws_context')
+            else str(uuid.uuid4())
+        )
+    _logger.set_correlation_id = correlation_id
+    response = await call_next(request)
+    response.headers['x-correlation-id'] = correlation_id
+    return response
+
+
 @app.exception_handler(ClientError)
 async def client_error_handler(request: Request, error: ClientError) -> JSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error)
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    logger.error(f'{error_message} with status_code={status_code}, error_id={error_id}')
+    _logger.error(f'{error_message} with {status_code=} and {error_id=}')
     return JSONResponse(
         content=jsonable_encoder(
             ErrorResponse(status=status_code, id=error_id, message=error_message)
@@ -60,8 +75,8 @@ async def http_exception_handler(
     request: Request, error: HTTPException
 ) -> JSONResponse:
     error_id = uuid.uuid4()
-    logger.error(
-        f'{error.detail} with status_code={error.status_code}, error_id={error_id}'
+    _logger.error(
+        f'{error.detail} with {error.status_code=} and {error_id=}'
     )
     return JSONResponse(
         content=jsonable_encoder(
@@ -79,7 +94,7 @@ async def validation_error_handler(
     error_id = uuid.uuid4()
     error_message = str(error)
     status_code = status.HTTP_400_BAD_REQUEST
-    logger.error(f'{error_message} with status_code={status_code}, error_id={error_id}')
+    _logger.error(f'{error_message} with {status_code=} and {error_id=}')
     return JSONResponse(
         content=jsonable_encoder(
             ValidationErrorResponse(

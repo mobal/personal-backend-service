@@ -65,12 +65,12 @@ class PostService:
             meta=data['meta'],
         )
         self.table.put_item(Item=post.dict())
-        self._logger.info(f'Post successfully created post={post}')
+        self._logger.info(f'Post successfully created {post=}')
         return post
 
     async def delete_post(self, post_uuid: str):
         await self._delete_post_by_uuid(post_uuid)
-        self._logger.info(f'Post successfully deleted uuid={post_uuid}')
+        self._logger.info(f'Post successfully deleted {post_uuid=}')
 
     async def get_all_posts(self) -> List[Post]:
         posts = []
@@ -86,4 +86,4 @@ class PostService:
         post = post.copy(update=data)
         post.updated_at = pendulum.now().to_iso8601_string()
         self.table.put_item(Item=post.dict())
-        self._logger.info(f'Post successfully updated post={post}')
+        self._logger.info(f'Post successfully updated {post=}')
