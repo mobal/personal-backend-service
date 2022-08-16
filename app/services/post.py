@@ -1,4 +1,3 @@
-import logging
 import uuid
 from typing import List, Optional
 
@@ -9,7 +8,7 @@ from fastapi import HTTPException
 from slugify import slugify
 from starlette import status
 
-from app.utils import tracer
+from app.utils import tracer, logger
 from app.settings import Settings
 from app.models.post import Post
 
@@ -20,7 +19,7 @@ def create_slug(title: str, post_uuid: str) -> str:
 
 class PostService:
     def __init__(self):
-        self._logger = logging.getLogger()
+        self._logger = logger
         settings = Settings()
         session = boto3.Session()
         dynamodb = session.resource('dynamodb')

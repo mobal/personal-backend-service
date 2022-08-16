@@ -1,4 +1,3 @@
-import logging
 from typing import Optional
 
 import httpx
@@ -6,11 +5,12 @@ from starlette import status
 
 from app.settings import Settings
 from app.models.cache import Cache
+from app.utils import logger
 
 
 class CacheService:
     def __init__(self):
-        self._logger = logging.getLogger()
+        self._logger = logger
         self.settings = Settings()
 
     async def get(self, key: str) -> Optional[Cache]:

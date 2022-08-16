@@ -1,4 +1,3 @@
-import logging
 from typing import Optional, Any
 
 import jwt
@@ -10,7 +9,7 @@ from starlette import status
 
 from app.settings import Settings
 from app.services.cache import CacheService
-from app.utils import tracer
+from app.utils import tracer, logger
 
 
 class JWTToken(BaseModel):
@@ -24,7 +23,7 @@ class JWTToken(BaseModel):
 class JWTBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
         super().__init__(auto_error=auto_error)
-        self._logger = logging.getLogger()
+        self._logger = logger
         self.cache_service = CacheService()
         self.settings = Settings()
 
