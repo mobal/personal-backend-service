@@ -19,6 +19,8 @@ python-slugify = "==6.1.2"
 pyjwt = "==2.4.0"
 pydantic = {extras = ["email"], version = "1.9.1"}
 httpx = "==0.23.0"
+aws-lambda-powertools = "==1.27.0"
+certifi = "==2022.6.15"
 
 [dev-packages]
 pytest = "==7.1.2"
@@ -27,10 +29,10 @@ pytest-cov = "==3.0.0"
 pytest-dotenv = "==0.5.2"
 pytest-mock = "==3.7.0"
 moto = "==3.1.14"
-pytest-httpx = "==0.21.0"
 pycodestyle = "==2.8.0"
 autopep8 = "==1.6.0"
 black = "==22.6.0"
+respx = "==0.19.2"
 
 [requires]
 python_version = "3.9"

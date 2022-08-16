@@ -16,8 +16,8 @@ def set_environment_variables(monkeypatch):
     monkeypatch.setenv('JWT_SECRET', 'p2s5v8y/B?E(H+MbPeShVmYq3t6w9z$C')
     monkeypatch.setenv('CACHE_SERVICE_BASE_URL', 'https://localhost')
     monkeypatch.setenv(
-        'AWS_ARN_DYNAMODB',
-        'arn:aws:dynamodb:eu-central-1:345693395407:table/dev-posts')
+        'AWS_ARN_DYNAMODB', 'arn:aws:dynamodb:eu-central-1:345693395407:table/dev-posts'
+    )
 
 
 @pytest.fixture
@@ -28,6 +28,9 @@ def settings() -> Settings:
 @pytest.fixture
 def dynamodb_resource(settings):
     with mock_dynamodb():
-        yield boto3.resource('dynamodb', region_name='eu-central-1',
-                             aws_access_key_id=settings.aws_access_key_id,
-                             aws_secret_access_key=settings.aws_secret_access_key)
+        yield boto3.resource(
+            'dynamodb',
+            region_name='eu-central-1',
+            aws_access_key_id=settings.aws_access_key_id,
+            aws_secret_access_key=settings.aws_secret_access_key,
+        )
