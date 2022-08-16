@@ -10,7 +10,7 @@ from app.models.cache import Cache
 
 class CacheService:
     def __init__(self):
-        self.logger = logging.getLogger()
+        self._logger = logging.getLogger()
         self.settings = Settings()
 
     async def get(self, key: str) -> Optional[Cache]:

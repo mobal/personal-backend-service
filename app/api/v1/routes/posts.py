@@ -3,17 +3,17 @@ from typing import List
 from fastapi import APIRouter, status, Depends
 from starlette.responses import Response
 
-from app.auth import JWTAuth
+from app.auth import JWTBearer
 from app.models.post import Post
 from app.schemas.post import CreatePost, UpdatePost
 from app.services.post import PostService
 
-jwt_auth = JWTAuth()
+jwt_bearer = JWTBearer()
 post_service = PostService()
 router = APIRouter()
 
 
-@router.post('', dependencies=[Depends(jwt_auth)])
+@router.post('', dependencies=[Depends(jwt_bearer)])
 async def create_post(body: CreatePost) -> Response:
     post = await post_service.create_post(body.dict())
     return Response(
@@ -23,7 +23,7 @@ async def create_post(body: CreatePost) -> Response:
 
 
 @router.delete(
-    '/{uuid}', dependencies=[Depends(jwt_auth)], status_code=status.HTTP_204_NO_CONTENT
+    '/{uuid}', dependencies=[Depends(jwt_bearer)], status_code=status.HTTP_204_NO_CONTENT
 )
 async def delete_post(uuid: str):
     await post_service.delete_post(uuid)
@@ -40,7 +40,7 @@ async def get_post_by_uuid(uuid: str) -> Post:
 
 
 @router.put(
-    '/{uuid}', dependencies=[Depends(jwt_auth)], status_code=status.HTTP_204_NO_CONTENT
+    '/{uuid}', dependencies=[Depends(jwt_bearer)], status_code=status.HTTP_204_NO_CONTENT
 )
 async def update_post(uuid: str, data: UpdatePost):
     await post_service.update_post(uuid, data.dict())

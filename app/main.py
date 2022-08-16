@@ -3,7 +3,7 @@ from typing import List
 from urllib.request import Request
 
 import uvicorn
-from aws_lambda_powertools.logging import Logger
+from aws_lambda_powertools import Logger
 from botocore.exceptions import ClientError
 from fastapi import FastAPI, HTTPException
 from fastapi.encoders import jsonable_encoder

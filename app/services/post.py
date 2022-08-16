@@ -18,14 +18,14 @@ def create_slug(title: str, post_uuid: str) -> str:
 
 
 class PostService:
-    def __init__(self) -> None:
+    def __init__(self):
         self._logger = logging.getLogger()
         settings = Settings()
         session = boto3.Session()
         dynamodb = session.resource('dynamodb')
         self.table = dynamodb.Table(f'{settings.app_stage}-posts')
 
-    async def _delete_post_by_uuid(self, post_uuid: str) -> None:
+    async def _delete_post_by_uuid(self, post_uuid: str):
         post = await self._get_post_by_uuid(post_uuid)
         post.deleted_at = pendulum.now().to_iso8601_string()
         self.table.put_item(Item=post.dict())
@@ -68,7 +68,7 @@ class PostService:
         self._logger.info(f'Post successfully created post={post}')
         return post
 
-    async def delete_post(self, post_uuid: str) -> None:
+    async def delete_post(self, post_uuid: str):
         await self._delete_post_by_uuid(post_uuid)
         self._logger.info(f'Post successfully deleted uuid={post_uuid}')
 
