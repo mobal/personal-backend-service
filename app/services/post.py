@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from slugify import slugify
 from starlette import status
 
+from app.utils import tracer
 from app.settings import Settings
 from app.models.post import Post
 
@@ -25,11 +26,13 @@ class PostService:
         dynamodb = session.resource('dynamodb')
         self.table = dynamodb.Table(f'{settings.app_stage}-posts')
 
+    @tracer.capture_method
     async def _delete_post_by_uuid(self, post_uuid: str):
         post = await self._get_post_by_uuid(post_uuid)
         post.deleted_at = pendulum.now().to_iso8601_string()
         self.table.put_item(Item=post.dict())
 
+    @tracer.capture_method
     async def _get_all_posts(self) -> List:
         response = self.table.scan(FilterExpression=Attr('deleted_at').eq(None))
         data = response['Items']
@@ -41,6 +44,7 @@ class PostService:
             data.extend(response['Items'])
         return data
 
+    @tracer.capture_method
     async def _get_post_by_uuid(self, post_uuid: str) -> Optional[Post]:
         response = self.table.query(
             KeyConditionExpression=Key('id').eq(post_uuid),
@@ -51,6 +55,7 @@ class PostService:
         error_message = f'The requested post was not found with id {post_uuid}'
         raise HTTPException(status.HTTP_404_NOT_FOUND, error_message)
 
+    @tracer.capture_method
     async def create_post(self, data: dict) -> Post:
         post_uuid = str(uuid.uuid4())
         post = Post(
@@ -68,19 +73,23 @@ class PostService:
         self._logger.info(f'Post successfully created {post=}')
         return post
 
+    @tracer.capture_method
     async def delete_post(self, post_uuid: str):
         await self._delete_post_by_uuid(post_uuid)
         self._logger.info(f'Post successfully deleted {post_uuid=}')
 
+    @tracer.capture_method
     async def get_all_posts(self) -> List[Post]:
         posts = []
         for post in await self._get_all_posts():
             posts.append(Post.parse_obj(post))
         return posts
 
+    @tracer.capture_method
     async def get_post(self, post_uuid: str) -> Optional[Post]:
         return await self._get_post_by_uuid(post_uuid)
 
+    @tracer.capture_method
     async def update_post(self, post_uuid: str, data: dict) -> None:
         post = await self._get_post_by_uuid(post_uuid)
         post = post.copy(update=data)

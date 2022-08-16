@@ -10,6 +10,7 @@ from starlette import status
 
 from app.settings import Settings
 from app.services.cache import CacheService
+from app.utils import tracer
 
 
 class JWTToken(BaseModel):
@@ -45,6 +46,7 @@ class JWTBearer(HTTPBearer):
                 status_code=status.HTTP_403_FORBIDDEN, detail='Not authenticated'
             )
 
+    @tracer.capture_method
     async def _validate_token(self, token: str) -> bool:
         try:
             decoded_token = jwt.decode(
