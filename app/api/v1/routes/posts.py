@@ -23,7 +23,9 @@ async def create_post(body: CreatePost) -> Response:
 
 
 @router.delete(
-    '/{uuid}', dependencies=[Depends(jwt_bearer)], status_code=status.HTTP_204_NO_CONTENT
+    '/{uuid}',
+    dependencies=[Depends(jwt_bearer)],
+    status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_post(uuid: str):
     await post_service.delete_post(uuid)
@@ -40,7 +42,9 @@ async def get_post_by_uuid(uuid: str) -> Post:
 
 
 @router.put(
-    '/{uuid}', dependencies=[Depends(jwt_bearer)], status_code=status.HTTP_204_NO_CONTENT
+    '/{uuid}',
+    dependencies=[Depends(jwt_bearer)],
+    status_code=status.HTTP_204_NO_CONTENT,
 )
 async def update_post(uuid: str, data: UpdatePost):
     await post_service.update_post(uuid, data.dict())
