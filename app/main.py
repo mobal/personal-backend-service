@@ -1,4 +1,3 @@
-from logging import Logger
 import uuid
 from typing import List
 

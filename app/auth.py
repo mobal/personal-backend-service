@@ -1,8 +1,7 @@
-import logging
 from typing import Optional, Any
 
 import jwt
-from aws_lambda_powertools import Tracer
+from aws_lambda_powertools import Logger, Tracer
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer
 from jwt import ExpiredSignatureError, DecodeError
@@ -26,7 +25,7 @@ class JWTToken(BaseModel):
 class JWTBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
         super().__init__(auto_error=auto_error)
-        self._logger = logging.getLogger()
+        self._logger = Logger()
         self.cache_service = CacheService()
         self.settings = Settings()
 

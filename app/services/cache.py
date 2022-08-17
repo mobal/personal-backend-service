@@ -1,8 +1,7 @@
-import logging
 from typing import Optional
 
 import httpx
-from aws_lambda_powertools import Tracer
+from aws_lambda_powertools import Logger, Tracer
 from starlette import status
 
 from app.settings import Settings
@@ -14,7 +13,7 @@ tracer = Tracer()
 
 class CacheService:
     def __init__(self):
-        self._logger = logging.getLogger()
+        self._logger = Logger()
         self.settings = Settings()
 
     @tracer.capture_method

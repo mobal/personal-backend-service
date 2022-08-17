@@ -1,10 +1,9 @@
-import logging
 import uuid
 from typing import List, Optional
 
 import boto3
 import pendulum
-from aws_lambda_powertools import Tracer
+from aws_lambda_powertools import Logger, Tracer
 from boto3.dynamodb.conditions import Key, Attr
 from fastapi import HTTPException
 from slugify import slugify
@@ -23,7 +22,7 @@ def create_slug(title: str, post_uuid: str) -> str:
 
 class PostService:
     def __init__(self):
-        self._logger = logging.getLogger()
+        self._logger = Logger()
         settings = Settings()
         session = boto3.Session()
         dynamodb = session.resource('dynamodb')
