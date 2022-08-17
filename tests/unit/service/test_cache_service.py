@@ -10,7 +10,8 @@ class TestCacheService:
     key_value = {
         'key': str(uuid.uuid4()),
         'value': 'Some random value',
-        'expired_at': pendulum.now().to_iso8601_string(),
+        'created_at': pendulum.now().to_iso8601_string(),
+        'ttl': pendulum.now().int_timestamp,
     }
 
     async def test_successfully_get_key_value(
@@ -24,8 +25,9 @@ class TestCacheService:
         result = await cache_service.get(self.key_value['key'])
         assert bool(result) is True
         assert self.key_value['key'] == result.key
-        assert self.key_value['expired_at'] == result.expired_at
+        assert self.key_value['created_at'] == result.created_at
         assert self.key_value['value'] == result.value
+        assert self.key_value['ttl'] == result.ttl
 
     async def test_successfully_get_key_value_with_invalid_id(
         self, cache_service, settings, respx_mock
