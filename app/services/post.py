@@ -4,14 +4,17 @@ from typing import List, Optional
 
 import boto3
 import pendulum
+from aws_lambda_powertools import Tracer
 from boto3.dynamodb.conditions import Key, Attr
 from fastapi import HTTPException
 from slugify import slugify
 from starlette import status
 
-from app.utils import tracer
 from app.settings import Settings
 from app.models.post import Post
+
+
+tracer = Tracer()
 
 
 def create_slug(title: str, post_uuid: str) -> str:

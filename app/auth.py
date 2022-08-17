@@ -2,6 +2,7 @@ import logging
 from typing import Optional, Any
 
 import jwt
+from aws_lambda_powertools import Tracer
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer
 from jwt import ExpiredSignatureError, DecodeError
@@ -10,7 +11,8 @@ from starlette import status
 
 from app.settings import Settings
 from app.services.cache import CacheService
-from app.utils import tracer
+
+tracer = Tracer()
 
 
 class JWTToken(BaseModel):

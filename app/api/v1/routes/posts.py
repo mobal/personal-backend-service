@@ -1,6 +1,6 @@
 from typing import List
 
-from aws_lambda_powertools.metrics import MetricUnit
+from aws_lambda_powertools.metrics import Metrics, MetricUnit
 from fastapi import APIRouter, status, Depends
 from starlette.responses import Response
 
@@ -8,9 +8,9 @@ from app.auth import JWTBearer
 from app.models.post import Post
 from app.schemas.post import CreatePost, UpdatePost
 from app.services.post import PostService
-from app.utils import metrics
 
 jwt_bearer = JWTBearer()
+metrics = Metrics()
 post_service = PostService()
 router = APIRouter()
 

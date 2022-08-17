@@ -1,7 +1,9 @@
+from logging import Logger
 import uuid
 from typing import List
 
 import uvicorn
+from aws_lambda_powertools import Logger, Metrics, Tracer
 from botocore.exceptions import ClientError
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
@@ -18,12 +20,15 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import JSONResponse
 
 from app.api.v1.api import router
-from app.utils import logger, metrics, tracer
 
 app = FastAPI(debug=True)
 app.add_middleware(GZipMiddleware)
 app.add_middleware(ExceptionMiddleware, handlers=app.exception_handlers)
 app.include_router(router, prefix='/api/v1')
+
+logger = Logger()
+metrics = Metrics()
+tracer = Tracer()
 
 handler = Mangum(app)
 handler.__name__ = 'handler'
