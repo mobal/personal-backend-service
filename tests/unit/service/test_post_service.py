@@ -2,21 +2,18 @@ import uuid
 
 import pendulum
 import pytest
-from fastapi import HTTPException
 from starlette import status
 
+from app.exception import PostNotFoundException
 from app.models.post import Post
 from boto3.dynamodb.conditions import Key, Attr
 
+from app.repository.post import PostRepository
 from app.services.post import PostService
 
 
 @pytest.mark.asyncio
 class TestPostService:
-    @pytest.fixture
-    def dynamodb_table(self, settings, dynamodb_resource):
-        return dynamodb_resource.Table(f'{settings.app_stage}-posts')
-
     @pytest.fixture
     def post_dict(self) -> dict:
         tags = ['list', 'of', 'keywords']
@@ -55,64 +52,103 @@ class TestPostService:
         )
 
     @pytest.fixture
+    def post_repository(self) -> PostRepository:
+        return PostRepository()
+
+    @pytest.fixture
     def post_service(self) -> PostService:
         return PostService()
 
-    @pytest.fixture(autouse=True)
-    def setup_table(
-        self, settings, dynamodb_resource, dynamodb_table, post_model: Post
-    ):
-        table_name = f'{settings.app_stage}-posts'
-        dynamodb_resource.create_table(
-            TableName=table_name,
-            KeySchema=[{'AttributeName': 'id', 'KeyType': 'HASH'}],
-            AttributeDefinitions=[{'AttributeName': 'id', 'AttributeType': 'S'}],
-            ProvisionedThroughput={'ReadCapacityUnits': 1, 'WriteCapacityUnits': 1},
-        )
-        dynamodb_table.put_item(Item=post_model.dict())
-
     async def test_successfully_create_post(
-        self, post_dict: dict, post_service: PostService
-    ) -> None:
+        self,
+        mocker,
+        post_dict: dict,
+        post_model: Post,
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        mocker.patch(
+            'app.repository.post.PostRepository.create_post', return_value=post_model
+        )
         result = await post_service.create_post(post_dict)
-        assert post_dict.items() <= result.dict().items()
+        assert post_dict.get('author') == result.dict().get('author')
+        assert post_dict.get('title') == result.dict().get('title')
+        assert post_dict.get('content') == result.dict().get('content')
+        assert post_dict.get('published_at') == result.dict().get('published_at')
+        assert post_dict.get('tags') == result.dict().get('tags')
+        assert post_dict.get('meta') == result.dict().get('meta')
+        post_repository.create_post.assert_called_once_with(post_dict)
 
     async def test_successfully_delete_post(
-        self, dynamodb_table, post_service, post_model
+        self,
+        mocker,
+        post_model: Post,
+        post_repository: PostRepository,
+        post_service: PostService,
     ):
-        await post_service.delete_post(post_model.id)
-        response = dynamodb_table.query(
-            KeyConditionExpression=Key('id').eq(post_model.id),
-            FilterExpression=Attr('deleted_at').eq(None),
+        mocker.patch(
+            'app.repository.post.PostRepository.delete_post', return_value=None
         )
-        assert response['Count'] == 0
+        await post_service.delete_post(post_model.id)
+        post_repository.delete_post.assert_called_once_with(post_model.id)
 
-    async def test_successfully_get_all_posts(self, post_service, post_model) -> None:
+    async def test_successfully_get_all_posts(
+        self,
+        mocker,
+        post_model: Post,
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        mocker.patch(
+            'app.repository.post.PostRepository.get_all_posts',
+            return_value=[post_model],
+        )
         result = await post_service.get_all_posts()
         assert len(result) == 1
         assert post_model == result[0]
+        post_repository.get_all_posts.assert_called_once()
 
     async def test_successfully_get_post_by_uuid(
-        self, post_service, post_model
-    ) -> None:
+        self,
+        mocker,
+        post_model: Post,
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        mocker.patch(
+            'app.repository.post.PostRepository.get_post_by_uuid',
+            return_value=post_model,
+        )
         result = await post_service.get_post(post_model.id)
         assert post_model == result
+        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id)
 
-    async def test_fail_to_get_post_by_uuid(self, post_service) -> None:
-        with pytest.raises(HTTPException) as excinfo:
+    async def test_fail_to_get_post_by_uuid(
+        self,
+        mocker,
+        post_model: Post,
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        mocker.patch(
+            'app.repository.post.PostRepository.get_post_by_uuid',
+            side_effect=PostNotFoundException(
+                f'Post was not found with UUID post_uuid={post_model.id}'
+            ),
+        )
+        with pytest.raises(PostNotFoundException) as excinfo:
             await post_service.get_post(str(uuid.uuid4()))
-        assert HTTPException.__name__ == excinfo.typename
+        assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
 
     async def test_successfully_update_post(
-        self, dynamodb_table, post_service, post_model
+        self,
+        mocker,
+        post_model: Post,
+        post_repository: PostRepository,
+        post_service: PostService,
     ) -> None:
-        await post_service.update_post(post_model.id, {'content': 'Updated content'})
-        response = dynamodb_table.query(
-            KeyConditionExpression=Key('id').eq(post_model.id),
-            FilterExpression=Attr('deleted_at').eq(None),
-        )
-        assert response['Count'] == 1
-        item = response['Items'][0]
-        assert 'Updated content' == item['content']
-        assert item['updated_at'] is not None
+        mocker.patch('app.repository.post.PostRepository.update_post')
+        data = {'content', 'Updated content'}
+        await post_service.update_post(post_model.id, data)
+        post_repository.update_post.assert_called_once_with(post_model.id, data)
