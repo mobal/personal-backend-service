@@ -1,6 +1,5 @@
 import uuid
 
-import pendulum
 import pytest
 from starlette import status
 
@@ -13,47 +12,6 @@ from app.services.post import PostService
 
 @pytest.mark.asyncio
 class TestPostService:
-    @pytest.fixture
-    def post_dict(self) -> dict:
-        tags = ['list', 'of', 'keywords']
-        title = 'Some random title'
-        return {
-            'author': 'root',
-            'title': title,
-            'content': 'Some random content',
-            'published_at': pendulum.now().to_iso8601_string(),
-            'tags': tags,
-            'meta': {
-                'description': 'Meta description',
-                'language': 'en',
-                'keywords': tags,
-                'title': title,
-            },
-        }
-
-    @pytest.fixture
-    def post_model(self, post_dict: dict) -> Post:
-        post_uuid = str(uuid.uuid4())
-        return Post.parse_obj(
-            {
-                'id': post_uuid,
-                'author': post_dict['author'],
-                'content': post_dict['content'],
-                'created_at': pendulum.now().to_iso8601_string(),
-                'deleted_at': None,
-                'published_at': post_dict['published_at'],
-                'slug': f'some-random-title-{post_uuid}',
-                'tags': post_dict['tags'],
-                'title': post_dict['title'],
-                'updated_at': None,
-                'meta': post_dict['meta'],
-            }
-        )
-
-    @pytest.fixture
-    def post_repository(self) -> PostRepository:
-        return PostRepository()
-
     @pytest.fixture
     def post_service(self) -> PostService:
         return PostService()
