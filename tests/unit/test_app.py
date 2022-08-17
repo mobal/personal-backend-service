@@ -26,9 +26,9 @@ NOT_AUTHENTICATED = 'Not authenticated'
 class TestApp:
     @pytest.fixture
     def authenticated_test_client(self, jwt_token, test_client) -> TestClient:
-        from app.api.v1.routes.posts import jwt_auth
+        from app.api.v1.routes.posts import jwt_bearer
 
-        test_client.app.dependency_overrides[jwt_auth] = lambda: jwt_token
+        test_client.app.dependency_overrides[jwt_bearer] = lambda: jwt_token
         return test_client
 
     @pytest.fixture(autouse=True)

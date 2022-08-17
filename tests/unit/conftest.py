@@ -3,7 +3,7 @@ import uuid
 import pendulum
 import pytest
 
-from app.auth import JWTAuth, JWTToken
+from app.auth import JWTBearer, JWTToken
 from app.services.cache import CacheService
 
 
@@ -13,8 +13,8 @@ def cache_service():
 
 
 @pytest.fixture
-def jwt_auth() -> JWTAuth:
-    return JWTAuth()
+def jwt_bearer() -> JWTBearer:
+    return JWTBearer()
 
 
 @pytest.fixture

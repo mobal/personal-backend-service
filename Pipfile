@@ -3,10 +3,6 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
-[scripts]
-codestyle = "pycodestyle --ignore=E501 app/ tests/"
-pytest = "pytest tests/"
-
 [packages]
 fastapi = "==0.78.0"
 uvicorn = "==0.17.6"
@@ -30,7 +26,6 @@ pytest-dotenv = "==0.5.2"
 pytest-mock = "==3.7.0"
 moto = "==3.1.14"
 pycodestyle = "==2.8.0"
-autopep8 = "==1.6.0"
 black = "==22.6.0"
 respx = "==0.19.2"
 
