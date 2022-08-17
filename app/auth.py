@@ -1,7 +1,7 @@
-import logging
 from typing import Optional, Any
 
 import jwt
+from aws_lambda_powertools import Logger, Tracer
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer
 from jwt import ExpiredSignatureError, DecodeError
@@ -10,6 +10,8 @@ from starlette import status
 
 from app.settings import Settings
 from app.services.cache import CacheService
+
+tracer = Tracer()
 
 
 class JWTToken(BaseModel):
@@ -20,45 +22,39 @@ class JWTToken(BaseModel):
     sub: Any
 
 
-class JWTAuth(HTTPBearer):
-    def __init__(
-            self,
-            *,
-            bearerFormat: Optional[str] = None,  # NOSONAR
-            scheme_name: Optional[str] = None,
-            description: Optional[str] = None,
-            auto_error: bool = True):
-        self.logger = logging.getLogger()
-        super().__init__(
-            bearerFormat=bearerFormat,
-            scheme_name=scheme_name,
-            description=description,
-            auto_error=auto_error)
+class JWTBearer(HTTPBearer):
+    def __init__(self, auto_error: bool = True):
+        super().__init__(auto_error=auto_error)
+        self._logger = Logger()
         self.cache_service = CacheService()
         self.settings = Settings()
 
     async def __call__(self, request: Request) -> Optional[JWTToken]:
-        credentials = await super(JWTAuth, self).__call__(request)
+        credentials = await super(JWTBearer, self).__call__(request)
         if credentials:
             if not await self._validate_token(credentials.credentials):
-                self.logger.error(
-                    f'Invalid authentication token credentials={credentials}')
+                self._logger.error(
+                    f'Invalid authentication token credentials={credentials}'
+                )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail='Invalid authentication token')
+                    detail='Invalid authentication token',
+                )
             return self.decoded_token
         else:
-            self.logger.error(f'Credentials missing during authentications')
+            self._logger.error(f'Credentials missing during authentications')
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail='Not authenticated')
+                status_code=status.HTTP_403_FORBIDDEN, detail='Not authenticated'
+            )
 
+    @tracer.capture_method
     async def _validate_token(self, token: str) -> bool:
         try:
             decoded_token = jwt.decode(
-                token, self.settings.jwt_secret, algorithms='HS256')
+                token, self.settings.jwt_secret, algorithms='HS256'
+            )
         except (DecodeError, ExpiredSignatureError) as error:
-            self.logger.error(f'error={error}')
+            self._logger.error(f'error={error}')
             return False
         if await self.cache_service.get(decoded_token['jti']) is None:
             self.decoded_token = decoded_token
