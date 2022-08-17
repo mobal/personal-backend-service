@@ -56,7 +56,7 @@ class JWTBearer(HTTPBearer):
         except (DecodeError, ExpiredSignatureError) as error:
             self._logger.error(f'error={error}')
             return False
-        if await self.cache_service.get(decoded_token['jti']) is None:
+        if await self.cache_service.get(f'jti_{decoded_token["jti"]}') is None:
             self.decoded_token = decoded_token
             return True
         return False
