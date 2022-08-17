@@ -6,7 +6,6 @@ from starlette import status
 
 from app.exception import PostNotFoundException
 from app.models.post import Post
-from boto3.dynamodb.conditions import Key, Attr
 
 from app.repository.post import PostRepository
 from app.services.post import PostService
@@ -86,9 +85,7 @@ class TestPostService:
         post_repository: PostRepository,
         post_service: PostService,
     ):
-        mocker.patch(
-            'app.repository.post.PostRepository.delete_post', return_value=None
-        )
+        mocker.patch('app.repository.post.PostRepository.delete_post')
         await post_service.delete_post(post_model.id)
         post_repository.delete_post.assert_called_once_with(post_model.id)
 
