@@ -213,7 +213,8 @@ class TestApp:
             return_value=Cache(
                 key='jti',
                 value=jwt_token.jti,
-                expired_at=now.add(years=1).to_iso8601_string(),
+                created_at=now.add(years=1).to_iso8601_string(),
+                ttl=now.add(years=1).int_timestamp,
             ),
         )
         token = jwt.encode(jwt_token.dict(), key=settings.jwt_secret)

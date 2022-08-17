@@ -74,7 +74,7 @@ class TestJWTAuth:
             await jwt_bearer(valid_request)
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
         assert INVALID_AUTHENTICATION_TOKEN == excinfo.value.detail
-        cache_service.get.assert_called_once_with(jwt_token.jti)
+        cache_service.get.assert_called_once_with(f'jti_{jwt_token.jti}')
 
     async def test_fail_to_authorize_request_due_to_missing_credentials(
         self, empty_request
@@ -91,4 +91,4 @@ class TestJWTAuth:
         mocker.patch('app.services.cache.CacheService.get', return_value=None)
         result = await jwt_bearer(valid_request)
         assert jwt_token.dict() == result
-        cache_service.get.assert_called_once_with(jwt_token.jti)
+        cache_service.get.assert_called_once_with(f'jti_{jwt_token.jti}')
