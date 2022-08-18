@@ -10,8 +10,6 @@ custom:
     layer: true
     strip: false
     zip: true
-  serverless-offline:
-    httpsProtocol: false
 functions:
   app:
     environment:
