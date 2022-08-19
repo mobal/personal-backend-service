@@ -1,5 +1,3 @@
-import uuid
-
 import pytest
 from starlette import status
 
@@ -47,6 +45,29 @@ class TestPostService:
         await post_service.delete_post(post_model.id)
         post_repository.delete_post.assert_called_once_with(post_model.id)
 
+    async def test_fail_to_delete_post_by_uuid_due_post_not_found_exception(
+        self,
+        mocker,
+        post_model: Post,
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        mocker.patch(
+            'app.repository.post.PostRepository.get_post_by_uuid',
+            side_effect=PostNotFoundException(
+                f'Post was not found with UUID post_uuid={post_model.id}'
+            ),
+        )
+        with pytest.raises(PostNotFoundException) as excinfo:
+            await post_service.delete_post(post_model.id)
+        assert PostNotFoundException.__name__ == excinfo.typename
+        assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
+        assert (
+            f'Post was not found with UUID post_uuid={post_model.id}'
+            == excinfo.value.detail
+        )
+        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id)
+
     async def test_successfully_get_all_posts(
         self,
         mocker,
@@ -78,7 +99,7 @@ class TestPostService:
         assert post_model == result
         post_repository.get_post_by_uuid.assert_called_once_with(post_model.id)
 
-    async def test_fail_to_get_post_by_uuid(
+    async def test_fail_to_get_post_by_uuid_due_post_not_found_exception(
         self,
         mocker,
         post_model: Post,
@@ -92,9 +113,14 @@ class TestPostService:
             ),
         )
         with pytest.raises(PostNotFoundException) as excinfo:
-            await post_service.get_post(str(uuid.uuid4()))
+            await post_service.get_post(post_model.id)
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
+        assert (
+            f'Post was not found with UUID post_uuid={post_model.id}'
+            == excinfo.value.detail
+        )
+        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id)
 
     async def test_successfully_update_post(
         self,
@@ -107,3 +133,27 @@ class TestPostService:
         data = {'content', 'Updated content'}
         await post_service.update_post(post_model.id, data)
         post_repository.update_post.assert_called_once_with(post_model.id, data)
+
+    async def test_fail_to_update_post_due_post_not_found_exception(
+        self,
+        mocker,
+        post_model: Post,
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        mocker.patch(
+            'app.repository.post.PostRepository.get_post_by_uuid',
+            side_effect=PostNotFoundException(
+                f'Post was not found with UUID post_uuid={post_model.id}'
+            ),
+        )
+        data = {'content': 'Updated content'}
+        with pytest.raises(PostNotFoundException) as excinfo:
+            await post_service.update_post(post_model.id, data)
+        assert PostNotFoundException.__name__ == excinfo.typename
+        assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
+        assert (
+            f'Post was not found with UUID post_uuid={post_model.id}'
+            == excinfo.value.detail
+        )
+        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id)

@@ -1,13 +1,15 @@
 import copy
 import uuid
+from unittest.mock import ANY
 
 import jwt
 import pendulum
 import pytest
-from fastapi import HTTPException
+from botocore.exceptions import ClientError
 from starlette import status
 from starlette.testclient import TestClient
 
+from app.exception import PostNotFoundException
 from app.models.cache import Cache
 from app.models.post import Post
 from app.schemas.post import CreatePost
@@ -24,6 +26,8 @@ NOT_AUTHENTICATED = 'Not authenticated'
 
 @pytest.mark.asyncio
 class TestApp:
+    POST_SERVICE_UPDATE_POST = 'app.services.post.PostService.update_post'
+
     @pytest.fixture
     def authenticated_test_client(self, jwt_token, test_client) -> TestClient:
         from app.api.v1.routes.posts import jwt_bearer
@@ -61,10 +65,6 @@ class TestApp:
 
         return TestClient(app, raise_server_exceptions=False)
 
-    async def test_fail_to_create_post_due_to_authorization_error(self, test_client):
-        response = test_client.post(f'/api/v1/posts', json=None)
-        assert status.HTTP_403_FORBIDDEN == response.status_code
-
     async def test_fail_to_create_post_due_to_invalid_body(
         self, authenticated_test_client
     ):
@@ -83,7 +83,6 @@ class TestApp:
         assert 'location' in response.headers
         post_service.create_post.assert_called_once_with(CreatePost.parse_obj(BODY))
 
-    @pytest.mark.asyncio
     async def test_successfully_get_post(
         self, mocker, test_client, post_model, post_service
     ):
@@ -93,25 +92,21 @@ class TestApp:
         assert post_model == Post.parse_obj(response.json())
         post_service.get_post.assert_called_once_with(post_model.id)
 
-    @pytest.mark.asyncio
-    async def test_fail_to_get_post(
+    async def test_fail_to_get_post_due_to_post_not_found_exception(
         self, mocker, test_client, post_model, post_service
     ):
+        error_message = f'Post was not found with UUID post_uuid={post_model.id}'
         mocker.patch(
             'app.services.post.PostService.get_post',
-            side_effect=HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f'The requested post was not found with id {post_model.id}',
-            ),
+            side_effect=PostNotFoundException(detail=error_message),
         )
         response = test_client.get(f'/api/v1/posts/{post_model.id}')
         assert status.HTTP_404_NOT_FOUND == response.status_code
+        assert error_message == response.json()['message']
         json = response.json()
         assert len(json) == 3
-        assert post_model.id in json['message']
         post_service.get_post.assert_called_once_with(post_model.id)
 
-    @pytest.mark.asyncio
     async def test_successfully_get_all_posts(
         self, mocker, test_client, post_model, post_service
     ):
@@ -125,14 +120,26 @@ class TestApp:
         assert post_model.id == json[0]['id']
         post_service.get_all_posts.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_fail_to_delete_post_due_to_authorization_error(
-        self, test_client, post_model
+    async def test_fail_to_delete_post_due_to_post_not_found_exception(
+        self,
+        mocker,
+        authenticated_test_client,
+        post_model,
+        post_service,
     ):
-        response = test_client.delete(f'/api/v1/posts/{post_model.id}')
-        assert status.HTTP_403_FORBIDDEN == response.status_code
+        error_message = f'Post was not found with UUID post_uuid={post_model.id}'
+        mocker.patch(
+            'app.services.post.PostService.delete_post',
+            side_effect=PostNotFoundException(detail=error_message),
+        )
+        response = authenticated_test_client.delete(
+            f'/api/v1/posts/{post_model.id}', json=BODY
+        )
+        assert status.HTTP_404_NOT_FOUND == response.status_code
+        assert error_message == response.json()['message']
+        assert len(response.json()) == 3
+        post_service.delete_post.assert_called_once_with(post_model.id)
 
-    @pytest.mark.asyncio
     async def test_successfully_delete_post(
         self, mocker, authenticated_test_client, post_model, post_service
     ):
@@ -141,7 +148,6 @@ class TestApp:
         assert status.HTTP_204_NO_CONTENT == response.status_code
         post_service.delete_post.assert_called_once_with(post_model.id)
 
-    @pytest.mark.asyncio
     async def test_fail_to_update_post_due_to_missing_authorization_header(
         self, test_client, post_model
     ):
@@ -150,7 +156,6 @@ class TestApp:
         assert status.HTTP_403_FORBIDDEN == response.status_code
         assert len(response.json()) == 3
 
-    @pytest.mark.asyncio
     async def test_fail_to_update_post_due_to_validation_error(
         self, authenticated_test_client, post_model
     ):
@@ -160,7 +165,6 @@ class TestApp:
         assert status.HTTP_400_BAD_REQUEST == response.status_code
         assert len(response.json()) == 4
 
-    @pytest.mark.asyncio
     async def test_fail_to_update_post_due_to_empty_authorization_header(
         self, test_client, post_model
     ):
@@ -171,7 +175,6 @@ class TestApp:
         assert NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
 
-    @pytest.mark.asyncio
     async def test_fail_to_update_post_due_to_expired_bearer_token(
         self, test_client, settings, jwt_token, post_model
     ):
@@ -190,7 +193,6 @@ class TestApp:
         assert INVALID_AUTHENTICATION_TOKEN == response.json()['message']
         assert len(response.json()) == 3
 
-    @pytest.mark.asyncio
     async def test_fail_to_update_post_due_to_invalid_authorization_header(
         self, test_client, post_model
     ):
@@ -203,7 +205,6 @@ class TestApp:
         assert NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
 
-    @pytest.mark.asyncio
     async def test_fail_to_update_post_due_to_blacklisted_bearer_token(
         self, mocker, test_client, settings, jwt_token, post_model
     ):
@@ -227,7 +228,24 @@ class TestApp:
         assert INVALID_AUTHENTICATION_TOKEN == response.json()['message']
         assert len(response.json()) == 3
 
-    @pytest.mark.asyncio
+    async def test_fail_to_update_post_due_to_client_error(
+        self,
+        mocker,
+        authenticated_test_client,
+        post_model,
+        post_service,
+    ):
+        mocker.patch(
+            self.POST_SERVICE_UPDATE_POST,
+            side_effect=ClientError(error_response={}, operation_name='query'),
+        )
+        response = authenticated_test_client.put(
+            f'/api/v1/posts/{post_model.id}', json=BODY
+        )
+        assert status.HTTP_500_INTERNAL_SERVER_ERROR == response.status_code
+        assert len(response.json()) == 3
+        post_service.update_post.assert_called_once_with(post_model.id, ANY)
+
     async def test_fail_to_update_post_due_to_invalid_bearer_token(
         self, test_client, post_model
     ):
@@ -240,13 +258,30 @@ class TestApp:
         assert INVALID_AUTHENTICATION_TOKEN == response.json()['message']
         assert len(response.json()) == 3
 
-    @pytest.mark.asyncio
+    async def test_fail_to_update_post_due_to_post_not_found_exception(
+        self,
+        mocker,
+        authenticated_test_client,
+        post_model,
+        post_service,
+    ):
+        error_message = f'Post was not found with UUID post_uuid={post_model.id}'
+        mocker.patch(
+            self.POST_SERVICE_UPDATE_POST,
+            side_effect=PostNotFoundException(detail=error_message),
+        )
+        response = authenticated_test_client.put(
+            f'/api/v1/posts/{post_model.id}', json=BODY
+        )
+        assert status.HTTP_404_NOT_FOUND == response.status_code
+        assert error_message == response.json()['message']
+        assert len(response.json()) == 3
+        post_service.update_post.assert_called_once_with(post_model.id, ANY)
+
     async def test_successfully_update_post(
         self, mocker, authenticated_test_client, post_model
     ):
-        mocker.patch(
-            'app.services.post.PostService.update_post', return_value=post_model
-        )
+        mocker.patch(self.POST_SERVICE_UPDATE_POST, return_value=post_model)
         response = authenticated_test_client.put(
             f'/api/v1/posts/{post_model.id}', json=BODY
         )
