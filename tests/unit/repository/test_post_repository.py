@@ -1,6 +1,9 @@
+import uuid
 import pytest
 from boto3.dynamodb.conditions import Key, Attr
+from starlette import status
 
+from app.exception import PostNotFoundException
 from app.models.post import Post
 from app.repository.post import PostRepository
 
@@ -55,6 +58,15 @@ class TestPostRepository:
     ):
         result = await post_repository.get_post_by_uuid(post_model.id)
         assert post_model == result
+
+    async def test_fail_to_get_post_by_uuid_due_post_not_found_exception(
+        self, post_repository: PostRepository
+    ):
+        post_uuid = str(uuid.uuid4())
+        with pytest.raises(PostNotFoundException) as excinfo:
+            await post_repository.get_post_by_uuid(post_uuid)
+        assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
+        assert f'Post was not found with UUID {post_uuid=}' == excinfo.value.detail
 
     async def test_successfully_update_post(
         self, dynamodb_table, post_repository: PostRepository, post_model: Post
