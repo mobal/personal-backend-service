@@ -35,9 +35,7 @@ class JWTBearer(HTTPBearer):
         if credentials:
             if not await self._validate_token(credentials.credentials):
                 if self.auto_error:
-                    self._logger.error(
-                        f'Invalid authentication token {credentials=}'
-                    )
+                    self._logger.error(f'Invalid authentication token {credentials=}')
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail='Not authenticated',

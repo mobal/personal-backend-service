@@ -56,7 +56,9 @@ class TestJWTAuth:
         assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
-    async def test_fail_to_authorize_request_due_to_bearer_token_is_invalid_with_auto_error_false(self, empty_request):
+    async def test_fail_to_authorize_request_due_to_bearer_token_is_invalid_with_auto_error_false(
+        self, empty_request
+    ):
         empty_request.headers = {'Authorization': 'Bearer asdf'}
         jwt_bearer = JWTBearer(auto_error=False)
         result = await jwt_bearer(empty_request)
@@ -90,7 +92,9 @@ class TestJWTAuth:
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
         assert NOT_AUTHENTICATED == excinfo.value.detail
 
-    async def test_fail_to_authorize_request_due_to_missing_credentials_with_auto_error_false(self, empty_request):
+    async def test_fail_to_authorize_request_due_to_missing_credentials_with_auto_error_false(
+        self, empty_request
+    ):
         jwt_bearer = JWTBearer(auto_error=False)
         result = await jwt_bearer(empty_request)
         assert result is None
