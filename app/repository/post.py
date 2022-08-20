@@ -60,7 +60,7 @@ class PostRepository:
             KeyConditionExpression=Key('id').eq(post_uuid),
             FilterExpression=Attr('deleted_at').eq(None),
         )
-        if response['Count'] != 0:
+        if response['Count'] == 1:
             return Post.parse_obj(response['Items'][0])
         raise PostNotFoundException(f'Post was not found with UUID {post_uuid=}')
 

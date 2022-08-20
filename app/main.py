@@ -3,7 +3,8 @@ from typing import List
 
 import uvicorn
 from aws_lambda_powertools import Logger, Metrics, Tracer
-from botocore.exceptions import ClientError
+from aws_lambda_powertools.metrics import MetricUnit
+from botocore.exceptions import ClientError, BotoCoreError
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -62,12 +63,14 @@ async def correlation_id_middleware(request: Request, call_next) -> Response:
     return response
 
 
+@app.exception_handler(BotoCoreError)
 @app.exception_handler(ClientError)
 async def client_error_handler(request: Request, error: ClientError) -> JSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error)
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     logger.error(f'{error_message} with {status_code=} and {error_id=}')
+    metrics.add_metric(name='ClientErrorHandler', unit=MetricUnit.Count, value=1)
     return JSONResponse(
         content=jsonable_encoder(
             ErrorResponse(status=status_code, id=error_id, message=error_message)
@@ -83,6 +86,7 @@ async def http_exception_handler(
 ) -> JSONResponse:
     error_id = uuid.uuid4()
     logger.error(f'{error.detail} with {error.status_code=} and {error_id=}')
+    metrics.add_metric(name='HttpExceptionHandler', unit=MetricUnit.Count, value=1)
     return JSONResponse(
         content=jsonable_encoder(
             ErrorResponse(status=error.status_code, id=error_id, message=error.detail)
@@ -100,6 +104,7 @@ async def validation_error_handler(
     error_message = str(error)
     status_code = status.HTTP_400_BAD_REQUEST
     logger.error(f'{error_message} with {status_code=} and {error_id=}')
+    metrics.add_metric(name='ValidationErrorHandler', unit=MetricUnit.Count, value=1)
     return JSONResponse(
         content=jsonable_encoder(
             ValidationErrorResponse(
