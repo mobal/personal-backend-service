@@ -4,9 +4,8 @@ import httpx
 from aws_lambda_powertools import Logger, Tracer
 from starlette import status
 
-from app.settings import Settings
 from app.models.cache import Cache
-
+from app.settings import Settings
 
 tracer = Tracer()
 

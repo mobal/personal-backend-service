@@ -8,8 +8,8 @@ from jwt import ExpiredSignatureError, DecodeError
 from pydantic import BaseModel
 from starlette import status
 
-from app.settings import Settings
 from app.services.cache import CacheService
+from app.settings import Settings
 
 tracer = Tracer()
 

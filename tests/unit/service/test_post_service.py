@@ -5,7 +5,6 @@ from starlette import status
 
 from app.exception import PostNotFoundException
 from app.models.post import Post
-
 from app.repository.post import PostRepository
 from app.services.post import PostService
 

@@ -3,12 +3,12 @@ from typing import List
 
 import boto3
 import pendulum
+from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Key, AttributeBase
 
 from app.exception import PostNotFoundException
 from app.models.post import Post
 from app.settings import Settings
-from aws_lambda_powertools import Logger
 
 
 class PostRepository:
