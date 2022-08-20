@@ -7,7 +7,6 @@ from starlette import status
 
 from app.auth import JWTBearer, JWTToken
 
-INVALID_AUTHENTICATION_TOKEN = 'Invalid authentication token'
 NOT_AUTHENTICATED = 'Not authenticated'
 
 
@@ -54,8 +53,14 @@ class TestJWTAuth:
         empty_request.headers = {'Authorization': 'Bearer asdf'}
         with pytest.raises(HTTPException) as excinfo:
             await jwt_bearer(empty_request)
-        assert INVALID_AUTHENTICATION_TOKEN == excinfo.value.detail
+        assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
+
+    async def test_fail_to_authorize_request_due_to_bearer_token_is_invalid_with_auto_error_false(self, empty_request):
+        empty_request.headers = {'Authorization': 'Bearer asdf'}
+        jwt_bearer = JWTBearer(auto_error=False)
+        result = await jwt_bearer(empty_request)
+        assert result is None
 
     async def test_fail_to_authorize_request_due_to_bearer_token_is_missing(
         self, empty_request, jwt_bearer
@@ -72,8 +77,8 @@ class TestJWTAuth:
         mocker.patch('app.services.cache.CacheService.get', return_value=jwt_token.jti)
         with (pytest.raises(HTTPException)) as excinfo:
             await jwt_bearer(valid_request)
+        assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
-        assert INVALID_AUTHENTICATION_TOKEN == excinfo.value.detail
         cache_service.get.assert_called_once_with(f'jti_{jwt_token.jti}')
 
     async def test_fail_to_authorize_request_due_to_missing_credentials(
@@ -84,6 +89,11 @@ class TestJWTAuth:
             await jwt_bearer(empty_request)
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
         assert NOT_AUTHENTICATED == excinfo.value.detail
+
+    async def test_fail_to_authorize_request_due_to_missing_credentials_with_auto_error_false(self, empty_request):
+        jwt_bearer = JWTBearer(auto_error=False)
+        result = await jwt_bearer(empty_request)
+        assert result is None
 
     async def test_successfully_authorize_request(
         self, mocker, cache_service, jwt_bearer, jwt_token, valid_request

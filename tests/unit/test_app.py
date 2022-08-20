@@ -20,7 +20,6 @@ BODY = {
     'title': 'Some random title',
     'content': 'Some random content',
 }
-INVALID_AUTHENTICATION_TOKEN = 'Invalid authentication token'
 NOT_AUTHENTICATED = 'Not authenticated'
 
 
@@ -190,7 +189,7 @@ class TestApp:
             headers={'Authorization': f'Bearer {token}'},
         )
         assert status.HTTP_403_FORBIDDEN == response.status_code
-        assert INVALID_AUTHENTICATION_TOKEN == response.json()['message']
+        assert NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
 
     async def test_fail_to_update_post_due_to_invalid_authorization_header(
@@ -225,7 +224,7 @@ class TestApp:
             headers={'Authorization': f'Bearer {token}'},
         )
         assert status.HTTP_403_FORBIDDEN == response.status_code
-        assert INVALID_AUTHENTICATION_TOKEN == response.json()['message']
+        assert NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
 
     async def test_fail_to_update_post_due_to_client_error(
@@ -255,7 +254,7 @@ class TestApp:
             headers={'Authorization': 'Bearer asdf'},
         )
         assert status.HTTP_403_FORBIDDEN == response.status_code
-        assert INVALID_AUTHENTICATION_TOKEN == response.json()['message']
+        assert NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
 
     async def test_fail_to_update_post_due_to_post_not_found_exception(

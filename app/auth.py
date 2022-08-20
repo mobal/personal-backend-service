@@ -36,23 +36,17 @@ class JWTBearer(HTTPBearer):
             if not await self._validate_token(credentials.credentials):
                 if self.auto_error:
                     self._logger.error(
-                        f'Invalid authentication token credentials={credentials}'
+                        f'Invalid authentication token {credentials=}'
                     )
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail='Invalid authentication token',
+                        detail='Not authenticated',
                     )
                 else:
                     return None
             return self.decoded_token
         else:
-            if self.auto_error:
-                self._logger.error(f'Credentials missing during authentications')
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN, detail='Not authenticated'
-                )
-            else:
-                return None
+            return None
 
     @tracer.capture_method
     async def _validate_token(self, token: str) -> bool:
