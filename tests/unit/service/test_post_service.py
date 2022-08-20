@@ -1,3 +1,5 @@
+from unittest.mock import ANY
+
 import pytest
 from starlette import status
 
@@ -43,7 +45,7 @@ class TestPostService:
     ):
         mocker.patch('app.repository.post.PostRepository.delete_post')
         await post_service.delete_post(post_model.id)
-        post_repository.delete_post.assert_called_once_with(post_model.id)
+        post_repository.delete_post.assert_called_once_with(post_model.id, ANY)
 
     async def test_fail_to_delete_post_by_uuid_due_post_not_found_exception(
         self,
@@ -66,7 +68,7 @@ class TestPostService:
             f'Post was not found with UUID post_uuid={post_model.id}'
             == excinfo.value.detail
         )
-        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id)
+        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id, ANY)
 
     async def test_successfully_get_all_posts(
         self,
@@ -82,7 +84,7 @@ class TestPostService:
         result = await post_service.get_all_posts()
         assert len(result) == 1
         assert post_model == result[0]
-        post_repository.get_all_posts.assert_called_once()
+        post_repository.get_all_posts.assert_called_once_with(ANY)
 
     async def test_successfully_get_post_by_uuid(
         self,
@@ -97,7 +99,7 @@ class TestPostService:
         )
         result = await post_service.get_post(post_model.id)
         assert post_model == result
-        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id)
+        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id, ANY)
 
     async def test_fail_to_get_post_by_uuid_due_post_not_found_exception(
         self,
@@ -120,7 +122,7 @@ class TestPostService:
             f'Post was not found with UUID post_uuid={post_model.id}'
             == excinfo.value.detail
         )
-        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id)
+        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id, ANY)
 
     async def test_successfully_update_post(
         self,
@@ -132,7 +134,7 @@ class TestPostService:
         mocker.patch('app.repository.post.PostRepository.update_post')
         data = {'content', 'Updated content'}
         await post_service.update_post(post_model.id, data)
-        post_repository.update_post.assert_called_once_with(post_model.id, data)
+        post_repository.update_post.assert_called_once_with(post_model.id, data, ANY)
 
     async def test_fail_to_update_post_due_post_not_found_exception(
         self,
@@ -156,4 +158,4 @@ class TestPostService:
             f'Post was not found with UUID post_uuid={post_model.id}'
             == excinfo.value.detail
         )
-        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id)
+        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id, ANY)

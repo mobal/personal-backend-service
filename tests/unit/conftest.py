@@ -2,6 +2,7 @@ import uuid
 
 import pendulum
 import pytest
+from boto3.dynamodb.conditions import AttributeBase, Attr
 
 from app.auth import JWTBearer, JWTToken
 from app.models.post import Post
@@ -17,6 +18,11 @@ def cache_service():
 @pytest.fixture
 def jwt_bearer() -> JWTBearer:
     return JWTBearer()
+
+
+@pytest.fixture
+def filter_expression() -> AttributeBase:
+    return Attr('deleted_at').eq(None)
 
 
 @pytest.fixture

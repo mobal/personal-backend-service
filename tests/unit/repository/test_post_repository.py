@@ -1,6 +1,7 @@
 import uuid
+
 import pytest
-from boto3.dynamodb.conditions import Key, Attr
+from boto3.dynamodb.conditions import Key, Attr, AttributeBase
 from starlette import status
 
 from app.exception import PostNotFoundException
@@ -37,9 +38,13 @@ class TestPostRepository:
         assert post_dict.get('meta') == result.dict().get('meta')
 
     async def test_successfully_delete_post(
-        self, dynamodb_table, post_repository: PostRepository, post_model: Post
+        self,
+        dynamodb_table,
+        filter_expression: AttributeBase,
+        post_repository: PostRepository,
+        post_model: Post,
     ):
-        await post_repository.delete_post(post_model.id)
+        await post_repository.delete_post(post_model.id, filter_expression)
         response = dynamodb_table.query(
             KeyConditionExpression=Key('id').eq(post_model.id),
             FilterExpression=Attr('deleted_at').eq(None),
@@ -47,32 +52,44 @@ class TestPostRepository:
         assert response['Count'] == 0
 
     async def test_successfully_get_all_posts(
-        self, post_repository: PostRepository, post_model: Post
+        self,
+        filter_expression: AttributeBase,
+        post_repository: PostRepository,
+        post_model: Post,
     ):
-        result = await post_repository.get_all_posts()
+        result = await post_repository.get_all_posts(filter_expression)
         assert len(result) == 1
         assert post_model == result[0]
 
     async def test_successfully_get_post_by_uuid(
-        self, post_repository: PostRepository, post_model: Post
+        self,
+        filter_expression: AttributeBase,
+        post_repository: PostRepository,
+        post_model: Post,
     ):
-        result = await post_repository.get_post_by_uuid(post_model.id)
+        result = await post_repository.get_post_by_uuid(
+            post_model.id, filter_expression
+        )
         assert post_model == result
 
     async def test_fail_to_get_post_by_uuid_due_post_not_found_exception(
-        self, post_repository: PostRepository
+        self, filter_expression: AttributeBase, post_repository: PostRepository
     ):
         post_uuid = str(uuid.uuid4())
         with pytest.raises(PostNotFoundException) as excinfo:
-            await post_repository.get_post_by_uuid(post_uuid)
+            await post_repository.get_post_by_uuid(post_uuid, filter_expression)
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert f'Post was not found with UUID {post_uuid=}' == excinfo.value.detail
 
     async def test_successfully_update_post(
-        self, dynamodb_table, post_repository: PostRepository, post_model: Post
+        self,
+        dynamodb_table,
+        filter_expression: AttributeBase,
+        post_repository: PostRepository,
+        post_model: Post,
     ):
         data = {'content': 'Updated content'}
-        await post_repository.update_post(post_model.id, data)
+        await post_repository.update_post(post_model.id, data, filter_expression)
         response = dynamodb_table.query(
             KeyConditionExpression=Key('id').eq(post_model.id),
             FilterExpression=Attr('deleted_at').eq(None),
