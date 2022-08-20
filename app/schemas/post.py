@@ -14,6 +14,9 @@ class CreatePost(CamelModel):
     meta: Optional[Meta]
     published_at: Optional[str]
 
+    class Config:
+        validation = False
+
 
 class UpdatePost(CreatePost):
     pass
