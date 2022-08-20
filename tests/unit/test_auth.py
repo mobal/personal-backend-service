@@ -79,7 +79,7 @@ class TestJWTAuth:
     async def test_fail_to_authorize_request_due_to_missing_credentials(
         self, empty_request
     ):
-        jwt_bearer = JWTBearer(auto_error=False)
+        jwt_bearer = JWTBearer()
         with (pytest.raises(HTTPException)) as excinfo:
             await jwt_bearer(empty_request)
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
