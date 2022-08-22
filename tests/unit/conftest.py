@@ -4,7 +4,8 @@ import pendulum
 import pytest
 from boto3.dynamodb.conditions import AttributeBase, Attr
 
-from app.auth import JWTBearer, JWTToken
+from app.auth import JWTBearer
+from app.models.auth import JWTToken
 from app.models.post import Post
 from app.repository.post import PostRepository
 from app.services.cache import CacheService
@@ -37,12 +38,18 @@ def jwt_token() -> JWTToken:
             'id': str(uuid.uuid4()),
             'email': 'info@netcode.hu',
             'display_name': 'root',
-            'roles': ['root'],
+            'roles': ['post:create', 'post:delete', 'post:edit'],
             'created_at': now.to_iso8601_string(),
             'deleted_at': None,
             'updated_at': None,
         },
     )
+
+
+@pytest.fixture
+def jwt_token_without_roles(jwt_token: JWTToken) -> JWTToken:
+    jwt_token.sub['roles'] = []
+    return jwt_token
 
 
 @pytest.fixture

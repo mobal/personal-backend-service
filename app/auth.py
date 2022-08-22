@@ -1,25 +1,17 @@
-from typing import Optional, Any
+from typing import Optional
 
 import jwt
 from aws_lambda_powertools import Logger, Tracer
 from fastapi import Request, HTTPException
 from fastapi.security import HTTPBearer
 from jwt import ExpiredSignatureError, DecodeError
-from pydantic import BaseModel
 from starlette import status
 
+from app.models.auth import JWTToken
 from app.services.cache import CacheService
 from app.settings import Settings
 
 tracer = Tracer()
-
-
-class JWTToken(BaseModel):
-    exp: int
-    iat: int
-    iss: str
-    jti: str
-    sub: Any
 
 
 class JWTBearer(HTTPBearer):

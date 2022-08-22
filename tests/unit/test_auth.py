@@ -5,7 +5,8 @@ import pytest
 from fastapi import HTTPException
 from starlette import status
 
-from app.auth import JWTBearer, JWTToken
+from app.auth import JWTBearer
+from app.models.auth import JWTToken
 
 NOT_AUTHENTICATED = 'Not authenticated'
 
