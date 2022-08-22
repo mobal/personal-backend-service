@@ -16,7 +16,7 @@ post_service = PostService()
 router = APIRouter()
 
 
-async def authorized(required_privileges: List[str], token: JWTToken) -> bool:
+async def authorize(required_privileges: List[str], token: JWTToken) -> bool:
     if token:
         user = User.parse_obj(token.sub)
         if set(required_privileges).issubset(user.roles):
@@ -37,7 +37,7 @@ async def create_http_exception(
 async def create_post(
     request: Request, token: JWTToken = Depends(jwt_bearer)
 ) -> Response:
-    if await authorized(['post:create'], token):
+    if await authorize(['post:create'], token):
         model = CreatePost.parse_raw(await request.body())
         post = await post_service.create_post(model.dict())
         metrics.add_metric(name='CreatePost', unit=MetricUnit.Count, value=1)
@@ -52,7 +52,7 @@ async def create_post(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_post(uuid: str, token: JWTToken = Depends(jwt_bearer)):
-    if await authorized(['post:delete'], token):
+    if await authorize(['post:delete'], token):
         await post_service.delete_post(uuid)
         metrics.add_metric(name='DeletePost', unit=MetricUnit.Count, value=1)
 
@@ -78,7 +78,7 @@ async def get_post_by_uuid(uuid: str) -> Post:
 async def update_post(
     request: Request, uuid: str, token: JWTToken = Depends(jwt_bearer)
 ):
-    if await authorized(['post:edit'], token):
+    if await authorize(['post:edit'], token):
         model = UpdatePost.parse_raw(await request.body())
         await post_service.update_post(uuid, model.dict())
         metrics.add_metric(name='UpdatePost', unit=MetricUnit.Count, value=1)
