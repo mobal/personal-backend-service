@@ -10,7 +10,7 @@ from app.models.post import Post
 from app.schemas.post import CreatePost, UpdatePost
 from app.services.post import PostService
 
-jwt_bearer = JWTBearer(auto_error=True)
+jwt_bearer = JWTBearer()
 metrics = Metrics()
 post_service = PostService()
 router = APIRouter()
