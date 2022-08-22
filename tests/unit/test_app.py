@@ -19,6 +19,7 @@ from app.services.post import PostService
 @pytest.mark.asyncio
 class TestApp:
     NOT_AUTHENTICATED = 'Not authenticated'
+    NOT_AUTHORIZED = 'Not authorized'
     POST_SERVICE_UPDATE_POST = 'app.services.post.PostService.update_post'
 
     @pytest.fixture
@@ -26,6 +27,17 @@ class TestApp:
         from app.api.v1.routes.posts import jwt_bearer
 
         test_client.app.dependency_overrides[jwt_bearer] = lambda: jwt_token
+        return test_client
+
+    @pytest.fixture
+    def authenticated_test_client_without_roles(
+        self, jwt_token_without_roles, test_client
+    ) -> TestClient:
+        from app.api.v1.routes.posts import jwt_bearer
+
+        test_client.app.dependency_overrides[
+            jwt_bearer
+        ] = lambda: jwt_token_without_roles
         return test_client
 
     @pytest.fixture(autouse=True)
@@ -74,7 +86,7 @@ class TestApp:
         assert len(response.json()) == 4
 
     async def test_fail_to_create_post_due_to_empty_authorization_header(
-        self, json_body, post_model, test_client
+        self, json_body, test_client
     ):
         response = test_client.post(
             f'/api/v1/posts', headers={'Authorization': None}, json=json_body
@@ -84,11 +96,21 @@ class TestApp:
         assert len(response.json()) == 3
 
     async def test_fail_to_create_post_due_to_missing_authorization_header(
-        self, json_body, post_model, test_client
+        self, json_body, test_client
     ):
         response = test_client.post(f'/api/v1/posts', json=json_body)
         assert self.NOT_AUTHENTICATED == response.json()['message']
         assert status.HTTP_403_FORBIDDEN == response.status_code
+        assert len(response.json()) == 3
+
+    async def test_fail_to_create_post_due_to_unauthorized(
+        self, json_body, authenticated_test_client_without_roles
+    ):
+        response = authenticated_test_client_without_roles.post(
+            f'/api/v1/posts', json=json_body
+        )
+        assert self.NOT_AUTHORIZED == response.json()['message']
+        assert status.HTTP_401_UNAUTHORIZED == response.status_code
         assert len(response.json()) == 3
 
     async def test_successfully_create_post(
@@ -186,6 +208,16 @@ class TestApp:
         response = test_client.delete(f'/api/v1/posts/{post_model.id}')
         assert self.NOT_AUTHENTICATED == response.json()['message']
         assert status.HTTP_403_FORBIDDEN == response.status_code
+        assert len(response.json()) == 3
+
+    async def test_fail_to_delete_post_due_to_unauthorized(
+        self, authenticated_test_client_without_roles, post_model
+    ):
+        response = authenticated_test_client_without_roles.delete(
+            f'/api/v1/posts/{post_model.id}'
+        )
+        assert self.NOT_AUTHORIZED == response.json()['message']
+        assert status.HTTP_401_UNAUTHORIZED == response.status_code
         assert len(response.json()) == 3
 
     async def test_fail_to_update_post_due_to_missing_authorization_header(
@@ -321,6 +353,16 @@ class TestApp:
         assert error_message == response.json()['message']
         assert len(response.json()) == 3
         post_service.update_post.assert_called_once_with(post_model.id, ANY)
+
+    async def test_fail_to_update_post_due_to_unauthorized(
+        self, authenticated_test_client_without_roles, json_body, post_model
+    ):
+        response = authenticated_test_client_without_roles.put(
+            f'/api/v1/posts/{post_model.id}', json=json_body
+        )
+        assert status.HTTP_401_UNAUTHORIZED == response.status_code
+        assert self.NOT_AUTHORIZED == response.json()['message']
+        assert len(response.json()) == 3
 
     async def test_successfully_update_post(
         self, mocker, authenticated_test_client, json_body, post_model
