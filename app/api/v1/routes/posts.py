@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from aws_lambda_powertools.metrics import Metrics, MetricUnit
 from fastapi import status, APIRouter, Depends, Request, HTTPException
@@ -57,9 +57,14 @@ async def delete_post(uuid: str, token: JWTToken = Depends(jwt_bearer)):
         metrics.add_metric(name='DeletePost', unit=MetricUnit.Count, value=1)
 
 
-@router.get('', status_code=status.HTTP_200_OK)
-async def get_all_posts() -> List[Post]:
-    posts = await post_service.get_all_posts()
+@router.get(
+    '',
+    response_model=List[Post],
+    response_model_exclude_none=True,
+    status_code=status.HTTP_200_OK,
+)
+async def get_all_posts(fields: Optional[str] = None) -> List[Post]:
+    posts = await post_service.get_all_posts(fields)
     metrics.add_metric(name='GetAllPosts', unit=MetricUnit.Count, value=1)
     return posts
 

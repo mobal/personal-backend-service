@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 import boto3
 import pendulum
@@ -41,14 +41,19 @@ class PostRepository:
             post.deleted_at = pendulum.now().to_iso8601_string()
             self._table.put_item(Item=post.dict())
 
-    async def get_all_posts(self, filter_expression: AttributeBase) -> List[Post]:
+    async def get_all_posts(
+        self, filter_expression: AttributeBase, fields: Optional[str] = None
+    ) -> List[Post]:
         posts = []
-        response = self._table.scan(FilterExpression=filter_expression)
+        kwargs = {'FilterExpression': filter_expression}
+        if fields:
+            kwargs['ProjectionExpression'] = fields
+        response = self._table.scan(**kwargs)
         items = response['Items']
         while 'LastEvaluatedKey' in response:
             response = self._table.scan(
                 ExclusiveStartKey=response['LastEvaluatedKey'],
-                FilterExpression=filter_expression,
+                **kwargs,
             )
             items.extend(response['Items'])
 

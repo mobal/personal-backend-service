@@ -22,8 +22,13 @@ def jwt_bearer() -> JWTBearer:
 
 
 @pytest.fixture
+def post_fields() -> str:
+    return ','.join(Post.__fields__)
+
+
+@pytest.fixture
 def filter_expression() -> AttributeBase:
-    return Attr('deleted_at').eq(None)
+    return Attr('deleted_at').eq(None) & Attr('published_at').ne(None)
 
 
 @pytest.fixture
