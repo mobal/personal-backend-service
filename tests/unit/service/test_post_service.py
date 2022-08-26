@@ -72,6 +72,7 @@ class TestPostService:
     async def test_successfully_get_all_posts(
         self,
         mocker,
+        post_fields,
         post_model: Post,
         post_repository: PostRepository,
         post_service: PostService,
@@ -80,10 +81,10 @@ class TestPostService:
             'app.repository.post.PostRepository.get_all_posts',
             return_value=[post_model],
         )
-        result = await post_service.get_all_posts()
+        result = await post_service.get_all_posts(post_fields)
         assert len(result) == 1
         assert post_model == result[0]
-        post_repository.get_all_posts.assert_called_once_with(ANY)
+        post_repository.get_all_posts.assert_called_once_with(ANY, ANY)
 
     async def test_successfully_get_post_by_uuid(
         self,
