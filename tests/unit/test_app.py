@@ -104,7 +104,7 @@ class TestApp:
         assert len(response.json()) == 3
 
     async def test_fail_to_create_post_due_to_unauthorized(
-        self, json_body, authenticated_test_client_without_roles
+        self, authenticated_test_client_without_roles, json_body
     ):
         response = authenticated_test_client_without_roles.post(
             f'/api/v1/posts', json=json_body
@@ -127,7 +127,7 @@ class TestApp:
         )
 
     async def test_successfully_get_post(
-        self, mocker, test_client, post_model, post_service
+        self, mocker, post_model, post_service, test_client
     ):
         mocker.patch('app.services.post.PostService.get_post', return_value=post_model)
         response = test_client.get(f'/api/v1/posts/{post_model.id}')
@@ -136,7 +136,7 @@ class TestApp:
         post_service.get_post.assert_called_once_with(post_model.id)
 
     async def test_fail_to_get_post_due_to_post_not_found_exception(
-        self, mocker, test_client, post_model, post_service
+        self, mocker, post_model, post_service, test_client
     ):
         error_message = f'Post was not found with UUID post_uuid={post_model.id}'
         mocker.patch(
@@ -151,12 +151,12 @@ class TestApp:
         post_service.get_post.assert_called_once_with(post_model.id)
 
     async def test_successfully_get_all_posts(
-        self, mocker, test_client, post_model, post_service
+        self, mocker, post_fields, post_model, post_service, test_client
     ):
         mocker.patch(
             'app.services.post.PostService.get_all_posts', return_value=[post_model]
         )
-        response = test_client.get(f'/api/v1/posts')
+        response = test_client.get(f'/api/v1/posts?fields={post_fields}')
         assert status.HTTP_200_OK == response.status_code
         json = response.json()
         assert len(json) == 1

@@ -61,6 +61,22 @@ class TestPostRepository:
         assert len(result) == 1
         assert post_model == result[0]
 
+    async def test_successfully_get_all_posts_with_fields_filter(
+        self,
+        filter_expression: AttributeBase,
+        post_repository: PostRepository,
+        post_model: Post,
+    ):
+        fields = ['id', 'title', 'meta', 'published_at']
+        result = await post_repository.get_all_posts(
+            filter_expression, ','.join(fields)
+        )
+        assert 1 == len(result)
+        data = result[0].dict(exclude_none=True)
+        assert 4 == len(data)
+        for k, v in data.items():
+            assert getattr(post_model, k) == v
+
     async def test_successfully_get_post_by_uuid(
         self,
         filter_expression: AttributeBase,

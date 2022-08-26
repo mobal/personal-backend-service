@@ -12,14 +12,18 @@ class Meta(CamelModel):
 
 
 class Post(CamelModel):
-    id: str
-    author: str
-    title: str
-    content: str
-    created_at: str
+    id: Optional[str]
+    author: Optional[str]
+    title: Optional[str]
+    content: Optional[str]
+    created_at: Optional[str]
     deleted_at: Optional[str]
     published_at: Optional[str]
     updated_at: Optional[str]
-    slug: str
+    slug: Optional[str]
     tags: Optional[conlist(item_type=str, min_items=1)]
     meta: Optional[Meta]
+
+    @property
+    def is_deleted(self) -> bool:
+        return bool(self.deleted_at)
