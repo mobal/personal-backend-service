@@ -232,7 +232,8 @@ class TestApp:
         self, authenticated_test_client, post_model
     ):
         response = authenticated_test_client.put(
-            f'/api/v1/posts/{post_model.id}', json={}
+            f'/api/v1/posts/{post_model.id}',
+            json={'deletedAt': pendulum.now().to_iso8601_string()},
         )
         assert status.HTTP_400_BAD_REQUEST == response.status_code
         assert len(response.json()) == 4

@@ -7,6 +7,7 @@ from app.exception import PostNotFoundException
 from app.models.post import Post
 from app.models.response import Post as PostResponse
 from app.repositories.post import PostRepository
+from app.schemas.post import CreatePost, UpdatePost
 from app.services.post import PostService
 
 
@@ -24,14 +25,13 @@ class TestPostService:
         post_repository: PostRepository,
         post_service: PostService,
     ):
-        mocker.patch(
-            'app.repositories.post.PostRepository.create_post', return_value=post_model
-        )
-        result = await post_service.create_post(post_dict)
+        mocker.patch('app.repositories.post.PostRepository.create_post')
+        create_post = CreatePost(**post_dict)
+        result = await post_service.create_post(create_post)
         for k, v in post_dict.items():
             assert v == getattr(result, k)
         assert result.is_deleted is False
-        post_repository.create_post.assert_called_once_with(post_dict)
+        post_repository.create_post.assert_called_once_with(ANY)
 
     async def test_successfully_delete_post(
         self,
@@ -132,9 +132,9 @@ class TestPostService:
         post_service: PostService,
     ) -> None:
         mocker.patch('app.repositories.post.PostRepository.update_post')
-        data = {'content': 'Updated content'}
-        await post_service.update_post(post_model.id, data)
-        post_repository.update_post.assert_called_once_with(post_model.id, data, ANY)
+        update_post = UpdatePost(content='Updated content')
+        await post_service.update_post(post_model.id, update_post)
+        post_repository.update_post.assert_called_once_with(post_model.id, ANY, ANY)
 
     async def test_fail_to_update_post_due_post_not_found_exception(
         self,
@@ -149,9 +149,9 @@ class TestPostService:
                 f'Post was not found with UUID post_uuid={post_model.id}'
             ),
         )
-        data = {'content': 'Updated content'}
+        update_post = UpdatePost(**{'content': 'Updated content'})
         with pytest.raises(PostNotFoundException) as excinfo:
-            await post_service.update_post(post_model.id, data)
+            await post_service.update_post(post_model.id, update_post)
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert (

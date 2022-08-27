@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+from aws_lambda_powertools import Logger
 from aws_lambda_powertools.metrics import Metrics, MetricUnit
 from fastapi import status, APIRouter, Depends, Request, HTTPException
 from starlette.responses import Response
@@ -9,6 +10,8 @@ from app.models.auth import JWTToken, User
 from app.models.response import Post as PostResponse
 from app.schemas.post import CreatePost, UpdatePost
 from app.services.post import PostService
+
+logger = Logger()
 
 jwt_bearer = JWTBearer()
 metrics = Metrics()
@@ -39,7 +42,7 @@ async def create_post(
 ) -> Response:
     if await authorize(['post:create'], token):
         model = CreatePost.parse_raw(await request.body())
-        post = await post_service.create_post(model.dict())
+        post = await post_service.create_post(model)
         metrics.add_metric(name='CreatePost', unit=MetricUnit.Count, value=1)
         return Response(
             status_code=status.HTTP_201_CREATED,
@@ -85,5 +88,5 @@ async def update_post(
 ):
     if await authorize(['post:edit'], token):
         model = UpdatePost.parse_raw(await request.body())
-        await post_service.update_post(uuid, model.dict())
+        await post_service.update_post(uuid, model)
         metrics.add_metric(name='UpdatePost', unit=MetricUnit.Count, value=1)
