@@ -6,7 +6,7 @@ from starlette.responses import Response
 
 from app.auth import JWTBearer
 from app.models.auth import JWTToken, User
-from app.models.post import Post
+from app.models.response import Post as PostResponse
 from app.schemas.post import CreatePost, UpdatePost
 from app.services.post import PostService
 
@@ -18,8 +18,8 @@ router = APIRouter()
 
 async def authorize(required_privileges: List[str], token: JWTToken) -> bool:
     if token:
-        user = User.parse_obj(token.sub)
-        if set(required_privileges).issubset(user.roles):
+        user = User(**token.sub)
+        if set(required_privileges).issubset(user.roles) or 'root' in user.roles:
             return True
         raise await create_http_exception(
             status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized'
@@ -59,18 +59,18 @@ async def delete_post(uuid: str, token: JWTToken = Depends(jwt_bearer)):
 
 @router.get(
     '',
-    response_model=List[Post],
+    response_model=List[PostResponse],
     response_model_exclude_none=True,
     status_code=status.HTTP_200_OK,
 )
-async def get_all_posts(fields: Optional[str] = None) -> List[Post]:
+async def get_all_posts(fields: Optional[str] = None) -> List[PostResponse]:
     posts = await post_service.get_all_posts(fields)
     metrics.add_metric(name='GetAllPosts', unit=MetricUnit.Count, value=1)
     return posts
 
 
 @router.get('/{uuid}', status_code=status.HTTP_200_OK)
-async def get_post_by_uuid(uuid: str) -> Post:
+async def get_post_by_uuid(uuid: str) -> PostResponse:
     post = await post_service.get_post(uuid)
     metrics.add_metric(name='GetPostByUuid', unit=MetricUnit.Count, value=1)
     return post

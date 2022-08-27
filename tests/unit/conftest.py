@@ -7,7 +7,7 @@ from boto3.dynamodb.conditions import AttributeBase, Attr
 from app.auth import JWTBearer
 from app.models.auth import JWTToken
 from app.models.post import Post
-from app.repository.post import PostRepository
+from app.repositories.post import PostRepository
 from app.services.cache import CacheService
 
 

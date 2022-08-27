@@ -41,13 +41,13 @@ class JWTBearer(HTTPBearer):
     @tracer.capture_method
     async def _validate_token(self, token: str) -> bool:
         try:
-            decoded_token = jwt.decode(
-                token, self.settings.jwt_secret, algorithms='HS256'
+            decoded_token = JWTToken(
+                **jwt.decode(token, self.settings.jwt_secret, algorithms='HS256')
             )
+            if await self.cache_service.get(f'jti_{decoded_token.jti}') is None:
+                self.decoded_token = decoded_token
+                return True
         except (DecodeError, ExpiredSignatureError) as error:
             self._logger.error(f'error={error}')
             return False
-        if await self.cache_service.get(f'jti_{decoded_token["jti"]}') is None:
-            self.decoded_token = decoded_token
-            return True
         return False

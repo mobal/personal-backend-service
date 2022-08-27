@@ -1,12 +1,14 @@
 import uuid
 
+import pendulum
 import pytest
 from boto3.dynamodb.conditions import Key, Attr, AttributeBase
+from botocore.exceptions import ClientError
 from starlette import status
 
 from app.exception import PostNotFoundException
 from app.models.post import Post
-from app.repository.post import PostRepository
+from app.repositories.post import PostRepository
 
 
 @pytest.mark.asyncio
@@ -28,28 +30,12 @@ class TestPostRepository:
     async def test_successfully_create_post(
         self, post_repository: PostRepository, post_dict: dict, post_model: Post
     ):
+        post_dict['id'] = post_model.id
         post_dict['slug'] = f'some-random-title-{post_model.id}'
-        result = await post_repository.create_post(post_dict)
-        assert post_dict.get('author') == result.dict().get('author')
-        assert post_dict.get('title') == result.dict().get('title')
-        assert post_dict.get('content') == result.dict().get('content')
-        assert post_dict.get('published_at') == result.dict().get('published_at')
-        assert post_dict.get('tags') == result.dict().get('tags')
-        assert post_dict.get('meta') == result.dict().get('meta')
-
-    async def test_successfully_delete_post(
-        self,
-        dynamodb_table,
-        filter_expression: AttributeBase,
-        post_repository: PostRepository,
-        post_model: Post,
-    ):
-        await post_repository.delete_post(post_model.id, filter_expression)
-        response = dynamodb_table.query(
-            KeyConditionExpression=Key('id').eq(post_model.id),
-            FilterExpression=Attr('deleted_at').eq(None),
-        )
-        assert response['Count'] == 0
+        try:
+            await post_repository.create_post(post_dict)
+        except ClientError as err:
+            assert False, err
 
     async def test_successfully_get_all_posts(
         self,
@@ -72,9 +58,8 @@ class TestPostRepository:
             filter_expression, ','.join(fields)
         )
         assert 1 == len(result)
-        data = result[0].dict(exclude_none=True)
-        assert 4 == len(data)
-        for k, v in data.items():
+        assert 4 == len(result[0])
+        for k, v in result[0].items():
             assert getattr(post_model, k) == v
 
     async def test_successfully_get_post_by_uuid(
@@ -104,7 +89,8 @@ class TestPostRepository:
         post_repository: PostRepository,
         post_model: Post,
     ):
-        data = {'content': 'Updated content'}
+        now = pendulum.now()
+        data = {'content': 'Updated content', 'updated_at': now.to_iso8601_string()}
         await post_repository.update_post(post_model.id, data, filter_expression)
         response = dynamodb_table.query(
             KeyConditionExpression=Key('id').eq(post_model.id),
@@ -122,4 +108,4 @@ class TestPostRepository:
         assert post_model.deleted_at == item['deleted_at']
         assert post_model.published_at == item['published_at']
         assert 'Updated content' == item['content']
-        assert item['updated_at'] is not None
+        assert now.to_iso8601_string() == item['updated_at']

@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Optional
 
 from pydantic import BaseModel
 
@@ -11,6 +11,6 @@ class User(BaseModel):
 class JWTToken(BaseModel):
     exp: int
     iat: int
-    iss: str
+    iss: Optional[str]
     jti: str
     sub: Any
