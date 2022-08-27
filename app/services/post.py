@@ -1,6 +1,7 @@
 import uuid
 from typing import List, Optional
 
+import markdown
 import pendulum
 from aws_lambda_powertools import Logger, Tracer
 from boto3.dynamodb.conditions import Attr
@@ -62,6 +63,7 @@ class PostService:
         item = await self._repository.get_post_by_uuid(
             post_uuid, PostFilters.NOT_DELETED
         )
+        item['content'] = markdown.markdown(item['content'])
         return PostResponse(**item)
 
     @tracer.capture_method
