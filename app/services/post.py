@@ -1,6 +1,7 @@
 import uuid
 from typing import List, Optional
 
+import markdown
 import pendulum
 from aws_lambda_powertools import Logger, Tracer
 from boto3.dynamodb.conditions import Attr
@@ -9,12 +10,13 @@ from slugify import slugify
 from app.models.post import Post
 from app.models.response import Post as PostResponse
 from app.repositories.post import PostRepository
+from app.schemas.post import CreatePost, UpdatePost
 
 tracer = Tracer()
 
 
 class PostFilters:
-    NOT_DELETED = Attr('deleted_at').eq(None)
+    NOT_DELETED = Attr('deleted_at').eq(None) | Attr('deleted_at').not_exists()
     PUBLISHED = Attr('published_at').ne(None)
 
 
@@ -26,8 +28,9 @@ class PostService:
         self._repository = PostRepository()
 
     @tracer.capture_method
-    async def create_post(self, data: dict) -> Post:
+    async def create_post(self, create_post: CreatePost) -> Post:
         post_uuid = uuid.uuid4()
+        data = create_post.dict()
         data['id'] = str(post_uuid)
         data['created_at'] = pendulum.now().to_iso8601_string()
         data['deleted_at'] = None
@@ -62,10 +65,13 @@ class PostService:
         item = await self._repository.get_post_by_uuid(
             post_uuid, PostFilters.NOT_DELETED
         )
+        if item.get('content'):
+            item['content'] = markdown.markdown(item['content'])
         return PostResponse(**item)
 
     @tracer.capture_method
-    async def update_post(self, post_uuid: str, data: dict):
+    async def update_post(self, post_uuid: str, update_post: UpdatePost):
+        data = update_post.dict()
         data['updated_at'] = pendulum.now().to_iso8601_string()
         await self._repository.update_post(post_uuid, data, PostFilters.NOT_DELETED)
         self._logger.info(f'Post successfully updated {post_uuid=}')
