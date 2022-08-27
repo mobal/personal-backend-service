@@ -60,7 +60,7 @@ async def correlation_id_middleware(request: Request, call_next) -> Response:
             else str(uuid.uuid4())
         )
     logger.set_correlation_id(correlation_id)
-    tracer.put_annotation(key='X-Correlation-ID', value=correlation_id)
+    tracer.put_annotation(key='correlation_id', value=correlation_id)
     response = await call_next(request)
     response.headers['X-Correlation-ID'] = correlation_id
     return response
