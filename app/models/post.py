@@ -12,15 +12,15 @@ class Meta(CamelModel):
 
 
 class Post(CamelModel):
-    id: Optional[str]
-    author: Optional[str]
-    title: Optional[str]
-    content: Optional[str]
-    created_at: Optional[str]
+    id: str
+    author: str
+    title: str
+    content: str
+    created_at: str
     deleted_at: Optional[str]
     published_at: Optional[str]
     updated_at: Optional[str]
-    slug: Optional[str]
+    slug: str
     tags: Optional[conlist(item_type=str, min_items=1)]
     meta: Optional[Meta]
 
