@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi_camelcase import CamelModel
+from httpx import NetworkError
 from mangum import Mangum
 from pydantic import ValidationError
 from starlette import status
@@ -20,12 +21,14 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import JSONResponse
 
 from app.api.v1.api import router
+from app.settings import Settings
 
 app = FastAPI(debug=True)
 app.add_middleware(GZipMiddleware)
 app.add_middleware(ExceptionMiddleware, handlers=app.exception_handlers)
 app.include_router(router, prefix='/api/v1')
 
+settings = Settings()
 logger = Logger()
 metrics = Metrics()
 tracer = Tracer()
@@ -65,9 +68,13 @@ async def correlation_id_middleware(request: Request, call_next) -> Response:
 
 @app.exception_handler(BotoCoreError)
 @app.exception_handler(ClientError)
-async def client_error_handler(request: Request, error: ClientError) -> JSONResponse:
+@app.exception_handler(NetworkError)
+@app.exception_handler(Exception)
+async def error_handler(request: Request, error) -> JSONResponse:
     error_id = uuid.uuid4()
-    error_message = str(error)
+    error_message = (
+        str(error) if settings.app_stage == 'dev' else 'Internal Server Error'
+    )
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     logger.error(f'{error_message} with {status_code=} and {error_id=}')
     metrics.add_metric(name='ClientErrorHandler', unit=MetricUnit.Count, value=1)
