@@ -77,3 +77,26 @@ class PostService:
             data['slug'] = slugify(update_post.title)
         await self._repository.update_post(post_uuid, data, PostFilters.NOT_DELETED)
         self._logger.info(f'Post successfully updated {post_uuid=}')
+
+    @tracer.capture_method
+    async def get_archive(self) -> dict[str, int]:
+        items = await self._repository.get_all_posts(
+            PostFilters.NOT_DELETED & PostFilters.PUBLISHED, 'id,published_at'
+        )
+        archive = {}
+        if items:
+            dates = list(map(lambda x: x['published_at'], items))
+            for dt in pendulum.period(
+                pendulum.parse(min(dates)).start_of('month'),
+                pendulum.parse(max(dates)).end_of('month'),
+            ).range('months'):
+                result = list(
+                    filter(
+                        lambda x, start=dt, end=dt.end_of('month'): start
+                        <= pendulum.parse(x)
+                        <= end,
+                        dates,
+                    )
+                )
+                archive[dt.format('YYYY-MM')] = len(result)
+        return archive

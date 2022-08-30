@@ -6,7 +6,7 @@ from boto3.dynamodb.conditions import Key, Attr, AttributeBase
 from botocore.exceptions import ClientError
 from starlette import status
 
-from app.exception import PostNotFoundException
+from app.exceptions import PostNotFoundException
 from app.models.post import Post
 from app.repositories.post import PostRepository
 
