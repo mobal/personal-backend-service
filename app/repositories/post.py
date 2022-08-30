@@ -4,7 +4,7 @@ import boto3
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Key, AttributeBase
 
-from app.exception import PostNotFoundException
+from app.exceptions import PostNotFoundException
 from app.settings import Settings
 
 

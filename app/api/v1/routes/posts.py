@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.metrics import Metrics, MetricUnit
@@ -70,6 +70,13 @@ async def get_all_posts(fields: Optional[str] = None) -> List[PostResponse]:
     posts = await post_service.get_all_posts(fields)
     metrics.add_metric(name='GetAllPosts', unit=MetricUnit.Count, value=1)
     return posts
+
+
+@router.get('/archive', status_code=status.HTTP_200_OK)
+async def get_archive() -> dict[str, Any]:
+    archive = await post_service.get_archive()
+    metrics.add_metric(name='GetArchive', unit=MetricUnit.Count, value=1)
+    return archive
 
 
 @router.get('/{uuid}', status_code=status.HTTP_200_OK)

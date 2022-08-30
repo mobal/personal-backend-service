@@ -1,9 +1,10 @@
 from unittest.mock import ANY
 
+import pendulum
 import pytest
 from starlette import status
 
-from app.exception import PostNotFoundException
+from app.exceptions import PostNotFoundException
 from app.models.post import Post
 from app.models.response import Post as PostResponse
 from app.repositories.post import PostRepository
@@ -13,6 +14,14 @@ from app.services.post import PostService
 
 @pytest.mark.asyncio
 class TestPostService:
+    PROFILE_REPOSITORY_GET_ALL_POSTS = (
+        'app.repositories.post.PostRepository.get_all_posts'
+    )
+    PROFILE_REPOSITORY_GET_POST_BY_UUID = (
+        'app.repositories.post.PostRepository.get_post_by_uuid'
+    )
+    PROFILE_REPOSITORY_UPDATE_POST = 'app.repositories.post.PostRepository.update_post'
+
     @pytest.fixture
     def post_service(self) -> PostService:
         return PostService()
@@ -40,8 +49,8 @@ class TestPostService:
         post_repository: PostRepository,
         post_service: PostService,
     ):
-        mocker.patch('app.repositories.post.PostRepository.get_post_by_uuid')
-        mocker.patch('app.repositories.post.PostRepository.update_post')
+        mocker.patch(self.PROFILE_REPOSITORY_GET_POST_BY_UUID)
+        mocker.patch(self.PROFILE_REPOSITORY_UPDATE_POST)
         await post_service.delete_post(post_model.id)
         post_repository.get_post_by_uuid.assert_called_once_with(post_model.id, ANY)
         post_repository.update_post.assert_called_once_with(post_model.id, ANY, ANY)
@@ -54,7 +63,7 @@ class TestPostService:
         post_service: PostService,
     ):
         mocker.patch(
-            'app.repositories.post.PostRepository.get_post_by_uuid',
+            self.PROFILE_REPOSITORY_GET_POST_BY_UUID,
             side_effect=PostNotFoundException(
                 f'Post was not found with UUID post_uuid={post_model.id}'
             ),
@@ -78,7 +87,7 @@ class TestPostService:
         post_service: PostService,
     ):
         mocker.patch(
-            'app.repositories.post.PostRepository.get_all_posts',
+            self.PROFILE_REPOSITORY_GET_ALL_POSTS,
             return_value=[post_model.dict()],
         )
         result = await post_service.get_all_posts(post_fields)
@@ -94,7 +103,7 @@ class TestPostService:
         post_service: PostService,
     ):
         mocker.patch(
-            'app.repositories.post.PostRepository.get_post_by_uuid',
+            self.PROFILE_REPOSITORY_GET_POST_BY_UUID,
             return_value=post_model.dict(),
         )
         result = await post_service.get_post(post_model.id)
@@ -109,7 +118,7 @@ class TestPostService:
         post_service: PostService,
     ):
         mocker.patch(
-            'app.repositories.post.PostRepository.get_post_by_uuid',
+            self.PROFILE_REPOSITORY_GET_POST_BY_UUID,
             side_effect=PostNotFoundException(
                 f'Post was not found with UUID post_uuid={post_model.id}'
             ),
@@ -131,8 +140,8 @@ class TestPostService:
         post_repository: PostRepository,
         post_service: PostService,
     ) -> None:
-        mocker.patch('app.repositories.post.PostRepository.update_post')
-        update_post = UpdatePost(content='Updated content')
+        mocker.patch(self.PROFILE_REPOSITORY_UPDATE_POST)
+        update_post = UpdatePost(content='Updated content', title='Updated title')
         await post_service.update_post(post_model.id, update_post)
         post_repository.update_post.assert_called_once_with(post_model.id, ANY, ANY)
 
@@ -144,7 +153,7 @@ class TestPostService:
         post_service: PostService,
     ):
         mocker.patch(
-            'app.repositories.post.PostRepository.get_post_by_uuid',
+            self.PROFILE_REPOSITORY_GET_POST_BY_UUID,
             side_effect=PostNotFoundException(
                 f'Post was not found with UUID post_uuid={post_model.id}'
             ),
@@ -159,3 +168,33 @@ class TestPostService:
             == excinfo.value.detail
         )
         post_repository.get_post_by_uuid.assert_called_once_with(post_model.id, ANY)
+
+    async def test_successfully_get_archive(
+        self,
+        mocker,
+        post_model: Post,
+        post_service: PostService,
+        post_repository: PostRepository,
+    ):
+        mocker.patch(
+            self.PROFILE_REPOSITORY_GET_ALL_POSTS,
+            return_value=[post_model.dict()],
+        )
+        result = await post_service.get_archive()
+        assert (
+            result.get(pendulum.parse(post_model.published_at).format('YYYY-MM')) == 1
+        )
+
+    async def test_successfully_get_archive_and_return_none(
+        self,
+        mocker,
+        post_model: Post,
+        post_service: PostService,
+        post_repository: PostRepository,
+    ):
+        mocker.patch(
+            self.PROFILE_REPOSITORY_GET_ALL_POSTS,
+            return_value=[],
+        )
+        result = await post_service.get_archive()
+        assert 0 == len(result)

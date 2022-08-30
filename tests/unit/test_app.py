@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 from starlette import status
 from starlette.testclient import TestClient
 
-from app.exception import PostNotFoundException
+from app.exceptions import PostNotFoundException
 from app.models.cache import Cache
 from app.models.post import Post
 from app.schemas.post import CreatePost
@@ -281,7 +281,14 @@ class TestApp:
         assert len(response.json()) == 3
 
     async def test_fail_to_update_post_due_to_blacklisted_bearer_token(
-        self, mocker, json_body, jwt_token, post_model, settings, test_client
+        self,
+        mocker,
+        cache_service,
+        json_body,
+        jwt_token,
+        post_model,
+        settings,
+        test_client,
     ):
         now = pendulum.now()
         mocker.patch(
@@ -302,6 +309,7 @@ class TestApp:
         assert status.HTTP_403_FORBIDDEN == response.status_code
         assert self.NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
+        cache_service.get.assert_called_once_with(f'jti_{jwt_token.jti}')
 
     async def test_fail_to_update_post_due_to_client_error(
         self,
@@ -366,10 +374,25 @@ class TestApp:
         assert len(response.json()) == 3
 
     async def test_successfully_update_post(
-        self, mocker, authenticated_test_client, json_body, post_model
+        self, mocker, authenticated_test_client, json_body, post_model, post_service
     ):
         mocker.patch(self.POST_SERVICE_UPDATE_POST, return_value=post_model)
         response = authenticated_test_client.put(
             f'/api/v1/posts/{post_model.id}', json=json_body
         )
         assert status.HTTP_204_NO_CONTENT == response.status_code
+        post_service.update_post.assert_called_once_with(post_model.id, ANY)
+
+    async def test_successfully_get_archive(
+        self, mocker, post_model, post_service, test_client
+    ):
+        mocker.patch(
+            'app.services.post.PostService.get_archive',
+            return_value={pendulum.parse(post_model.published_at).format('YYYY-MM'): 1},
+        )
+        response = test_client.get(f'/api/v1/posts/archive')
+        assert status.HTTP_200_OK == response.status_code
+        json = response.json()
+        assert 1 == len(json)
+        assert 1 == json.get(pendulum.parse(post_model.published_at).format('YYYY-MM'))
+        post_service.get_archive.assert_called_once()
