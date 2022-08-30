@@ -29,9 +29,8 @@ class PostService:
 
     @tracer.capture_method
     async def create_post(self, create_post: CreatePost) -> Post:
-        post_uuid = uuid.uuid4()
         data = create_post.dict()
-        data['id'] = str(post_uuid)
+        data['id'] = str(uuid.uuid4())
         data['created_at'] = pendulum.now().to_iso8601_string()
         data['deleted_at'] = None
         data['slug'] = slugify(data["title"])
