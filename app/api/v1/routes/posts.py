@@ -2,7 +2,7 @@ from typing import List, Optional, Any
 
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.metrics import Metrics, MetricUnit
-from fastapi import status, APIRouter, Depends, Request, HTTPException
+from fastapi import status, APIRouter, Depends, Request, HTTPException, Path
 from starlette.responses import Response
 
 from app.auth import JWTBearer
@@ -20,14 +20,12 @@ router = APIRouter()
 
 
 async def authorize(required_privileges: List[str], token: JWTToken) -> bool:
-    if token:
-        user = User(**token.sub)
-        if set(required_privileges).issubset(user.roles) or 'root' in user.roles:
-            return True
-        raise await create_http_exception(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized'
-        )
-    raise create_http_exception()
+    user = User(**token.sub)
+    if set(required_privileges).issubset(user.roles) or 'root' in user.roles:
+        return True
+    raise await create_http_exception(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized'
+    )
 
 
 async def create_http_exception(
@@ -79,11 +77,23 @@ async def get_archive() -> dict[str, Any]:
     return archive
 
 
+@router.get('/{year}/{month}/{day}/{slug}', status_code=status.HTTP_200_OK)
+async def get_post_by_date_and_slug(
+    slug: str,
+    year: int = Path(ge=1970),
+    month: int = Path(ge=1, le=12),
+    day: int = Path(ge=1, le=31),
+) -> PostResponse:
+    post_response = await post_service.get_post_by_date_and_slug(year, month, day, slug)
+    metrics.add_metric(name='GetPostByDateAndSlug', unit=MetricUnit.Count, value=1)
+    return post_response
+
+
 @router.get('/{uuid}', status_code=status.HTTP_200_OK)
 async def get_post_by_uuid(uuid: str) -> PostResponse:
-    post = await post_service.get_post(uuid)
+    post_response = await post_service.get_post(uuid)
     metrics.add_metric(name='GetPostByUuid', unit=MetricUnit.Count, value=1)
-    return post
+    return post_response
 
 
 @router.put(

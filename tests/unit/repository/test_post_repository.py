@@ -40,12 +40,12 @@ class TestPostRepository:
     async def test_successfully_get_all_posts(
         self,
         filter_expression: AttributeBase,
-        post_repository: PostRepository,
         post_model: Post,
+        post_repository: PostRepository,
     ):
-        result = await post_repository.get_all_posts(filter_expression)
-        assert len(result) == 1
-        assert post_model == result[0]
+        items = await post_repository.get_all_posts(filter_expression)
+        assert len(items) == 1
+        assert post_model == items[0]
 
     async def test_successfully_get_all_posts_with_fields_filter(
         self,
@@ -54,24 +54,20 @@ class TestPostRepository:
         post_model: Post,
     ):
         fields = ['id', 'title', 'meta', 'published_at']
-        result = await post_repository.get_all_posts(
-            filter_expression, ','.join(fields)
-        )
-        assert 1 == len(result)
-        assert 4 == len(result[0])
-        for k, v in result[0].items():
+        items = await post_repository.get_all_posts(filter_expression, ','.join(fields))
+        assert 1 == len(items)
+        assert 4 == len(items[0])
+        for k, v in items[0].items():
             assert getattr(post_model, k) == v
 
     async def test_successfully_get_post_by_uuid(
         self,
         filter_expression: AttributeBase,
-        post_repository: PostRepository,
         post_model: Post,
+        post_repository: PostRepository,
     ):
-        result = await post_repository.get_post_by_uuid(
-            post_model.id, filter_expression
-        )
-        assert post_model == result
+        item = await post_repository.get_post_by_uuid(post_model.id, filter_expression)
+        assert post_model.dict() == item
 
     async def test_fail_to_get_post_by_uuid_due_post_not_found_exception(
         self, filter_expression: AttributeBase, post_repository: PostRepository
@@ -86,8 +82,8 @@ class TestPostRepository:
         self,
         dynamodb_table,
         filter_expression: AttributeBase,
-        post_repository: PostRepository,
         post_model: Post,
+        post_repository: PostRepository,
     ):
         now = pendulum.now()
         data = {'content': 'Updated content', 'updated_at': now.to_iso8601_string()}
@@ -109,3 +105,35 @@ class TestPostRepository:
         assert post_model.published_at == item['published_at']
         assert 'Updated content' == item['content']
         assert now.to_iso8601_string() == item['updated_at']
+
+    async def test_successfully_get_post(
+        self, dynamodb_table, post_repository: PostRepository, post_model: Post
+    ):
+        dt = pendulum.parse(post_model.published_at)
+        filter_expression = Attr('deleted_at').eq(None) | Attr(
+            'deleted_at'
+        ).not_exists() & Attr('published_at').between(
+            dt.start_of('day').isoformat('T'), dt.end_of('day').isoformat('T')
+        ) & Attr(
+            'slug'
+        ).eq(
+            post_model.slug
+        )
+        item = await post_repository.get_post(filter_expression)
+        assert post_model.dict() == item
+
+    async def test_fail_to_get_post_due_post_not_found_exception(
+        self, dynamodb_table, post_repository: PostRepository, post_model: Post
+    ):
+        dt = pendulum.parse(post_model.published_at).add(days=1)
+        filter_expression = (
+            (Attr('deleted_at').eq(None) | Attr('deleted_at').not_exists())
+            & Attr('published_at').between(
+                dt.start_of('day').isoformat('T'), dt.end_of('day').isoformat('T')
+            )
+            & Attr('slug').eq(post_model.slug)
+        )
+        with pytest.raises(PostNotFoundException) as excinfo:
+            await post_repository.get_post(filter_expression)
+        assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
+        assert f'Post was not found' == excinfo.value.detail

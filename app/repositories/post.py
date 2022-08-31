@@ -35,6 +35,14 @@ class PostRepository:
             items.extend(response['Items'])
         return items
 
+    async def get_post(self, filter_expression: AttributeBase) -> dict:
+        response = self._table.scan(FilterExpression=filter_expression)
+        self._logger.debug(response)
+        if response['Count'] == 1:
+            return response['Items'][0]
+        self._logger.error(f'Failed to get post {response=}')
+        raise PostNotFoundException(f'Post was not found')
+
     async def get_post_by_uuid(
         self,
         post_uuid: str,

@@ -87,7 +87,7 @@ def post_model(post_dict: dict) -> Post:
             'created_at': pendulum.now().to_iso8601_string(),
             'deleted_at': None,
             'published_at': post_dict['published_at'],
-            'slug': f'some-random-title-{post_uuid}',
+            'slug': f'some-random-title',
             'tags': post_dict['tags'],
             'title': post_dict['title'],
             'updated_at': None,
