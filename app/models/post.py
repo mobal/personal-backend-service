@@ -5,10 +5,11 @@ from pydantic import conlist
 
 
 class Meta(CamelModel):
-    description: Optional[str]
-    language: Optional[str]
-    keywords: Optional[conlist(item_type=str, min_items=1)]
-    title: Optional[str]
+    category: str
+    description: str
+    language: str
+    keywords: conlist(item_type=str, min_items=1)
+    title: str
 
 
 class Post(CamelModel):
@@ -17,12 +18,12 @@ class Post(CamelModel):
     title: str
     content: str
     created_at: str
-    deleted_at: Optional[str]
-    published_at: Optional[str]
-    updated_at: Optional[str]
+    deleted_at: Optional[str] = None
+    published_at: Optional[str] = None
+    updated_at: Optional[str] = None
     slug: str
-    tags: Optional[conlist(item_type=str, min_items=1)]
-    meta: Optional[Meta]
+    tags: conlist(item_type=str, min_items=1)
+    meta: Meta
 
     @property
     def is_deleted(self) -> bool:

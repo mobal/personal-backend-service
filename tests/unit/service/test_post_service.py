@@ -37,10 +37,14 @@ class TestPostService:
         mocker.patch('app.repositories.post.PostRepository.create_post')
         create_post = CreatePost(**post_dict)
         result = await post_service.create_post(create_post)
-        for k, v in post_dict.items():
-            assert v == getattr(result, k)
+        assert post_dict['author'] == result.author
+        assert post_dict['content'] == result.content
+        assert post_dict['meta'] == result.meta
+        assert post_dict['published_at'] == result.published_at
+        assert post_dict['tags'] == result.tags
+        assert post_dict['title'] == result.title
         assert result.is_deleted is False
-        post_repository.create_post.assert_called_once_with(ANY)
+        post_repository.create_post.assert_called_once()
 
     async def test_successfully_delete_post(
         self,
@@ -93,7 +97,7 @@ class TestPostService:
         result = await post_service.get_all_posts(post_fields)
         assert len(result) == 1
         assert PostResponse(**post_model.dict()) == result[0]
-        post_repository.get_all_posts.assert_called_once_with(ANY, ANY)
+        post_repository.get_all_posts.assert_called_once()
 
     async def test_successfully_get_post_by_uuid(
         self,
@@ -198,3 +202,43 @@ class TestPostService:
         )
         result = await post_service.get_archive()
         assert 0 == len(result)
+
+    async def test_successfully_get_post_by_date_and_slug(
+        self,
+        mocker,
+        post_model: Post,
+        post_service: PostService,
+        post_repository: PostRepository,
+    ):
+        mocker.patch(
+            'app.repositories.post.PostRepository.get_post',
+            return_value=post_model.dict(),
+        )
+        dt = pendulum.parse(post_model.published_at)
+        result = await post_service.get_post_by_date_and_slug(
+            dt.year, dt.month, dt.day, post_model.slug
+        )
+        assert post_model.slug == result.slug
+        assert post_model.published_at == result.published_at
+        post_repository.get_post.assert_called_once()
+
+    async def test_fail_to_get_post_by_date_and_slug_due_post_not_found_exception(
+        self,
+        mocker,
+        post_model: Post,
+        post_service: PostService,
+        post_repository: PostRepository,
+    ):
+        mocker.patch(
+            'app.repositories.post.PostRepository.get_post',
+            side_effect=PostNotFoundException('Post was not found'),
+        )
+        dt = pendulum.parse(post_model.published_at)
+        with pytest.raises(PostNotFoundException) as excinfo:
+            await post_service.get_post_by_date_and_slug(
+                dt.year, dt.month, dt.day, post_model.slug
+            )
+        assert PostNotFoundException.__name__ == excinfo.typename
+        assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
+        assert f'Post was not found' == excinfo.value.detail
+        post_repository.get_post.assert_called_once()
