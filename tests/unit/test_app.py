@@ -1,5 +1,4 @@
 import copy
-import uuid
 from unittest.mock import ANY
 
 import jwt
@@ -46,28 +45,14 @@ class TestApp:
         test_client.app.dependency_overrides = {}
 
     @pytest.fixture
-    def json_body(self) -> dict:
+    def json_body(self, post_dict) -> dict:
         return {
-            'author': 'root',
-            'title': 'Some random title',
-            'content': 'Some random content',
+            'author': post_dict['author'],
+            'title': post_dict['title'],
+            'content': post_dict['content'],
+            'tags': post_dict['tags'],
+            'meta': post_dict['meta'],
         }
-
-    @pytest.fixture
-    def post_model(self, json_body) -> Post:
-        now = pendulum.now()
-        return Post(
-            id=str(uuid.uuid4()),
-            author=json_body.get('author'),
-            title=json_body.get('title'),
-            content=json_body.get('content'),
-            created_at=now.to_iso8601_string(),
-            deleted_at=None,
-            published_at=now.to_iso8601_string(),
-            updated_at=None,
-            slug='lorem-ipsum',
-            tags=['lorem', 'ipsum'],
-        )
 
     @pytest.fixture
     def post_service(self) -> PostService:
@@ -238,7 +223,7 @@ class TestApp:
     ):
         response = test_client_ex.put(
             f'/api/v1/posts/{post_model.id}',
-            json={'deletedAt': pendulum.now().to_iso8601_string()},
+            json={'author': 'aa'},
         )
         assert status.HTTP_400_BAD_REQUEST == response.status_code
         assert len(response.json()) == 4

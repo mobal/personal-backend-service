@@ -37,10 +37,14 @@ class TestPostService:
         mocker.patch('app.repositories.post.PostRepository.create_post')
         create_post = CreatePost(**post_dict)
         result = await post_service.create_post(create_post)
-        for k, v in post_dict.items():
-            assert v == getattr(result, k)
+        assert post_dict['author'] == result.author
+        assert post_dict['content'] == result.content
+        assert post_dict['meta'] == result.meta
+        assert post_dict['published_at'] == result.published_at
+        assert post_dict['tags'] == result.tags
+        assert post_dict['title'] == result.title
         assert result.is_deleted is False
-        post_repository.create_post.assert_called_once_with(ANY)
+        post_repository.create_post.assert_called_once()
 
     async def test_successfully_delete_post(
         self,
@@ -93,7 +97,7 @@ class TestPostService:
         result = await post_service.get_all_posts(post_fields)
         assert len(result) == 1
         assert PostResponse(**post_model.dict()) == result[0]
-        post_repository.get_all_posts.assert_called_once_with(ANY, ANY)
+        post_repository.get_all_posts.assert_called_once()
 
     async def test_successfully_get_post_by_uuid(
         self,

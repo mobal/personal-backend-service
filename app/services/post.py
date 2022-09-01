@@ -91,8 +91,6 @@ class PostService:
     async def update_post(self, post_uuid: str, update_post: UpdatePost):
         data = update_post.dict()
         data['updated_at'] = pendulum.now().to_iso8601_string()
-        if update_post.title:
-            data['slug'] = slugify(update_post.title)
         await self._repository.update_post(post_uuid, data, PostFilters.NOT_DELETED)
         self._logger.info(f'Post successfully updated {post_uuid=}')
 
