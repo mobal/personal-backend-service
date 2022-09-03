@@ -55,7 +55,7 @@ async def correlation_id_middleware(request: Request, call_next) -> Response:
     correlation_id = request.headers.get('X-Correlation-ID')
     if not correlation_id:
         correlation_id = (
-            request.scope.get('aws_context').aws_request_id
+            request.scope['aws_context'].aws_request_id
             if request.scope.get('aws_context')
             else str(uuid.uuid4())
         )
