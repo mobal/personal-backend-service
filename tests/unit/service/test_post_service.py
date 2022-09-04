@@ -85,7 +85,7 @@ class TestPostService:
     async def test_successfully_get_all_posts(
         self,
         mocker,
-        post_fields,
+        post_fields: str,
         post_model: Post,
         post_repository: PostRepository,
         post_service: PostService,

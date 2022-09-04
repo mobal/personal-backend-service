@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 import pendulum
 import pytest
@@ -12,7 +13,7 @@ from app.services.cache import CacheService
 
 
 @pytest.fixture
-def cache_service():
+def cache_service() -> CacheService:
     return CacheService()
 
 
@@ -58,7 +59,7 @@ def jwt_token_without_roles(jwt_token: JWTToken) -> JWTToken:
 
 
 @pytest.fixture
-def post_dict() -> dict:
+def post_dict() -> dict[str, Any]:
     now = pendulum.now()
     tags = ['list', 'of', 'keywords']
     title = 'Some random title'

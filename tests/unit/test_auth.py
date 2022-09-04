@@ -20,14 +20,11 @@ def empty_request() -> Mock:
     return request
 
 
-def _encode_jwt_token(jwt_token: JWTToken, key: str) -> str:
-    return jwt.encode(jwt_token.dict(), key)
-
-
 @pytest.fixture
 def valid_request(settings, empty_request: Mock, jwt_token: JWTToken) -> Mock:
-    token = _encode_jwt_token(jwt_token, settings.jwt_secret)
-    empty_request.headers = {'Authorization': f'Bearer {token}'}
+    empty_request.headers = {
+        'Authorization': f'Bearer {jwt.encode(jwt_token.dict(), settings.jwt_secret)}'
+    }
     return empty_request
 
 

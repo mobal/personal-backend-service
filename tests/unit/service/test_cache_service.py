@@ -3,7 +3,11 @@ import uuid
 import pendulum
 import pytest
 from httpx import Response
+from respx import MockRouter
 from starlette import status
+
+from app.services.cache import CacheService
+from app.settings import Settings
 
 
 @pytest.mark.asyncio
@@ -16,7 +20,7 @@ class TestCacheService:
     }
 
     async def test_successfully_get_key_value(
-        self, cache_service, settings, respx_mock
+        self, cache_service: CacheService, settings: Settings, respx_mock: MockRouter
     ):
         respx_mock.get(
             f'{settings.cache_service_base_url}/api/cache/{self.key_value["key"]}'
@@ -31,7 +35,7 @@ class TestCacheService:
         assert self.key_value['ttl'] == result.ttl
 
     async def test_successfully_get_key_value_with_invalid_id(
-        self, cache_service, settings, respx_mock
+        self, cache_service: CacheService, settings: Settings, respx_mock: MockRouter
     ):
         message = f'The requested value was not found for key={self.key_value["key"]}'
         respx_mock.get(
