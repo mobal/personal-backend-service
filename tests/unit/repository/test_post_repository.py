@@ -3,7 +3,6 @@ import uuid
 import pendulum
 import pytest
 from boto3.dynamodb.conditions import Key, Attr, AttributeBase
-from botocore.exceptions import ClientError
 from starlette import status
 
 from app.exceptions import PostNotFoundException
@@ -28,14 +27,21 @@ class TestPostRepository:
         dynamodb_table.put_item(Item=post_model.dict())
 
     async def test_successfully_create_post(
-        self, post_dict: dict, post_model: Post, post_repository: PostRepository
+        self,
+        dynamodb_table,
+        post_dict: dict,
+        post_model: Post,
+        post_repository: PostRepository,
     ):
         post_dict['id'] = post_model.id
-        post_dict['slug'] = f'some-random-title-{post_model.id}'
-        try:
-            await post_repository.create_post(post_dict)
-        except ClientError as err:
-            assert False, err
+        post_dict['slug'] = f'some-random-title'
+        await post_repository.create_post(post_dict)
+        response = dynamodb_table.query(
+            KeyConditionExpression=Key('id').eq(post_dict['id'])
+        )
+        assert 1 == response['Count']
+        item = response['Items'][0]
+        assert item == post_dict
 
     async def test_successfully_get_all_posts(
         self,
