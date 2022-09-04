@@ -54,11 +54,7 @@ class ValidationErrorResponse(ErrorResponse):
 async def correlation_id_middleware(request: Request, call_next) -> Response:
     correlation_id = request.headers.get('X-Correlation-ID')
     if not correlation_id:
-        correlation_id = (
-            request.scope.get('aws_context').aws_request_id
-            if request.scope.get('aws_context')
-            else str(uuid.uuid4())
-        )
+        correlation_id = str(uuid.uuid4())
     logger.set_correlation_id(correlation_id)
     tracer.put_annotation(key='correlation_id', value=correlation_id)
     response = await call_next(request)

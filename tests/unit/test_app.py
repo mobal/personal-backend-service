@@ -9,11 +9,14 @@ from starlette import status
 from starlette.testclient import TestClient
 
 from app.exceptions import PostNotFoundException
+from app.models.auth import JWTToken
 from app.models.cache import Cache
 from app.models.post import Post
 from app.models.response import Post as PostResponse
 from app.schemas.post import CreatePost
+from app.services.cache import CacheService
 from app.services.post import PostService
+from app.settings import Settings
 
 
 @pytest.mark.asyncio
@@ -23,7 +26,9 @@ class TestApp:
     POST_SERVICE_UPDATE_POST = 'app.services.post.PostService.update_post'
 
     @pytest.fixture
-    def test_client_ex(self, jwt_token, test_client) -> TestClient:
+    def test_client_ex(
+        self, jwt_token: JWTToken, test_client: TestClient
+    ) -> TestClient:
         from app.api.v1.routes.posts import jwt_bearer
 
         test_client.app.dependency_overrides[jwt_bearer] = lambda: jwt_token
@@ -31,7 +36,7 @@ class TestApp:
 
     @pytest.fixture
     def test_client_ex_without_roles(
-        self, jwt_token_without_roles, test_client
+        self, jwt_token_without_roles: JWTToken, test_client: TestClient
     ) -> TestClient:
         from app.api.v1.routes.posts import jwt_bearer
 
@@ -41,11 +46,11 @@ class TestApp:
         return test_client
 
     @pytest.fixture(autouse=True)
-    def clear_dependency_overrides(self, test_client):
+    def clear_dependency_overrides(self, test_client: TestClient):
         test_client.app.dependency_overrides = {}
 
     @pytest.fixture
-    def json_body(self, post_dict) -> dict:
+    def json_body(self, post_dict: dict) -> dict:
         return {
             'author': post_dict['author'],
             'title': post_dict['title'],
@@ -64,13 +69,15 @@ class TestApp:
 
         return TestClient(app, raise_server_exceptions=False)
 
-    async def test_fail_to_create_post_due_to_invalid_body(self, test_client_ex):
+    async def test_fail_to_create_post_due_to_invalid_body(
+        self, test_client_ex: TestClient
+    ):
         response = test_client_ex.post(f'/api/v1/posts', json=None)
         assert status.HTTP_400_BAD_REQUEST == response.status_code
         assert len(response.json()) == 4
 
     async def test_fail_to_create_post_due_to_empty_authorization_header(
-        self, json_body, test_client
+        self, json_body: dict, test_client: TestClient
     ):
         response = test_client.post(
             f'/api/v1/posts', headers={'Authorization': None}, json=json_body
@@ -80,7 +87,7 @@ class TestApp:
         assert len(response.json()) == 3
 
     async def test_fail_to_create_post_due_to_missing_authorization_header(
-        self, json_body, test_client
+        self, json_body: dict, test_client: TestClient
     ):
         response = test_client.post(f'/api/v1/posts', json=json_body)
         assert self.NOT_AUTHENTICATED == response.json()['message']
@@ -88,7 +95,7 @@ class TestApp:
         assert len(response.json()) == 3
 
     async def test_fail_to_create_post_due_to_unauthorized(
-        self, json_body, test_client_ex_without_roles
+        self, json_body: dict, test_client_ex_without_roles: TestClient
     ):
         response = test_client_ex_without_roles.post(f'/api/v1/posts', json=json_body)
         assert self.NOT_AUTHORIZED == response.json()['message']
@@ -98,10 +105,10 @@ class TestApp:
     async def test_successfully_create_post(
         self,
         mocker,
-        json_body,
+        json_body: dict,
         post_model: Post,
         post_service: PostService,
-        test_client_ex,
+        test_client_ex: TestClient,
     ):
         mocker.patch(
             'app.services.post.PostService.create_post', return_value=post_model
@@ -114,7 +121,11 @@ class TestApp:
         )
 
     async def test_successfully_get_post(
-        self, mocker, post_model: Post, post_service: PostService, test_client
+        self,
+        mocker,
+        post_model: Post,
+        post_service: PostService,
+        test_client: TestClient,
     ):
         mocker.patch('app.services.post.PostService.get_post', return_value=post_model)
         response = test_client.get(f'/api/v1/posts/{post_model.id}')
@@ -123,7 +134,11 @@ class TestApp:
         post_service.get_post.assert_called_once_with(post_model.id)
 
     async def test_fail_to_get_post_due_to_post_not_found_exception(
-        self, mocker, post_model: Post, post_service: PostService, test_client
+        self,
+        mocker,
+        post_model: Post,
+        post_service: PostService,
+        test_client: TestClient,
     ):
         error_message = f'Post was not found with UUID post_uuid={post_model.id}'
         mocker.patch(
@@ -140,10 +155,10 @@ class TestApp:
     async def test_successfully_get_all_posts(
         self,
         mocker,
-        post_fields,
+        post_fields: str,
         post_model: Post,
         post_service: PostService,
-        test_client,
+        test_client: TestClient,
     ):
         mocker.patch(
             'app.services.post.PostService.get_all_posts', return_value=[post_model]
@@ -158,10 +173,10 @@ class TestApp:
     async def test_fail_to_delete_post_due_to_post_not_found_exception(
         self,
         mocker,
-        json_body,
+        json_body: dict,
         post_model: Post,
         post_service: PostService,
-        test_client_ex,
+        test_client_ex: TestClient,
     ):
         error_message = f'Post was not found with UUID post_uuid={post_model.id}'
         mocker.patch(
@@ -177,7 +192,11 @@ class TestApp:
         post_service.delete_post.assert_called_once_with(post_model.id)
 
     async def test_successfully_delete_post(
-        self, mocker, post_model: Post, post_service: PostService, test_client_ex
+        self,
+        mocker,
+        post_model: Post,
+        post_service: PostService,
+        test_client_ex: TestClient,
     ):
         mocker.patch('app.services.post.PostService.delete_post', return_value=None)
         response = test_client_ex.delete(f'/api/v1/posts/{post_model.id}')
@@ -185,7 +204,7 @@ class TestApp:
         post_service.delete_post.assert_called_once_with(post_model.id)
 
     async def test_fail_to_delete_post_due_to_empty_authorization_header(
-        self, post_model, test_client
+        self, post_model: Post, test_client: TestClient
     ):
         response = test_client.delete(
             f'/api/v1/posts/{post_model.id}', headers={'Authorization': None}
@@ -195,7 +214,7 @@ class TestApp:
         assert len(response.json()) == 3
 
     async def test_fail_to_delete_post_due_to_missing_authorization_header(
-        self, post_model, test_client
+        self, post_model: Post, test_client: TestClient
     ):
         response = test_client.delete(f'/api/v1/posts/{post_model.id}')
         assert self.NOT_AUTHENTICATED == response.json()['message']
@@ -203,7 +222,7 @@ class TestApp:
         assert len(response.json()) == 3
 
     async def test_fail_to_delete_post_due_to_unauthorized(
-        self, post_model, test_client_ex_without_roles
+        self, post_model: Post, test_client_ex_without_roles: TestClient
     ):
         response = test_client_ex_without_roles.delete(f'/api/v1/posts/{post_model.id}')
         assert self.NOT_AUTHORIZED == response.json()['message']
@@ -211,7 +230,7 @@ class TestApp:
         assert len(response.json()) == 3
 
     async def test_fail_to_update_post_due_to_missing_authorization_header(
-        self, post_model, test_client
+        self, post_model: Post, test_client: TestClient
     ):
         response = test_client.put(f'/api/v1/posts/{post_model.id}')
         assert self.NOT_AUTHENTICATED == response.json()['message']
@@ -219,7 +238,7 @@ class TestApp:
         assert len(response.json()) == 3
 
     async def test_fail_to_update_post_due_to_validation_error(
-        self, post_model, test_client_ex
+        self, post_model: Post, test_client_ex: TestClient
     ):
         response = test_client_ex.put(
             f'/api/v1/posts/{post_model.id}',
@@ -229,7 +248,7 @@ class TestApp:
         assert len(response.json()) == 4
 
     async def test_fail_to_update_post_due_to_empty_authorization_header(
-        self, json_body, post_model: Post, test_client
+        self, json_body: str, post_model: Post, test_client: TestClient
     ):
         response = test_client.put(
             f'/api/v1/posts/{post_model.id}',
@@ -241,7 +260,12 @@ class TestApp:
         assert len(response.json()) == 3
 
     async def test_fail_to_update_post_due_to_expired_bearer_token(
-        self, json_body, jwt_token, post_model: Post, settings, test_client
+        self,
+        json_body: str,
+        jwt_token: JWTToken,
+        post_model: Post,
+        settings: Settings,
+        test_client: TestClient,
     ):
         expired_jwt_token = copy.deepcopy(jwt_token)
         past = pendulum.now().subtract(months=1)
@@ -259,7 +283,7 @@ class TestApp:
         assert len(response.json()) == 3
 
     async def test_fail_to_update_post_due_to_invalid_authorization_header(
-        self, json_body, post_model: Post, test_client
+        self, json_body: str, post_model: Post, test_client: TestClient
     ):
         response = test_client.put(
             f'/api/v1/posts/{post_model.id}',
@@ -273,12 +297,12 @@ class TestApp:
     async def test_fail_to_update_post_due_to_blacklisted_bearer_token(
         self,
         mocker,
-        cache_service,
-        json_body,
-        jwt_token,
+        cache_service: CacheService,
+        json_body: str,
+        jwt_token: JWTToken,
         post_model: Post,
-        settings,
-        test_client,
+        settings: Settings,
+        test_client: TestClient,
     ):
         now = pendulum.now()
         mocker.patch(
@@ -304,10 +328,10 @@ class TestApp:
     async def test_fail_to_update_post_due_to_client_error(
         self,
         mocker,
-        json_body,
+        json_body: str,
         post_model: Post,
         post_service: PostService,
-        test_client_ex,
+        test_client_ex: TestClient,
     ):
         mocker.patch(
             self.POST_SERVICE_UPDATE_POST,
@@ -319,7 +343,7 @@ class TestApp:
         post_service.update_post.assert_called_once_with(post_model.id, ANY)
 
     async def test_fail_to_update_post_due_to_invalid_bearer_token(
-        self, json_body, post_model, test_client
+        self, json_body: str, post_model: Post, test_client: TestClient
     ):
         response = test_client.put(
             f'/api/v1/posts/{post_model.id}',
@@ -333,10 +357,10 @@ class TestApp:
     async def test_fail_to_update_post_due_to_post_not_found_exception(
         self,
         mocker,
-        json_body,
+        json_body: str,
         post_model: Post,
         post_service: PostService,
-        test_client_ex,
+        test_client_ex: TestClient,
     ):
         error_message = f'Post was not found with UUID post_uuid={post_model.id}'
         mocker.patch(
@@ -350,7 +374,7 @@ class TestApp:
         post_service.update_post.assert_called_once_with(post_model.id, ANY)
 
     async def test_fail_to_update_post_due_to_unauthorized(
-        self, json_body, post_model, test_client_ex_without_roles
+        self, json_body: str, post_model: Post, test_client_ex_without_roles: TestClient
     ):
         response = test_client_ex_without_roles.put(
             f'/api/v1/posts/{post_model.id}', json=json_body
@@ -362,10 +386,10 @@ class TestApp:
     async def test_successfully_update_post(
         self,
         mocker,
-        json_body,
+        json_body: str,
         post_model: Post,
         post_service: PostService,
-        test_client_ex,
+        test_client_ex: TestClient,
     ):
         mocker.patch(self.POST_SERVICE_UPDATE_POST, return_value=post_model)
         response = test_client_ex.put(f'/api/v1/posts/{post_model.id}', json=json_body)
@@ -373,7 +397,11 @@ class TestApp:
         post_service.update_post.assert_called_once_with(post_model.id, ANY)
 
     async def test_successfully_get_archive(
-        self, mocker, post_model: Post, post_service: PostService, test_client
+        self,
+        mocker,
+        post_model: Post,
+        post_service: PostService,
+        test_client: TestClient,
     ):
         mocker.patch(
             'app.services.post.PostService.get_archive',
@@ -387,7 +415,11 @@ class TestApp:
         post_service.get_archive.assert_called_once()
 
     async def test_successfully_get_post_by_date_and_slug(
-        self, mocker, post_model: Post, post_service: PostService, test_client
+        self,
+        mocker,
+        post_model: Post,
+        post_service: PostService,
+        test_client: TestClient,
     ):
         dt = pendulum.parse(post_model.published_at)
         mocker.patch(
@@ -403,7 +435,11 @@ class TestApp:
         assert dt == pendulum.parse(json.get('publishedAt'))
 
     async def test_fail_to_get_post_by_date_and_slug_due_to_post_not_found_exception(
-        self, mocker, post_model: Post, post_service: PostService, test_client
+        self,
+        mocker,
+        post_model: Post,
+        post_service: PostService,
+        test_client: TestClient,
     ):
         dt = pendulum.parse(post_model.published_at)
         mocker.patch(

@@ -28,7 +28,7 @@ class TestPostRepository:
         dynamodb_table.put_item(Item=post_model.dict())
 
     async def test_successfully_create_post(
-        self, post_repository: PostRepository, post_dict: dict, post_model: Post
+        self, post_dict: dict, post_model: Post, post_repository: PostRepository
     ):
         post_dict['id'] = post_model.id
         post_dict['slug'] = f'some-random-title-{post_model.id}'
@@ -50,8 +50,8 @@ class TestPostRepository:
     async def test_successfully_get_all_posts_with_fields_filter(
         self,
         filter_expression: AttributeBase,
-        post_repository: PostRepository,
         post_model: Post,
+        post_repository: PostRepository,
     ):
         fields = ['id', 'title', 'meta', 'published_at']
         items = await post_repository.get_all_posts(filter_expression, ','.join(fields))
@@ -107,7 +107,7 @@ class TestPostRepository:
         assert now.to_iso8601_string() == item['updated_at']
 
     async def test_successfully_get_post(
-        self, dynamodb_table, post_repository: PostRepository, post_model: Post
+        self, dynamodb_table, post_model: Post, post_repository: PostRepository
     ):
         dt = pendulum.parse(post_model.published_at)
         filter_expression = Attr('deleted_at').eq(None) | Attr(
@@ -123,7 +123,7 @@ class TestPostRepository:
         assert post_model.dict() == item
 
     async def test_fail_to_get_post_due_post_not_found_exception(
-        self, dynamodb_table, post_repository: PostRepository, post_model: Post
+        self, dynamodb_table, post_model: Post, post_repository: PostRepository
     ):
         dt = pendulum.parse(post_model.published_at).add(days=1)
         filter_expression = (
