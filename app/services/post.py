@@ -89,7 +89,7 @@ class PostService:
 
     @tracer.capture_method
     async def update_post(self, post_uuid: str, update_post: UpdatePost):
-        data = update_post.dict()
+        data = update_post.dict(exclude_unset=True)
         data['updated_at'] = pendulum.now().to_iso8601_string()
         await self._repository.update_post(post_uuid, data, PostFilters.NOT_DELETED)
         self._logger.info(f'Post successfully updated {post_uuid=}')

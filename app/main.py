@@ -75,7 +75,7 @@ async def error_handler(request: Request, error) -> JSONResponse:
     error_message = str(error) if settings.app_debug else 'Internal Server Error'
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     logger.error(f'{str(error)} with {status_code=} and {error_id=}')
-    metrics.add_metric(name='ErrorHandler', unit=MetricUnit.Count, value=1)
+    metrics.add_metric(name='ClientErrorHandler', unit=MetricUnit.Count, value=1)
     return JSONResponse(
         content=jsonable_encoder(
             ErrorResponse(status=status_code, id=error_id, message=error_message)
