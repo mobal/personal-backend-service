@@ -4,7 +4,6 @@ import boto3
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Key, AttributeBase
 
-from app.exceptions import PostNotFoundException
 from app.settings import Settings
 
 
@@ -35,26 +34,25 @@ class PostRepository:
             items.extend(response['Items'])
         return items
 
-    async def get_post(self, filter_expression: AttributeBase) -> dict:
+    async def get_post(self, filter_expression: AttributeBase) -> Optional[dict]:
         response = self._table.scan(FilterExpression=filter_expression)
         self._logger.debug(response)
         if response['Count'] == 1:
             return response['Items'][0]
-        self._logger.error(f'Failed to get post {response=}')
-        raise PostNotFoundException(f'Post was not found')
+        return None
 
     async def get_post_by_uuid(
         self,
         post_uuid: str,
         filter_expression: AttributeBase,
-    ) -> dict:
+    ) -> Optional[dict]:
         response = self._table.query(
             KeyConditionExpression=Key('id').eq(post_uuid),
             FilterExpression=filter_expression,
         )
         if response['Count'] == 1:
             return response['Items'][0]
-        raise PostNotFoundException(f'Post was not found with UUID {post_uuid=}')
+        return None
 
     async def update_post(
         self, post_uuid: str, data: dict, filter_expression: AttributeBase

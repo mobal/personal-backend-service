@@ -53,7 +53,9 @@ class TestPostService:
         post_repository: PostRepository,
         post_service: PostService,
     ):
-        mocker.patch(self.PROFILE_REPOSITORY_GET_POST_BY_UUID)
+        mocker.patch(
+            self.PROFILE_REPOSITORY_GET_POST_BY_UUID, return_value=post_model.dict()
+        )
         mocker.patch(self.PROFILE_REPOSITORY_UPDATE_POST)
         await post_service.delete_post(post_model.id)
         post_repository.get_post_by_uuid.assert_called_once_with(post_model.id, ANY)
