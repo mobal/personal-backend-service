@@ -7,6 +7,7 @@ from aws_lambda_powertools import Logger, Tracer
 from boto3.dynamodb.conditions import Attr
 from slugify import slugify
 
+from app.exceptions import PostNotFoundException
 from app.models.post import Post
 from app.models.response import Post as PostResponse
 from app.repositories.post import PostRepository
@@ -28,10 +29,20 @@ async def _item_to_response(item: dict, to_markdown: bool = False) -> PostRespon
 
 class PostService:
     DEFAULT_FIELDS = 'id,title,meta,published_at'
+    ERROR_MESSAGE_POST_WAS_NOT_FOUND = 'The requested post was not found'
 
     def __init__(self):
         self._logger = Logger()
         self._repository = PostRepository()
+
+    async def _get_post_by_uuid(self, post_uuid: str) -> Post:
+        item = await self._repository.get_post_by_uuid(
+            post_uuid, PostFilters.NOT_DELETED
+        )
+        if item is None:
+            self._logger.error(f'Failed to get post by UUID {post_uuid=}')
+            raise PostNotFoundException(self.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
+        return Post.parse_obj(item)
 
     @tracer.capture_method
     async def create_post(self, create_post: CreatePost) -> Post:
@@ -46,11 +57,11 @@ class PostService:
 
     @tracer.capture_method
     async def delete_post(self, post_uuid: str):
-        item = await self._repository.get_post_by_uuid(
-            post_uuid, PostFilters.NOT_DELETED
+        post = await self._get_post_by_uuid(post_uuid)
+        post.deleted_at = pendulum.now().to_iso8601_string()
+        await self._repository.update_post(
+            post_uuid, post.dict(), PostFilters.NOT_DELETED
         )
-        item['deleted_at'] = pendulum.now().to_iso8601_string()
-        await self._repository.update_post(post_uuid, item, PostFilters.NOT_DELETED)
         self._logger.info(f'Post successfully deleted {post_uuid=}')
 
     @tracer.capture_method
@@ -67,10 +78,9 @@ class PostService:
 
     @tracer.capture_method
     async def get_post(self, post_uuid: str) -> PostResponse:
-        item = await self._repository.get_post_by_uuid(
-            post_uuid, PostFilters.NOT_DELETED
+        return await _item_to_response(
+            (await self._get_post_by_uuid(post_uuid)).dict(), to_markdown=True
         )
-        return await _item_to_response(item, to_markdown=True)
 
     @tracer.capture_method
     async def get_post_by_date_and_slug(
@@ -85,13 +95,22 @@ class PostService:
             & Attr('slug').eq(slug)
         )
         item = await self._repository.get_post(filter_expression)
+        if item is None:
+            self._logger.error(f'Failed to get post {filter_expression=}')
+            raise PostNotFoundException(self.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return await _item_to_response(item, to_markdown=True)
 
     @tracer.capture_method
     async def update_post(self, post_uuid: str, update_post: UpdatePost):
-        data = update_post.dict(exclude_unset=True)
-        data['updated_at'] = pendulum.now().to_iso8601_string()
-        await self._repository.update_post(post_uuid, data, PostFilters.NOT_DELETED)
+        item = await self._repository.get_post_by_uuid(
+            post_uuid, PostFilters.NOT_DELETED
+        )
+        if item is None:
+            self._logger.error(f'Post was not found by UUID {post_uuid=}')
+            raise PostNotFoundException(self.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
+        item = update_post.dict(exclude_unset=True)
+        item['updated_at'] = pendulum.now().to_iso8601_string()
+        await self._repository.update_post(post_uuid, item, PostFilters.NOT_DELETED)
         self._logger.info(f'Post successfully updated {post_uuid=}')
 
     @tracer.capture_method
