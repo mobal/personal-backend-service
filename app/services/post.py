@@ -29,6 +29,7 @@ async def _item_to_response(item: dict, to_markdown: bool = False) -> PostRespon
 
 class PostService:
     DEFAULT_FIELDS = 'id,title,meta,published_at'
+    ERROR_MESSAGE_POST_WAS_NOT_FOUND = 'The requested post was not found'
 
     def __init__(self):
         self._logger = Logger()
@@ -40,7 +41,7 @@ class PostService:
         )
         if item is None:
             self._logger.error(f'Failed to get post by UUID {post_uuid=}')
-            raise PostNotFoundException(f'Post was not found')
+            raise PostNotFoundException(self.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return Post.parse_obj(item)
 
     @tracer.capture_method
@@ -96,14 +97,20 @@ class PostService:
         item = await self._repository.get_post(filter_expression)
         if item is None:
             self._logger.error(f'Failed to get post {filter_expression=}')
-            raise PostNotFoundException(f'Post was not found')
+            raise PostNotFoundException(self.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return await _item_to_response(item, to_markdown=True)
 
     @tracer.capture_method
     async def update_post(self, post_uuid: str, update_post: UpdatePost):
-        data = update_post.dict(exclude_unset=True)
-        data['updated_at'] = pendulum.now().to_iso8601_string()
-        await self._repository.update_post(post_uuid, data, PostFilters.NOT_DELETED)
+        item = await self._repository.get_post_by_uuid(
+            post_uuid, PostFilters.NOT_DELETED
+        )
+        if item is None:
+            self._logger.error(f'Post was not found by UUID {post_uuid=}')
+            raise PostNotFoundException(self.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
+        item = update_post.dict(exclude_unset=True)
+        item['updated_at'] = pendulum.now().to_iso8601_string()
+        await self._repository.update_post(post_uuid, item, PostFilters.NOT_DELETED)
         self._logger.info(f'Post successfully updated {post_uuid=}')
 
     @tracer.capture_method

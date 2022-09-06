@@ -36,8 +36,7 @@ class PostRepository:
 
     async def get_post(self, filter_expression: AttributeBase) -> Optional[dict]:
         response = self._table.scan(FilterExpression=filter_expression)
-        self._logger.debug(response)
-        if response['Count'] == 1:
+        if response['Items']:
             return response['Items'][0]
         return None
 
@@ -50,13 +49,24 @@ class PostRepository:
             KeyConditionExpression=Key('id').eq(post_uuid),
             FilterExpression=filter_expression,
         )
-        if response['Count'] == 1:
+        if response['Items']:
             return response['Items'][0]
         return None
 
     async def update_post(
-        self, post_uuid: str, data: dict, filter_expression: AttributeBase
+        self, post_uuid: str, data: dict, condition_expression: AttributeBase
     ):
-        item = await self.get_post_by_uuid(post_uuid, filter_expression)
-        item.update(data)
-        self._table.put_item(Item=item)
+        attribute_names = {}
+        attribute_values = {}
+        update_expression = []
+        for k, v in data.items():
+            attribute_names[f'#{k}'] = k
+            attribute_values[f':{k}'] = str(v)
+            update_expression.append(f'#{k}=:{k}')
+        self._table.update_item(
+            Key={'id': post_uuid},
+            ConditionExpression=condition_expression,
+            UpdateExpression='SET ' + ','.join(update_expression),
+            ExpressionAttributeNames=attribute_names,
+            ExpressionAttributeValues=attribute_values,
+        )
