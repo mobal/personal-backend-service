@@ -28,8 +28,7 @@ async def _item_to_response(item: dict, to_markdown: bool = False) -> PostRespon
 
 
 class PostService:
-    DEFAULT_FIELDS = 'id,title,meta,published_at'
-    ERROR_MESSAGE_POST_WAS_NOT_FOUND = 'The requested post was not found'
+    ERROR_MESSAGE_POST_WAS_NOT_FOUND: str = 'The requested post was not found'
 
     def __init__(self):
         self._logger = Logger()
@@ -65,11 +64,10 @@ class PostService:
         self._logger.info(f'Post successfully deleted {post_uuid=}')
 
     @tracer.capture_method
-    async def get_all_posts(
-        self, fields: Optional[str] = DEFAULT_FIELDS
-    ) -> List[PostResponse]:
+    async def get_all_posts(self) -> List[PostResponse]:
         items = await self._repository.get_all_posts(
-            PostFilters.NOT_DELETED & PostFilters.PUBLISHED, fields
+            PostFilters.NOT_DELETED & PostFilters.PUBLISHED,
+            ['id', 'title', 'meta', 'published_at'],
         )
         result = []
         for item in items:

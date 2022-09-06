@@ -92,7 +92,7 @@ class TestPostService:
             self.PROFILE_REPOSITORY_GET_ALL_POSTS,
             return_value=[post_model.dict()],
         )
-        result = await post_service.get_all_posts(post_fields)
+        result = await post_service.get_all_posts()
         assert len(result) == 1
         assert PostResponse(**post_model.dict()) == result[0]
         post_repository.get_all_posts.assert_called_once()

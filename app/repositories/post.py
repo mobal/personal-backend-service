@@ -19,11 +19,11 @@ class PostRepository:
         self._table.put_item(Item=data)
 
     async def get_all_posts(
-        self, filter_expression: AttributeBase, fields: Optional[str] = None
+        self, filter_expression: AttributeBase, fields: Optional[List[str]] = None
     ) -> List[dict]:
         kwargs = {'FilterExpression': filter_expression}
         if fields:
-            kwargs['ProjectionExpression'] = fields
+            kwargs['ProjectionExpression'] = ','.join(fields)
         response = self._table.scan(**kwargs)
         items = response['Items']
         while 'LastEvaluatedKey' in response:

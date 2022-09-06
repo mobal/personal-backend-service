@@ -58,7 +58,7 @@ class TestPostRepository:
         post_repository: PostRepository,
     ):
         fields = ['id', 'title', 'meta', 'published_at']
-        items = await post_repository.get_all_posts(filter_expression, ','.join(fields))
+        items = await post_repository.get_all_posts(filter_expression, fields)
         assert 1 == len(items)
         assert 4 == len(items[0])
         for k, v in items[0].items():
