@@ -106,7 +106,7 @@ class PostService:
         if item is None:
             self._logger.error(f'Post was not found by UUID {post_uuid=}')
             raise PostNotFoundException(self.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
-        item = update_post.dict(exclude_unset=True)
+        item.update(update_post.dict(exclude_unset=True))
         item['updated_at'] = pendulum.now().to_iso8601_string()
         await self._repository.update_post(post_uuid, item, PostFilters.NOT_DELETED)
         self._logger.info(f'Post successfully updated {post_uuid=}')
@@ -114,7 +114,7 @@ class PostService:
     @tracer.capture_method
     async def get_archive(self) -> dict[str, int]:
         items = await self._repository.get_all_posts(
-            PostFilters.NOT_DELETED & PostFilters.PUBLISHED, 'id,published_at'
+            PostFilters.NOT_DELETED & PostFilters.PUBLISHED, ['id', 'published_at']
         )
         archive = {}
         if items:
