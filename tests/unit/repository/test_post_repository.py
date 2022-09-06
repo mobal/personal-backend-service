@@ -3,7 +3,6 @@ import uuid
 import pendulum
 import pytest
 from boto3.dynamodb.conditions import Key, Attr, AttributeBase
-from starlette import status
 
 from app.models.post import Post
 from app.repositories.post import PostRepository
