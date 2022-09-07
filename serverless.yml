@@ -14,11 +14,16 @@ custom:
 functions:
   app:
     environment:
+      APP_DEBUG: ${env:APP_DEBUG}
       APP_NAME: ${env:APP_NAME}
       APP_STAGE: ${env:APP_STAGE}
       APP_TIMEZONE: ${env:APP_TIMEZONE}
       CACHE_SERVICE_BASE_URL: ${env:CACHE_SERVICE_BASE_URL}
       JWT_SECRET: ${env:JWT_SECRET}
+      LOG_LEVEL: DEBUG
+      POWERTOOLS_LOGGER_LOG_EVENT: true
+      POWERTOOLS_METRICS_NAMESPACE: personal
+      POWERTOOLS_SERVICE_NAME: personal-backend-service
     events:
       - httpApi: '*'
     handler: app.main.handler
