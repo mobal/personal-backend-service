@@ -38,6 +38,7 @@ package:
     - '!.serverless/**'
     - '!.serverless_plugins/**'
     - '!.venv/**'
+  excludeDevDependencies: true
 provider:
   name: aws
   region: eu-central-1
