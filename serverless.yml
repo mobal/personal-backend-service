@@ -8,6 +8,7 @@ custom:
     dockerImage: mlupin/docker-lambda:python3.9-build
     dockerizePip: false
     layer: true
+    slim: true
     strip: false
     zip: true
 functions:
@@ -31,15 +32,7 @@ package:
     - '!npm-debug.log'
     - '!.serverless/**'
     - '!.serverless_plugins/**'
-    - '!.github/**'
-    - '!.idea/**'
-    - '!.pytest_cache/**'
-    - '!.vscode/**'
     - '!.venv/**'
-    - '!node_modules/**'
-    - '!htmlcov/**'
-    - '!.coverage'
-    - '!coverage.xml'
 provider:
   name: aws
   region: eu-central-1
