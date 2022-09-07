@@ -64,8 +64,8 @@ async def delete_post(uuid: str, token: JWTToken = Depends(jwt_bearer)):
     response_model_exclude_none=True,
     status_code=status.HTTP_200_OK,
 )
-async def get_all_posts(fields: Optional[str] = None) -> List[PostResponse]:
-    posts = await post_service.get_all_posts(fields)
+async def get_all_posts() -> List[PostResponse]:
+    posts = await post_service.get_all_posts()
     metrics.add_metric(name='GetAllPosts', unit=MetricUnit.Count, value=1)
     return posts
 
