@@ -39,7 +39,7 @@ class PostService:
             post_uuid, PostFilters.NOT_DELETED
         )
         if item is None:
-            self._logger.error(f'Failed to get post by UUID {post_uuid=}')
+            self._logger.error(f'Post was not found with UUID {post_uuid=}')
             raise PostNotFoundException(self.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return Post.parse_obj(item)
 

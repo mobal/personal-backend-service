@@ -21,6 +21,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import JSONResponse
 
 from app.api.v1.api import router
+from app.exceptions import CacheServiceException
 from app.settings import Settings
 
 app = FastAPI(debug=True)
@@ -54,11 +55,7 @@ class ValidationErrorResponse(ErrorResponse):
 async def correlation_id_middleware(request: Request, call_next) -> Response:
     correlation_id = request.headers.get('X-Correlation-ID')
     if not correlation_id:
-        correlation_id = (
-            request.scope['aws_context'].aws_request_id
-            if request.scope.get('aws_context')
-            else str(uuid.uuid4())
-        )
+        correlation_id = str(uuid.uuid4())
     logger.set_correlation_id(correlation_id)
     tracer.put_annotation(key='correlation_id', value=correlation_id)
     response = await call_next(request)
@@ -75,7 +72,7 @@ async def error_handler(request: Request, error) -> JSONResponse:
     error_message = str(error) if settings.app_debug else 'Internal Server Error'
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     logger.error(f'{str(error)} with {status_code=} and {error_id=}')
-    metrics.add_metric(name='ClientErrorHandler', unit=MetricUnit.Count, value=1)
+    metrics.add_metric(name='ErrorHandler', unit=MetricUnit.Count, value=1)
     return JSONResponse(
         content=jsonable_encoder(
             ErrorResponse(status=status_code, id=error_id, message=error_message)
@@ -84,6 +81,7 @@ async def error_handler(request: Request, error) -> JSONResponse:
     )
 
 
+@app.exception_handler(CacheServiceException)
 @app.exception_handler(HTTPException)
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(
