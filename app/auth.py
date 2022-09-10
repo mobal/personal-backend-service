@@ -44,10 +44,13 @@ class JWTBearer(HTTPBearer):
             decoded_token = JWTToken(
                 **jwt.decode(token, self.settings.jwt_secret, algorithms='HS256')
             )
-            if await self.cache_service.get(f'jti_{decoded_token.jti}') is None:
+            if await self.cache_service.get(f'jti_{decoded_token.jti}') is False:
+                self._logger.debug(f'Token is not blacklisted {decoded_token=}')
                 self.decoded_token = decoded_token
                 return True
-        except (DecodeError, ExpiredSignatureError) as error:
-            self._logger.error(f'error={error}')
-            return False
+            self._logger.debug(f'Token blacklisted {decoded_token=}')
+        except DecodeError as err:
+            self._logger.error(f'Error occurred during token decoding {err=}')
+        except ExpiredSignatureError as err:
+            self._logger.error(f'Expired signature {err=}')
         return False
