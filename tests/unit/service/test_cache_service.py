@@ -47,4 +47,4 @@ class TestCacheService:
             ),
         )
         result = await cache_service.get(self.key_value['key'])
-        assert False == result
+        assert result is False
