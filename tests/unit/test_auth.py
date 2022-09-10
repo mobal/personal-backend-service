@@ -112,7 +112,7 @@ class TestJWTAuth:
         jwt_token: JWTToken,
         valid_request: Request,
     ):
-        mocker.patch('app.services.cache.CacheService.get', return_value=None)
+        mocker.patch('app.services.cache.CacheService.get', return_value=False)
         result = await jwt_bearer(valid_request)
         assert jwt_token.dict() == result
         cache_service.get.assert_called_once_with(f'jti_{jwt_token.jti}')

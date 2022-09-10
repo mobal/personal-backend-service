@@ -10,7 +10,6 @@ from starlette.testclient import TestClient
 
 from app.exceptions import PostNotFoundException
 from app.models.auth import JWTToken
-from app.models.cache import Cache
 from app.models.post import Post
 from app.models.response import Post as PostResponse
 from app.schemas.post import CreatePost
@@ -307,12 +306,7 @@ class TestApp:
         now = pendulum.now()
         mocker.patch(
             'app.services.cache.CacheService.get',
-            return_value=Cache(
-                key='jti',
-                value=jwt_token.jti,
-                created_at=now.add(years=1).to_iso8601_string(),
-                ttl=now.add(years=1).int_timestamp,
-            ),
+            return_value=True,
         )
         token = jwt.encode(jwt_token.dict(), key=settings.jwt_secret)
         response = test_client.put(

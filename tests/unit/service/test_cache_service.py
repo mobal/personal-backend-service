@@ -29,12 +29,8 @@ class TestCacheService:
         )
         result = await cache_service.get(self.key_value['key'])
         assert bool(result) is True
-        assert self.key_value['key'] == result.key
-        assert self.key_value['created_at'] == result.created_at
-        assert self.key_value['value'] == result.value
-        assert self.key_value['ttl'] == result.ttl
 
-    async def test_successfully_get_key_value_with_invalid_id(
+    async def test_fail_to_get_key_value_due_to_invalid_id(
         self, cache_service: CacheService, settings: Settings, respx_mock: MockRouter
     ):
         message = f'The requested value was not found for key={self.key_value["key"]}'
@@ -51,4 +47,4 @@ class TestCacheService:
             ),
         )
         result = await cache_service.get(self.key_value['key'])
-        assert result is None
+        assert False == result
