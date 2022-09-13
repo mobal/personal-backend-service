@@ -5,7 +5,7 @@ import uvicorn
 from aws_lambda_powertools import Logger, Metrics, Tracer
 from aws_lambda_powertools.metrics import MetricUnit
 from botocore.exceptions import ClientError, BotoCoreError
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi_camelcase import CamelModel
@@ -22,11 +22,13 @@ from starlette.responses import JSONResponse
 
 from app.api.v1.api import router
 from app.exceptions import CacheServiceException
+from app.middlewares import CorrelationIdMiddleware
 from app.settings import Settings
 
 app = FastAPI(debug=True)
-app.add_middleware(GZipMiddleware)
+app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(ExceptionMiddleware, handlers=app.exception_handlers)
+app.add_middleware(GZipMiddleware)
 app.include_router(router, prefix='/api/v1')
 
 settings = Settings()
@@ -49,18 +51,6 @@ class ErrorResponse(CamelModel):
 
 class ValidationErrorResponse(ErrorResponse):
     errors: List[dict]
-
-
-@app.middleware('http')
-async def correlation_id_middleware(request: Request, call_next) -> Response:
-    correlation_id = request.headers.get('X-Correlation-ID')
-    if not correlation_id:
-        correlation_id = str(uuid.uuid4())
-    logger.set_correlation_id(correlation_id)
-    tracer.put_annotation(key='correlation_id', value=correlation_id)
-    response = await call_next(request)
-    response.headers['X-Correlation-ID'] = correlation_id
-    return response
 
 
 @app.exception_handler(BotoCoreError)
