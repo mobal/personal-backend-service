@@ -9,6 +9,7 @@ from starlette import status
 from starlette.testclient import TestClient
 
 from app.exceptions import PostNotFoundException
+from app.middlewares import correlation_id
 from app.models.auth import JWTToken
 from app.models.post import Post
 from app.models.response import Post as PostResponse
@@ -23,6 +24,7 @@ class TestApp:
     NOT_AUTHENTICATED = 'Not authenticated'
     NOT_AUTHORIZED = 'Not authorized'
     POST_SERVICE_UPDATE_POST = 'app.services.post.PostService.update_post'
+    X_CORRELATION_ID = 'X-Correlation-ID'
 
     @pytest.fixture
     def test_client_ex(
@@ -73,6 +75,8 @@ class TestApp:
     ):
         response = test_client_ex.post(f'/api/v1/posts', json=None)
         assert status.HTTP_400_BAD_REQUEST == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert len(response.json()) == 4
 
     async def test_fail_to_create_post_due_to_empty_authorization_header(
@@ -83,6 +87,8 @@ class TestApp:
         )
         assert self.NOT_AUTHENTICATED == response.json()['message']
         assert status.HTTP_403_FORBIDDEN == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert len(response.json()) == 3
 
     async def test_fail_to_create_post_due_to_missing_authorization_header(
@@ -91,6 +97,8 @@ class TestApp:
         response = test_client.post(f'/api/v1/posts', json=json_body)
         assert self.NOT_AUTHENTICATED == response.json()['message']
         assert status.HTTP_403_FORBIDDEN == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert len(response.json()) == 3
 
     async def test_fail_to_create_post_due_to_unauthorized(
@@ -99,6 +107,8 @@ class TestApp:
         response = test_client_ex_without_roles.post(f'/api/v1/posts', json=json_body)
         assert self.NOT_AUTHORIZED == response.json()['message']
         assert status.HTTP_401_UNAUTHORIZED == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert len(response.json()) == 3
 
     async def test_successfully_create_post(
@@ -114,6 +124,8 @@ class TestApp:
         )
         response = test_client_ex.post(f'/api/v1/posts', json=json_body)
         assert status.HTTP_201_CREATED == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert 'location' in response.headers
         post_service.create_post.assert_called_once_with(
             CreatePost.parse_obj(json_body)
@@ -129,6 +141,8 @@ class TestApp:
         mocker.patch('app.services.post.PostService.get_post', return_value=post_model)
         response = test_client.get(f'/api/v1/posts/{post_model.id}')
         assert status.HTTP_200_OK == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert post_model == Post.parse_obj(response.json())
         post_service.get_post.assert_called_once_with(post_model.id)
 
@@ -146,6 +160,8 @@ class TestApp:
         )
         response = test_client.get(f'/api/v1/posts/{post_model.id}')
         assert status.HTTP_404_NOT_FOUND == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert error_message == response.json()['message']
         json = response.json()
         assert len(json) == 3
@@ -164,6 +180,8 @@ class TestApp:
         )
         response = test_client.get(f'/api/v1/posts?fields={post_fields}')
         assert status.HTTP_200_OK == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         json = response.json()
         assert len(json) == 1
         assert post_model.id == json[0]['id']
@@ -186,6 +204,8 @@ class TestApp:
             f'/api/v1/posts/{post_model.id}', json=json_body
         )
         assert status.HTTP_404_NOT_FOUND == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert error_message == response.json()['message']
         assert len(response.json()) == 3
         post_service.delete_post.assert_called_once_with(post_model.id)
@@ -200,6 +220,8 @@ class TestApp:
         mocker.patch('app.services.post.PostService.delete_post', return_value=None)
         response = test_client_ex.delete(f'/api/v1/posts/{post_model.id}')
         assert status.HTTP_204_NO_CONTENT == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         post_service.delete_post.assert_called_once_with(post_model.id)
 
     async def test_fail_to_delete_post_due_to_empty_authorization_header(
@@ -208,32 +230,40 @@ class TestApp:
         response = test_client.delete(
             f'/api/v1/posts/{post_model.id}', headers={'Authorization': None}
         )
-        assert self.NOT_AUTHENTICATED == response.json()['message']
         assert status.HTTP_403_FORBIDDEN == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
+        assert self.NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
 
     async def test_fail_to_delete_post_due_to_missing_authorization_header(
         self, post_model: Post, test_client: TestClient
     ):
         response = test_client.delete(f'/api/v1/posts/{post_model.id}')
-        assert self.NOT_AUTHENTICATED == response.json()['message']
         assert status.HTTP_403_FORBIDDEN == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
+        assert self.NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
 
     async def test_fail_to_delete_post_due_to_unauthorized(
         self, post_model: Post, test_client_ex_without_roles: TestClient
     ):
         response = test_client_ex_without_roles.delete(f'/api/v1/posts/{post_model.id}')
-        assert self.NOT_AUTHORIZED == response.json()['message']
         assert status.HTTP_401_UNAUTHORIZED == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
+        assert self.NOT_AUTHORIZED == response.json()['message']
         assert len(response.json()) == 3
 
     async def test_fail_to_update_post_due_to_missing_authorization_header(
         self, post_model: Post, test_client: TestClient
     ):
         response = test_client.put(f'/api/v1/posts/{post_model.id}')
-        assert self.NOT_AUTHENTICATED == response.json()['message']
         assert status.HTTP_403_FORBIDDEN == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
+        assert self.NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
 
     async def test_fail_to_update_post_due_to_validation_error(
@@ -244,6 +274,8 @@ class TestApp:
             json={'author': 'aa'},
         )
         assert status.HTTP_400_BAD_REQUEST == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert len(response.json()) == 4
 
     async def test_fail_to_update_post_due_to_empty_authorization_header(
@@ -255,6 +287,8 @@ class TestApp:
             headers={'Authorization': ''},
         )
         assert status.HTTP_403_FORBIDDEN == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert self.NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
 
@@ -278,6 +312,8 @@ class TestApp:
             headers={'Authorization': f'Bearer {token}'},
         )
         assert status.HTTP_403_FORBIDDEN == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert self.NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
 
@@ -290,6 +326,8 @@ class TestApp:
             headers={'Authorization': 'asdf'},
         )
         assert status.HTTP_403_FORBIDDEN == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert self.NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
 
@@ -303,7 +341,6 @@ class TestApp:
         settings: Settings,
         test_client: TestClient,
     ):
-        now = pendulum.now()
         mocker.patch(
             'app.services.cache.CacheService.get',
             return_value=True,
@@ -315,6 +352,8 @@ class TestApp:
             headers={'Authorization': f'Bearer {token}'},
         )
         assert status.HTTP_403_FORBIDDEN == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert self.NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
         cache_service.get.assert_called_once_with(f'jti_{jwt_token.jti}')
@@ -333,6 +372,8 @@ class TestApp:
         )
         response = test_client_ex.put(f'/api/v1/posts/{post_model.id}', json=json_body)
         assert status.HTTP_500_INTERNAL_SERVER_ERROR == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert len(response.json()) == 3
         post_service.update_post.assert_called_once_with(post_model.id, ANY)
 
@@ -345,6 +386,8 @@ class TestApp:
             headers={'Authorization': 'Bearer asdf'},
         )
         assert status.HTTP_403_FORBIDDEN == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert self.NOT_AUTHENTICATED == response.json()['message']
         assert len(response.json()) == 3
 
@@ -363,6 +406,8 @@ class TestApp:
         )
         response = test_client_ex.put(f'/api/v1/posts/{post_model.id}', json=json_body)
         assert status.HTTP_404_NOT_FOUND == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert error_message == response.json()['message']
         assert len(response.json()) == 3
         post_service.update_post.assert_called_once_with(post_model.id, ANY)
@@ -374,6 +419,8 @@ class TestApp:
             f'/api/v1/posts/{post_model.id}', json=json_body
         )
         assert status.HTTP_401_UNAUTHORIZED == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert self.NOT_AUTHORIZED == response.json()['message']
         assert len(response.json()) == 3
 
@@ -388,6 +435,8 @@ class TestApp:
         mocker.patch(self.POST_SERVICE_UPDATE_POST, return_value=post_model)
         response = test_client_ex.put(f'/api/v1/posts/{post_model.id}', json=json_body)
         assert status.HTTP_204_NO_CONTENT == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         post_service.update_post.assert_called_once_with(post_model.id, ANY)
 
     async def test_successfully_get_archive(
@@ -403,6 +452,8 @@ class TestApp:
         )
         response = test_client.get(f'/api/v1/posts/archive')
         assert status.HTTP_200_OK == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         json = response.json()
         assert 1 == len(json)
         assert 1 == json.get(pendulum.parse(post_model.published_at).format('YYYY-MM'))
@@ -424,6 +475,8 @@ class TestApp:
             f'/api/v1/posts/{dt.year}/{dt.month}/{dt.day}/{post_model.slug}'
         )
         assert status.HTTP_200_OK == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         json = response.json()
         assert post_model.id == json.get('id')
         assert dt == pendulum.parse(json.get('publishedAt'))
@@ -444,4 +497,6 @@ class TestApp:
             f'/api/v1/posts/{dt.year}/{dt.month}/{dt.day}/{post_model.slug}'
         )
         assert status.HTTP_404_NOT_FOUND == response.status_code
+        assert self.X_CORRELATION_ID in response.headers
+        assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
         assert 'Post not found' == response.json().get('message')
