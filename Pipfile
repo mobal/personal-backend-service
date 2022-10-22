@@ -31,4 +31,4 @@ black = ">=22.10.0"
 respx = ">=0.20.0"
 
 [requires]
-python_version = ">=3.9"
+python_version = "3.9"
