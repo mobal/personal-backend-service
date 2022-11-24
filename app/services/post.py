@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Optional
+from typing import List
 
 import markdown
 import pendulum
@@ -34,6 +34,7 @@ class PostService:
         self._logger = Logger()
         self._repository = PostRepository()
 
+    @tracer.capture_method
     async def _get_post_by_uuid(self, post_uuid: str) -> Post:
         item = await self._repository.get_post_by_uuid(
             post_uuid, PostFilters.NOT_DELETED
@@ -59,7 +60,7 @@ class PostService:
         post = await self._get_post_by_uuid(post_uuid)
         post.deleted_at = pendulum.now().to_iso8601_string()
         await self._repository.update_post(
-            post_uuid, post.dict(), PostFilters.NOT_DELETED
+            post_uuid, post.dict(exclude={'id'}), PostFilters.NOT_DELETED
         )
         self._logger.info(f'Post successfully deleted {post_uuid=}')
 
@@ -107,8 +108,9 @@ class PostService:
             self._logger.error(f'Post was not found by UUID {post_uuid=}')
             raise PostNotFoundException(self.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         item.update(update_post.dict(exclude_unset=True))
-        item['updated_at'] = pendulum.now().to_iso8601_string()
-        await self._repository.update_post(post_uuid, item, PostFilters.NOT_DELETED)
+        post = Post.parse_obj(item)
+        post.updated_at = pendulum.now().to_iso8601_string()
+        await self._repository.update_post(post_uuid, post.dict(exclude={'id'}), PostFilters.NOT_DELETED)
         self._logger.info(f'Post successfully updated {post_uuid=}')
 
     @tracer.capture_method

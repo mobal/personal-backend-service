@@ -1,10 +1,12 @@
 from typing import List, Optional
 
 import boto3
-from aws_lambda_powertools import Logger
+from aws_lambda_powertools import Logger, Tracer
 from boto3.dynamodb.conditions import Key, AttributeBase
 
 from app.settings import Settings
+
+tracer = Tracer()
 
 
 class PostRepository:
@@ -15,9 +17,11 @@ class PostRepository:
         dynamodb = session.resource('dynamodb')
         self._table = dynamodb.Table(f'{settings.app_stage}-posts')
 
+    @tracer.capture_method
     async def create_post(self, data: dict):
         self._table.put_item(Item=data)
 
+    @tracer.capture_method
     async def get_all_posts(
         self, filter_expression: AttributeBase, fields: Optional[List[str]] = None
     ) -> List[dict]:
@@ -34,12 +38,14 @@ class PostRepository:
             items.extend(response['Items'])
         return items
 
+    @tracer.capture_method
     async def get_post(self, filter_expression: AttributeBase) -> Optional[dict]:
         response = self._table.scan(FilterExpression=filter_expression)
         if response['Items']:
             return response['Items'][0]
         return None
 
+    @tracer.capture_method
     async def get_post_by_uuid(
         self,
         post_uuid: str,
@@ -53,6 +59,7 @@ class PostRepository:
             return response['Items'][0]
         return None
 
+    @tracer.capture_method
     async def update_post(
         self, post_uuid: str, data: dict, condition_expression: AttributeBase
     ):
@@ -61,7 +68,7 @@ class PostRepository:
         update_expression = []
         for k, v in data.items():
             attribute_names[f'#{k}'] = k
-            attribute_values[f':{k}'] = str(v)
+            attribute_values[f':{k}'] = v
             update_expression.append(f'#{k}=:{k}')
         self._table.update_item(
             Key={'id': post_uuid},
