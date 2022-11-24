@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Optional
+from typing import List
 
 import markdown
 import pendulum
@@ -34,6 +34,7 @@ class PostService:
         self._logger = Logger()
         self._repository = PostRepository()
 
+    @tracer.capture_method
     async def _get_post_by_uuid(self, post_uuid: str) -> Post:
         item = await self._repository.get_post_by_uuid(
             post_uuid, PostFilters.NOT_DELETED
