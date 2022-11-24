@@ -1,6 +1,6 @@
 from typing import List, Optional, Any
 
-from aws_lambda_powertools import Logger
+from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.metrics import Metrics, MetricUnit
 from fastapi import status, APIRouter, Depends, Request, HTTPException, Path
 from starlette.responses import Response
@@ -17,8 +17,10 @@ jwt_bearer = JWTBearer()
 metrics = Metrics()
 post_service = PostService()
 router = APIRouter()
+tracer = Tracer()
 
 
+@tracer.capture_method
 async def authorize(required_privileges: List[str], token: JWTToken) -> bool:
     user = User(**token.sub)
     if set(required_privileges).issubset(user.roles) or 'root' in user.roles:
@@ -28,6 +30,7 @@ async def authorize(required_privileges: List[str], token: JWTToken) -> bool:
     )
 
 
+@tracer.capture_method
 async def create_http_exception(
     status_code: int = status.HTTP_403_FORBIDDEN, detail: str = 'Not authenticated'
 ):
@@ -35,6 +38,7 @@ async def create_http_exception(
 
 
 @router.post('')
+@tracer.capture_method
 async def create_post(
     request: Request, token: JWTToken = Depends(jwt_bearer)
 ) -> Response:
@@ -52,6 +56,7 @@ async def create_post(
     '/{uuid}',
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@tracer.capture_method
 async def delete_post(uuid: str, token: JWTToken = Depends(jwt_bearer)):
     if await authorize(['post:delete'], token):
         await post_service.delete_post(uuid)
@@ -64,6 +69,7 @@ async def delete_post(uuid: str, token: JWTToken = Depends(jwt_bearer)):
     response_model_exclude_none=True,
     status_code=status.HTTP_200_OK,
 )
+@tracer.capture_method
 async def get_all_posts() -> List[PostResponse]:
     posts = await post_service.get_all_posts()
     metrics.add_metric(name='GetAllPosts', unit=MetricUnit.Count, value=1)
@@ -71,6 +77,7 @@ async def get_all_posts() -> List[PostResponse]:
 
 
 @router.get('/archive', status_code=status.HTTP_200_OK)
+@tracer.capture_method
 async def get_archive() -> dict[str, Any]:
     archive = await post_service.get_archive()
     metrics.add_metric(name='GetArchive', unit=MetricUnit.Count, value=1)
@@ -78,6 +85,7 @@ async def get_archive() -> dict[str, Any]:
 
 
 @router.get('/{year}/{month}/{day}/{slug}', status_code=status.HTTP_200_OK)
+@tracer.capture_method
 async def get_post_by_date_and_slug(
     slug: str,
     year: int = Path(ge=1970),
@@ -90,6 +98,7 @@ async def get_post_by_date_and_slug(
 
 
 @router.get('/{uuid}', status_code=status.HTTP_200_OK)
+@tracer.capture_method
 async def get_post_by_uuid(uuid: str) -> PostResponse:
     post_response = await post_service.get_post(uuid)
     metrics.add_metric(name='GetPostByUuid', unit=MetricUnit.Count, value=1)
@@ -100,6 +109,7 @@ async def get_post_by_uuid(uuid: str) -> PostResponse:
     '/{uuid}',
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@tracer.capture_method
 async def update_post(
     request: Request, uuid: str, token: JWTToken = Depends(jwt_bearer)
 ):
