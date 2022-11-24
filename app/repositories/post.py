@@ -68,7 +68,7 @@ class PostRepository:
         update_expression = []
         for k, v in data.items():
             attribute_names[f'#{k}'] = k
-            attribute_values[f':{k}'] = str(v) if v is not None else None
+            attribute_values[f':{k}'] = v
             update_expression.append(f'#{k}=:{k}')
         self._table.update_item(
             Key={'id': post_uuid},
