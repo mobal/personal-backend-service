@@ -11,5 +11,8 @@ install:
 pycodestyle:
 	pipenv run python -m pycodestyle --ignore=E501,W503 app/ tests/
 
+sort:
+	pipenv run python -m isort --atomic .
+
 test:
 	pipenv run python -m pytest --cache-clear --cov-report term --cov=app/
