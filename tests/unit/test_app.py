@@ -83,7 +83,7 @@ class TestApp:
         self, json_body: dict, test_client: TestClient
     ):
         response = test_client.post(
-            f'/api/v1/posts', headers={'Authorization': None}, json=json_body
+            f'/api/v1/posts', headers={'Authorization': ''}, json=json_body
         )
         assert self.NOT_AUTHENTICATED == response.json()['message']
         assert status.HTTP_403_FORBIDDEN == response.status_code
@@ -190,7 +190,6 @@ class TestApp:
     async def test_fail_to_delete_post_due_to_post_not_found_exception(
         self,
         mocker,
-        json_body: dict,
         post_model: Post,
         post_service: PostService,
         test_client_ex: TestClient,
@@ -200,9 +199,7 @@ class TestApp:
             'app.services.post.PostService.delete_post',
             side_effect=PostNotFoundException(detail=error_message),
         )
-        response = test_client_ex.delete(
-            f'/api/v1/posts/{post_model.id}', json=json_body
-        )
+        response = test_client_ex.delete(f'/api/v1/posts/{post_model.id}')
         assert status.HTTP_404_NOT_FOUND == response.status_code
         assert self.X_CORRELATION_ID in response.headers
         assert correlation_id.get() == response.headers.get(self.X_CORRELATION_ID)
@@ -228,7 +225,7 @@ class TestApp:
         self, post_model: Post, test_client: TestClient
     ):
         response = test_client.delete(
-            f'/api/v1/posts/{post_model.id}', headers={'Authorization': None}
+            f'/api/v1/posts/{post_model.id}', headers={'Authorization': ''}
         )
         assert status.HTTP_403_FORBIDDEN == response.status_code
         assert self.X_CORRELATION_ID in response.headers
