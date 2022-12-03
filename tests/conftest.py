@@ -15,7 +15,7 @@ def set_environment_variables(monkeypatch):
     monkeypatch.setenv('CACHE_SERVICE_BASE_URL', 'https://localhost')
     monkeypatch.setenv('JWT_SECRET', '6fl3AkTFmG2rVveLglUW8DOmp8J4Bvi3')
 
-    monkeypatch.setenv('AWS_REGION_NAME', 'eu-central-1')
+    monkeypatch.setenv('AWS_REGION', 'eu-central-1')
     monkeypatch.setenv('AWS_ACCESS_KEY_ID', 'aws_access_key_id')
     monkeypatch.setenv('AWS_SECRET_ACCESS_KEY', 'aws_secret_access_key')
 
