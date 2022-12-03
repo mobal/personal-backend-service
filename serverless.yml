@@ -28,6 +28,7 @@ functions:
       - httpApi: '*'
     handler: app.main.handler
     layers:
+      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:16
       - Ref: PythonRequirementsLambdaLayer
 package:
   patterns:
@@ -41,7 +42,7 @@ package:
   excludeDevDependencies: true
 provider:
   name: aws
-  region: eu-central-1
+  region: ${env:AWS_REGION, 'eu-central-1'}
   runtime: python3.9
   stage: dev
   tracing:

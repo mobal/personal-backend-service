@@ -37,7 +37,7 @@ tracer = Tracer()
 handler = Mangum(app)
 handler.__name__ = 'handler'
 handler = tracer.capture_lambda_handler(handler)
-handler = logger.inject_lambda_context(handler, clear_state=True)
+handler = logger.inject_lambda_context(handler, clear_state=True, log_event=True)
 handler = metrics.log_metrics(handler, capture_cold_start_metric=True)
 
 
