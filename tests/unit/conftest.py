@@ -3,7 +3,7 @@ from typing import Any
 
 import pendulum
 import pytest
-from boto3.dynamodb.conditions import AttributeBase, Attr
+from boto3.dynamodb.conditions import Attr, AttributeBase
 
 from app.auth import JWTBearer
 from app.models.auth import JWTToken

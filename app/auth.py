@@ -2,9 +2,9 @@ from typing import Optional
 
 import jwt
 from aws_lambda_powertools import Logger, Tracer
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
 from fastapi.security import HTTPBearer
-from jwt import ExpiredSignatureError, DecodeError
+from jwt import DecodeError, ExpiredSignatureError
 from starlette import status
 
 from app.models.auth import JWTToken

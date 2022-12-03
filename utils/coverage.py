@@ -1,6 +1,5 @@
 import logging
 import sys
-
 from argparse import ArgumentParser
 from os.path import exists
 from xml.etree import ElementTree

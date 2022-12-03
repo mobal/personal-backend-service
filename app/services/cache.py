@@ -3,9 +3,9 @@ from typing import Optional
 import httpx
 from aws_lambda_powertools import Logger, Tracer
 from starlette import status
+
 from app.exceptions import CacheServiceException
 from app.middlewares import correlation_id
-
 from app.settings import Settings
 
 tracer = Tracer()

@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi_camelcase import CamelModel
-from pydantic import conlist, constr, Extra
+from pydantic import Extra, conlist, constr
 
 from app.models.post import Meta
 

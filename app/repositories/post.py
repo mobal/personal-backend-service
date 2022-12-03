@@ -2,7 +2,7 @@ from typing import List, Optional
 
 import boto3
 from aws_lambda_powertools import Logger, Tracer
-from boto3.dynamodb.conditions import Key, AttributeBase
+from boto3.dynamodb.conditions import AttributeBase, Key
 
 from app.settings import Settings
 
