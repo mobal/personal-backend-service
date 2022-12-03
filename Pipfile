@@ -15,7 +15,7 @@ python-slugify = ">=6.1.2"
 pyjwt = ">=2.6.0"
 pydantic = {extras = ["email"], version = ">=1.10.2"}
 httpx = ">=0.23.0"
-aws-lambda-powertools = ">=1.31.1"
+aws-lambda-powertools = ">=2.4.0"
 certifi = ">=2022.9.24"
 markdown = ">=3.4.1"
 
@@ -30,6 +30,7 @@ pycodestyle = ">=2.9.1"
 black = ">=22.10.0"
 respx = ">=0.20.0"
 isort = ">=5.10.1"
+aws-lambda-powertools = {extras = ["all"], version = ">=2.4.0"}
 
 [requires]
 python_version = "3.9"
