@@ -1,6 +1,5 @@
 import logging
 import sys
-
 from argparse import ArgumentParser
 from os.path import exists
 from xml.etree import ElementTree
@@ -51,14 +50,14 @@ def _save(et: ElementTree, path: str):
 
 def main(coverage_file: str, path_to_find: str, path_to_replace: str):
     if exists(coverage_file) is False:
-        logger.error(f'File coverage_file={coverage_file} is not exists')
+        logger.error(f'File {coverage_file=} is not exists')
         sys.exit(-2)
-    logger.info(f'Load coverage_file={coverage_file}')
+    logger.info(f'Load {coverage_file=}')
     et = _load_coverage(coverage_file)
     logger.info(
-        f'Find and replace source path_to_find={path_to_find} to path_to_replace={path_to_replace}')
+        f'Find and replace source {path_to_find=} to {path_to_replace=}')
     et = _replace_source(et, find=path_to_find, replace=path_to_replace)
-    logger.info(f'Save cov_file={coverage_file}')
+    logger.info(f'Save {coverage_file=}')
     _save(et, coverage_file)
 
 

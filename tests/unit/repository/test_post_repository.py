@@ -2,7 +2,7 @@ import uuid
 
 import pendulum
 import pytest
-from boto3.dynamodb.conditions import Key, Attr, AttributeBase
+from boto3.dynamodb.conditions import Attr, AttributeBase, Key
 
 from app.models.post import Post
 from app.repositories.post import PostRepository

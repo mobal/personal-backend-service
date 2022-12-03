@@ -1,8 +1,8 @@
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.metrics import Metrics, MetricUnit
-from fastapi import status, APIRouter, Depends, Request, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
 from starlette.responses import Response
 
 from app.auth import JWTBearer
