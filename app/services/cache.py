@@ -31,4 +31,4 @@ class CacheService:
             self._logger.debug(f'Cache was not found for {key=}')
             return False
         self._logger.error(f'Unexpected error {response=}')
-        raise CacheServiceException(response.json['message'])
+        raise CacheServiceException(response.json()['message'])
