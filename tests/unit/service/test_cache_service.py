@@ -50,8 +50,9 @@ class TestCacheService:
         result = await cache_service.get(self.key_value['key'])
         assert result is False
 
-    async def test_fail_to_get_key_value_due_to_unexpected_error(self, cache_service: CacheService, settings: Settings,
-                                                                 respx_mock: MockRouter):
+    async def test_fail_to_get_key_value_due_to_unexpected_error(
+        self, cache_service: CacheService, settings: Settings, respx_mock: MockRouter
+    ):
         message = 'Internal Server Error'
         respx_mock.get(
             f'{settings.cache_service_base_url}/api/cache/{self.key_value["key"]}'
