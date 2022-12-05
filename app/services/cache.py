@@ -25,6 +25,7 @@ class CacheService:
                 url, headers={'X-Correlation-ID': correlation_id.get()}
             )
         if response.is_success:
+            self._logger.info(f'{response.json()=}')
             return True
         elif response.status_code == status.HTTP_404_NOT_FOUND:
             self._logger.debug(f'Cache was not found for {key=}')
