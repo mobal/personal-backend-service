@@ -110,7 +110,9 @@ class PostService:
         item.update(update_post.dict(exclude_unset=True))
         post = Post.parse_obj(item)
         post.updated_at = pendulum.now().to_iso8601_string()
-        await self._repository.update_post(post_uuid, post.dict(exclude={'id'}), PostFilters.NOT_DELETED)
+        await self._repository.update_post(
+            post_uuid, post.dict(exclude={'id'}), PostFilters.NOT_DELETED
+        )
         self._logger.info(f'Post successfully updated {post_uuid=}')
 
     @tracer.capture_method

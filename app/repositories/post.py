@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 import boto3
 from aws_lambda_powertools import Logger, Tracer
@@ -13,18 +13,13 @@ class PostRepository:
     def __init__(self):
         self._logger = Logger()
         settings = Settings()
-        session = boto3.Session()
-        dynamodb = session.resource('dynamodb')
-        self._table_name = f'{settings.app_stage}-posts'
-        self._table = dynamodb.Table(self._table_name)
+        self._table = (
+            boto3.Session().resource('dynamodb').Table(f'{settings.app_stage}-posts')
+        )
 
     @tracer.capture_method
     async def create_post(self, data: dict):
         self._table.put_item(Item=data)
-
-    @tracer.capture_method
-    async def describe_table(self) -> Dict[str, Any]:
-        return self._table.describe_table(self._table_name)
 
     @tracer.capture_method
     async def get_all_posts(
@@ -42,6 +37,10 @@ class PostRepository:
             )
             items.extend(response['Items'])
         return items
+
+    @tracer.capture_method
+    async def get_item_count(self) -> int:
+        return self._table.item_count
 
     @tracer.capture_method
     async def get_post(self, filter_expression: AttributeBase) -> Optional[dict]:

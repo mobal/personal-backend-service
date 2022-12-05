@@ -137,3 +137,9 @@ class TestPostRepository:
             & Attr('slug').eq(post_model.slug)
         )
         assert await post_repository.get_post(filter_expression) is None
+
+    async def test_successfully_get_item_count(
+        self, dynamodb_table, post_repository: PostRepository
+    ):
+        item_count = await post_repository.get_item_count()
+        assert 1 == item_count
