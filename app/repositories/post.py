@@ -10,6 +10,8 @@ tracer = Tracer()
 
 
 class PostRepository:
+    SELECT_COUNT = 'COUNT'
+
     def __init__(self):
         self._logger = Logger()
         settings = Settings()
@@ -38,8 +40,15 @@ class PostRepository:
             items.extend(response['Items'])
         return items
 
+    async def count_all_posts(self, filter_expression: AttributeBase) -> int:
+        response = self._table.scan(
+            Select=PostRepository.SELECT_COUNT,
+            FilterExpression=filter_expression,
+        )
+        return response['Count']
+
     @tracer.capture_method
-    async def get_item_count(self) -> int:
+    async def item_count(self) -> int:
         return self._table.item_count
 
     @tracer.capture_method

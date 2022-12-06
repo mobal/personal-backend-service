@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import Any, List
 
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.metrics import Metrics, MetricUnit

@@ -16,7 +16,7 @@ from app.schemas.post import CreatePost, UpdatePost
 tracer = Tracer()
 
 
-class PostFilters:
+class FilterExpressions:
     NOT_DELETED = Attr('deleted_at').eq(None) | Attr('deleted_at').not_exists()
     PUBLISHED = Attr('published_at').ne(None)
 
@@ -37,7 +37,7 @@ class PostService:
     @tracer.capture_method
     async def _get_post_by_uuid(self, post_uuid: str) -> Post:
         item = await self._repository.get_post_by_uuid(
-            post_uuid, PostFilters.NOT_DELETED
+            post_uuid, FilterExpressions.NOT_DELETED
         )
         if item is None:
             self._logger.error(f'Post was not found with UUID {post_uuid=}')
@@ -60,14 +60,14 @@ class PostService:
         post = await self._get_post_by_uuid(post_uuid)
         post.deleted_at = pendulum.now().to_iso8601_string()
         await self._repository.update_post(
-            post_uuid, post.dict(exclude={'id'}), PostFilters.NOT_DELETED
+            post_uuid, post.dict(exclude={'id'}), FilterExpressions.NOT_DELETED
         )
         self._logger.info(f'Post successfully deleted {post_uuid=}')
 
     @tracer.capture_method
     async def get_all_posts(self) -> List[PostResponse]:
         items = await self._repository.get_all_posts(
-            PostFilters.NOT_DELETED & PostFilters.PUBLISHED,
+            FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
             ['id', 'title', 'meta', 'published_at'],
         )
         result = []
@@ -89,7 +89,7 @@ class PostService:
         end = start.end_of('day')
         start.to_datetime_string()
         filter_expression = (
-            PostFilters.NOT_DELETED
+            FilterExpressions.NOT_DELETED
             & Attr('published_at').between(start.isoformat('T'), end.isoformat('T'))
             & Attr('slug').eq(slug)
         )
@@ -102,7 +102,7 @@ class PostService:
     @tracer.capture_method
     async def update_post(self, post_uuid: str, update_post: UpdatePost):
         item = await self._repository.get_post_by_uuid(
-            post_uuid, PostFilters.NOT_DELETED
+            post_uuid, FilterExpressions.NOT_DELETED
         )
         if item is None:
             self._logger.error(f'Post was not found by UUID {post_uuid=}')
@@ -111,14 +111,15 @@ class PostService:
         post = Post.parse_obj(item)
         post.updated_at = pendulum.now().to_iso8601_string()
         await self._repository.update_post(
-            post_uuid, post.dict(exclude={'id'}), PostFilters.NOT_DELETED
+            post_uuid, post.dict(exclude={'id'}), FilterExpressions.NOT_DELETED
         )
         self._logger.info(f'Post successfully updated {post_uuid=}')
 
     @tracer.capture_method
     async def get_archive(self) -> dict[str, int]:
         items = await self._repository.get_all_posts(
-            PostFilters.NOT_DELETED & PostFilters.PUBLISHED, ['id', 'published_at']
+            FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
+            ['id', 'published_at'],
         )
         archive = {}
         if items:
