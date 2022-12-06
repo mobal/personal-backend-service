@@ -25,17 +25,19 @@ class PostRepository:
 
     @tracer.capture_method
     async def get_all_posts(
-        self, filter_expression: AttributeBase, fields: Optional[List[str]] = None
+        self, filter_expression: AttributeBase, fields: List[str] = None
     ) -> List[dict]:
-        kwargs = {'FilterExpression': filter_expression}
-        if fields:
-            kwargs['ProjectionExpression'] = ','.join(fields)
-        response = self._table.scan(**kwargs)
+        projection_expression = ','.join(fields)
+        response = self._table.scan(
+            FilterExpression=filter_expression,
+            ProjectionExpression=projection_expression,
+        )
         items = response['Items']
         while 'LastEvaluatedKey' in response:
             response = self._table.scan(
                 ExclusiveStartKey=response['LastEvaluatedKey'],
-                **kwargs,
+                FilterExpression=filter_expression,
+                ProjectionExpression=projection_expression,
             )
             items.extend(response['Items'])
         return items

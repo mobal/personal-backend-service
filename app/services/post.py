@@ -68,7 +68,7 @@ class PostService:
     async def get_all_posts(self) -> List[PostResponse]:
         items = await self._repository.get_all_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
-            ['id', 'title', 'meta', 'published_at'],
+            ['id', 'title', 'meta', 'published_at', 'updated_at'],
         )
         result = []
         for item in items:

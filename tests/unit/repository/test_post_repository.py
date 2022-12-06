@@ -47,7 +47,9 @@ class TestPostRepository:
         post_model: Post,
         post_repository: PostRepository,
     ):
-        items = await post_repository.get_all_posts(filter_expression)
+        items = await post_repository.get_all_posts(
+            filter_expression, list(post_model.__fields__.keys())
+        )
         assert len(items) == 1
         assert post_model == items[0]
 
