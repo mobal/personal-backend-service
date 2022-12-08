@@ -10,6 +10,8 @@ tracer = Tracer()
 
 
 class PostRepository:
+    SELECT_COUNT = 'COUNT'
+
     def __init__(self):
         self._logger = Logger()
         settings = Settings()
@@ -23,23 +25,32 @@ class PostRepository:
 
     @tracer.capture_method
     async def get_all_posts(
-        self, filter_expression: AttributeBase, fields: Optional[List[str]] = None
+        self, filter_expression: AttributeBase, fields: List[str] = None
     ) -> List[dict]:
-        kwargs = {'FilterExpression': filter_expression}
-        if fields:
-            kwargs['ProjectionExpression'] = ','.join(fields)
-        response = self._table.scan(**kwargs)
+        projection_expression = ','.join(fields)
+        response = self._table.scan(
+            FilterExpression=filter_expression,
+            ProjectionExpression=projection_expression,
+        )
         items = response['Items']
         while 'LastEvaluatedKey' in response:
             response = self._table.scan(
                 ExclusiveStartKey=response['LastEvaluatedKey'],
-                **kwargs,
+                FilterExpression=filter_expression,
+                ProjectionExpression=projection_expression,
             )
             items.extend(response['Items'])
         return items
 
+    async def count_all_posts(self, filter_expression: AttributeBase) -> int:
+        response = self._table.scan(
+            Select=PostRepository.SELECT_COUNT,
+            FilterExpression=filter_expression,
+        )
+        return response['Count']
+
     @tracer.capture_method
-    async def get_item_count(self) -> int:
+    async def item_count(self) -> int:
         return self._table.item_count
 
     @tracer.capture_method

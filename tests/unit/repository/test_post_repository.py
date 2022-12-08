@@ -47,7 +47,9 @@ class TestPostRepository:
         post_model: Post,
         post_repository: PostRepository,
     ):
-        items = await post_repository.get_all_posts(filter_expression)
+        items = await post_repository.get_all_posts(
+            filter_expression, list(post_model.__fields__.keys())
+        )
         assert len(items) == 1
         assert post_model == items[0]
 
@@ -126,7 +128,7 @@ class TestPostRepository:
         assert post_model.dict() == item
 
     async def test_fail_to_get_post(
-        self, dynamodb_table, post_model: Post, post_repository: PostRepository
+        self, post_model: Post, post_repository: PostRepository
     ):
         dt = pendulum.parse(post_model.published_at).add(days=1)
         filter_expression = (
@@ -138,8 +140,12 @@ class TestPostRepository:
         )
         assert await post_repository.get_post(filter_expression) is None
 
-    async def test_successfully_get_item_count(
-        self, dynamodb_table, post_repository: PostRepository
-    ):
-        item_count = await post_repository.get_item_count()
+    async def test_successfully_get_item_count(self, post_repository: PostRepository):
+        item_count = await post_repository.item_count()
         assert 1 == item_count
+
+    async def test_successfully_count_all_posts(
+        self, filter_expression: AttributeBase, post_repository: PostRepository
+    ):
+        count = await post_repository.count_all_posts(filter_expression)
+        assert 1 == count
