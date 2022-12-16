@@ -15,6 +15,8 @@ tracer = Tracer()
 
 
 class JWTBearer(HTTPBearer):
+    ERROR_MESSAGE_NOT_AUTHENTICATED = 'Not authenticated'
+
     def __init__(self, auto_error: bool = True):
         super().__init__(auto_error=auto_error)
         self._logger = Logger()
@@ -30,7 +32,7 @@ class JWTBearer(HTTPBearer):
                     self._logger.error(f'Invalid authentication token {credentials=}')
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail='Not authenticated',
+                        detail=JWTBearer.ERROR_MESSAGE_NOT_AUTHENTICATED,
                     )
                 else:
                     return None
