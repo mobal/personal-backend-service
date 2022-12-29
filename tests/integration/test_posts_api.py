@@ -305,7 +305,7 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self.generate_jwt_token(['post:delete'])
+        jwt_token = await self.generate_jwt_token([TestPostsApi.ROLE_POST_DELETE])
         cache_service_mock = await self.generate_respx_mock(
             'GET',
             cache_service_response_404,
@@ -423,7 +423,7 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self.generate_jwt_token(['post:delete'])
+        jwt_token = await self.generate_jwt_token([TestPostsApi.ROLE_POST_DELETE])
         cache_service_mock = await self.generate_respx_mock(
             'GET',
             cache_service_response_404,
