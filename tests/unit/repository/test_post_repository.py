@@ -10,36 +10,20 @@ from app.repositories.post import PostRepository
 
 @pytest.mark.asyncio
 class TestPostRepository:
-    @pytest.fixture
-    def dynamodb_table(self, dynamodb_resource):
-        return dynamodb_resource.Table('test-posts')
-
-    @pytest.fixture(autouse=True)
-    def setup_table(self, dynamodb_resource, dynamodb_table, post_model: Post):
-        dynamodb_resource.create_table(
-            TableName='test-posts',
-            KeySchema=[{'AttributeName': 'id', 'KeyType': 'HASH'}],
-            AttributeDefinitions=[{'AttributeName': 'id', 'AttributeType': 'S'}],
-            ProvisionedThroughput={'ReadCapacityUnits': 1, 'WriteCapacityUnits': 1},
-        )
-        dynamodb_table.put_item(Item=post_model.dict())
-
     async def test_successfully_create_post(
         self,
-        dynamodb_table,
         post_dict: dict,
         post_model: Post,
         post_repository: PostRepository,
+        posts_table,
     ):
         post_dict['id'] = post_model.id
         post_dict['slug'] = f'some-random-title'
-        await post_repository.create_post(post_dict)
-        response = dynamodb_table.query(
-            KeyConditionExpression=Key('id').eq(post_dict['id'])
-        )
+        await post_repository.create_post(post_model.dict())
+        response = posts_table.query(KeyConditionExpression=Key('id').eq(post_model.id))
         assert 1 == response['Count']
         item = response['Items'][0]
-        assert item == post_dict
+        assert item == post_model.dict()
 
     async def test_successfully_get_all_posts(
         self,
@@ -76,7 +60,9 @@ class TestPostRepository:
         assert post_model.dict() == item
 
     async def test_fail_to_get_post_by_uuid(
-        self, filter_expression: AttributeBase, post_repository: PostRepository
+        self,
+        filter_expression: AttributeBase,
+        post_repository: PostRepository,
     ):
         post_uuid = str(uuid.uuid4())
         assert (
@@ -85,15 +71,15 @@ class TestPostRepository:
 
     async def test_successfully_update_post(
         self,
-        dynamodb_table,
         filter_expression: AttributeBase,
         post_model: Post,
         post_repository: PostRepository,
+        posts_table,
     ):
         now = pendulum.now()
         data = {'content': 'Updated content', 'updated_at': now.to_iso8601_string()}
         await post_repository.update_post(post_model.id, data, filter_expression)
-        response = dynamodb_table.query(
+        response = posts_table.query(
             KeyConditionExpression=Key('id').eq(post_model.id),
             FilterExpression=Attr('deleted_at').eq(None),
         )
@@ -112,7 +98,7 @@ class TestPostRepository:
         assert now.to_iso8601_string() == item['updated_at']
 
     async def test_successfully_get_post(
-        self, dynamodb_table, post_model: Post, post_repository: PostRepository
+        self, post_model: Post, post_repository: PostRepository
     ):
         dt = pendulum.parse(post_model.published_at)
         filter_expression = Attr('deleted_at').eq(None) | Attr(
@@ -145,7 +131,9 @@ class TestPostRepository:
         assert 1 == item_count
 
     async def test_successfully_count_all_posts(
-        self, filter_expression: AttributeBase, post_repository: PostRepository
+        self,
+        filter_expression: AttributeBase,
+        post_repository: PostRepository,
     ):
         count = await post_repository.count_all_posts(filter_expression)
         assert 1 == count
