@@ -3,7 +3,9 @@ from typing import Optional
 import jwt
 from aws_lambda_powertools import Logger, Tracer
 from fastapi import HTTPException, Request
-from fastapi.security import HTTPBearer
+from fastapi.security.http import HTTPAuthorizationCredentials
+from fastapi.security.http import HTTPBearer as FastAPIHTTPBearer
+from fastapi.security.utils import get_authorization_scheme_param
 from jwt import DecodeError, ExpiredSignatureError
 from starlette import status
 
@@ -13,10 +15,66 @@ from app.settings import Settings
 
 tracer = Tracer()
 
+ERROR_MESSAGE_NOT_AUTHENTICATED = 'Not authenticated'
+
+
+class HTTPBearer(FastAPIHTTPBearer):
+    def __init__(self, auto_error: bool = True):
+        super().__init__(auto_error=auto_error)
+        self._logger = Logger()
+        self.auto_error = auto_error
+
+    @tracer.capture_method
+    async def __call__(
+        self, request: Request
+    ) -> Optional[HTTPAuthorizationCredentials]:
+        authorization = request.headers.get('Authorization')
+        if authorization is not None:
+            return await self._get_authorization_credentials_from_header(authorization)
+        else:
+            return await self._get_authorization_credentials_from_token(
+                request.query_params.get('token')
+            )
+
+    @tracer.capture_method
+    async def _get_authorization_credentials_from_header(
+        self, authorization: str
+    ) -> Optional[HTTPAuthorizationCredentials]:
+        scheme, credentials = get_authorization_scheme_param(authorization)
+        if not (authorization and scheme and credentials):
+            if self.auto_error:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=ERROR_MESSAGE_NOT_AUTHENTICATED,
+                )
+            else:
+                return None
+        if scheme.lower() != 'bearer':
+            if self.auto_error:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail='Invalid authentication credentials',
+                )
+            else:
+                return None
+        return HTTPAuthorizationCredentials(scheme=scheme, credentials=credentials)
+
+    @tracer.capture_method
+    async def _get_authorization_credentials_from_token(
+        self, token: Optional[str]
+    ) -> Optional[HTTPAuthorizationCredentials]:
+        if not token:
+            if self.auto_error:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=ERROR_MESSAGE_NOT_AUTHENTICATED,
+                )
+            else:
+                return None
+        return HTTPAuthorizationCredentials(scheme='Bearer', credentials=token)
+
 
 class JWTBearer(HTTPBearer):
-    ERROR_MESSAGE_NOT_AUTHENTICATED = 'Not authenticated'
-
     def __init__(self, auto_error: bool = True):
         super().__init__(auto_error=auto_error)
         self._logger = Logger()
@@ -24,6 +82,7 @@ class JWTBearer(HTTPBearer):
         self.cache_service = CacheService()
         self.settings = Settings()
 
+    @tracer.capture_method
     async def __call__(self, request: Request) -> Optional[JWTToken]:
         credentials = await super(JWTBearer, self).__call__(request)
         if credentials:
@@ -32,7 +91,7 @@ class JWTBearer(HTTPBearer):
                     self._logger.error(f'Invalid authentication token {credentials=}')
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail=JWTBearer.ERROR_MESSAGE_NOT_AUTHENTICATED,
+                        detail=ERROR_MESSAGE_NOT_AUTHENTICATED,
                     )
                 else:
                     return None

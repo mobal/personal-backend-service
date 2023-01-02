@@ -5,7 +5,7 @@ import pytest
 from boto3.dynamodb.conditions import Attr, AttributeBase
 
 from app.auth import JWTBearer
-from app.models.auth import JWTToken
+from app.models.auth import JWTToken, Role
 from app.models.post import Post
 from app.repositories.post import PostRepository
 from app.services.cache import CacheService
@@ -43,7 +43,7 @@ def jwt_token() -> JWTToken:
             'id': str(uuid.uuid4()),
             'email': 'info@netcode.hu',
             'display_name': 'root',
-            'roles': ['post:create', 'post:delete', 'post:edit'],
+            'roles': [Role.POST_CREATE, Role.POST_DELETE, Role.POST_UPDATE],
             'created_at': now.to_iso8601_string(),
             'deleted_at': None,
             'updated_at': None,
