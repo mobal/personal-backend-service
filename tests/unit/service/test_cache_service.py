@@ -11,7 +11,6 @@ from app.services.cache import CacheService
 from app.settings import Settings
 
 
-# TODO: Assert respx mock
 @pytest.mark.asyncio
 class TestCacheService:
     key_value = {
@@ -24,19 +23,21 @@ class TestCacheService:
     async def test_successfully_get_key_value(
         self, cache_service: CacheService, settings: Settings, respx_mock: MockRouter
     ):
-        respx_mock.get(
+        cache_service_mock = respx_mock.get(
             f'{settings.cache_service_base_url}/api/cache/{self.key_value["key"]}'
         ).mock(
             return_value=Response(status_code=status.HTTP_200_OK, json=self.key_value)
         )
         result = await cache_service.get(self.key_value['key'])
         assert bool(result) is True
+        assert cache_service_mock.called
+        assert cache_service_mock.call_count == 1
 
     async def test_fail_to_get_key_value_due_to_invalid_id(
         self, cache_service: CacheService, settings: Settings, respx_mock: MockRouter
     ):
         message = f'The requested value was not found for key={self.key_value["key"]}'
-        respx_mock.get(
+        cache_service_mock = respx_mock.get(
             f'{settings.cache_service_base_url}/api/cache/{self.key_value["key"]}'
         ).mock(
             Response(
@@ -50,12 +51,14 @@ class TestCacheService:
         )
         result = await cache_service.get(self.key_value['key'])
         assert result is False
+        assert cache_service_mock.called
+        assert cache_service_mock.call_count == 1
 
     async def test_fail_to_get_key_value_due_to_unexpected_error(
         self, cache_service: CacheService, settings: Settings, respx_mock: MockRouter
     ):
         message = 'Internal Server Error'
-        respx_mock.get(
+        cache_service_mock = respx_mock.get(
             f'{settings.cache_service_base_url}/api/cache/{self.key_value["key"]}'
         ).mock(
             Response(
@@ -72,3 +75,5 @@ class TestCacheService:
         assert excinfo.type.__name__ == CacheServiceException.__name__
         assert status.HTTP_500_INTERNAL_SERVER_ERROR == excinfo.value.status_code
         assert message == excinfo.value.detail
+        assert cache_service_mock.called
+        assert cache_service_mock.call_count == 1
