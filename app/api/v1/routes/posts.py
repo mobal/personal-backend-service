@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
 from starlette.responses import Response
 
 from app.auth import JWTBearer
-from app.models.auth import JWTToken, User
+from app.models.auth import JWTToken, Role, User
 from app.models.response import Post as PostResponse
 from app.schemas.post import CreatePost, UpdatePost
 from app.services.post import PostService
@@ -21,20 +21,14 @@ tracer = Tracer()
 
 
 @tracer.capture_method
-async def authorize(required_privileges: List[str], token: JWTToken) -> bool:
+async def authorize(role: Role, token: JWTToken) -> bool:
     user = User(**token.sub)
-    if set(required_privileges).issubset(user.roles) or 'root' in user.roles:
+    if role in user.roles:
         return True
-    raise await create_http_exception(
+    logger.error(f'The {user=} does not have the appropriate {role=}')
+    raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized'
     )
-
-
-@tracer.capture_method
-async def create_http_exception(
-    status_code: int = status.HTTP_403_FORBIDDEN, detail: str = 'Not authenticated'
-):
-    raise HTTPException(status_code=status_code, detail=detail)
 
 
 @router.post('')
@@ -42,7 +36,7 @@ async def create_http_exception(
 async def create_post(
     request: Request, token: JWTToken = Depends(jwt_bearer)
 ) -> Response:
-    if await authorize(['post:create'], token):
+    if await authorize(Role.POST_CREATE, token):
         model = CreatePost.parse_raw(await request.body())
         post = await post_service.create_post(model)
         metrics.add_metric(name='CreatePost', unit=MetricUnit.Count, value=1)
@@ -58,7 +52,7 @@ async def create_post(
 )
 @tracer.capture_method
 async def delete_post(uuid: str, token: JWTToken = Depends(jwt_bearer)):
-    if await authorize(['post:delete'], token):
+    if await authorize(Role.POST_DELETE, token):
         await post_service.delete_post(uuid)
         metrics.add_metric(name='DeletePost', unit=MetricUnit.Count, value=1)
 
@@ -113,7 +107,7 @@ async def get_post_by_uuid(uuid: str) -> PostResponse:
 async def update_post(
     request: Request, uuid: str, token: JWTToken = Depends(jwt_bearer)
 ):
-    if await authorize(['post:edit'], token):
+    if await authorize(Role.POST_UPDATE, token):
         model = UpdatePost.parse_raw(await request.body())
         await post_service.update_post(uuid, model)
         metrics.add_metric(name='UpdatePost', unit=MetricUnit.Count, value=1)
