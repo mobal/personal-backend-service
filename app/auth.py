@@ -32,6 +32,7 @@ class HTTPBearer(FastAPIHTTPBearer):
         if authorization is not None:
             return await self._get_authorization_credentials_from_header(authorization)
         else:
+            self._logger.info('Missing authentication header, attempt to use token query param')
             return await self._get_authorization_credentials_from_token(
                 request.query_params.get('token')
             )
@@ -42,6 +43,7 @@ class HTTPBearer(FastAPIHTTPBearer):
     ) -> Optional[HTTPAuthorizationCredentials]:
         scheme, credentials = get_authorization_scheme_param(authorization)
         if not (authorization and scheme and credentials):
+            self._logger.error(f'Missing {authorization=}, {scheme=} or {credentials=}')
             if self.auto_error:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -50,6 +52,7 @@ class HTTPBearer(FastAPIHTTPBearer):
             else:
                 return None
         if scheme.lower() != 'bearer':
+            self._logger.error(f'Invalid {scheme=}')
             if self.auto_error:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
