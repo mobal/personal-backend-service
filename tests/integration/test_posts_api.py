@@ -35,6 +35,7 @@ class TestPostsApi:
         assert response.status_code == status_code
         result = response.json()
         assert result['status'] == status_code
+        assert result['id']
         assert result['message'] == message
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
@@ -119,13 +120,12 @@ class TestPostsApi:
     ):
         response = test_client.get(self.BASE_URL)
         assert response.status_code == status.HTTP_200_OK
-        json = response.json()
-        assert len(json) == 1
-        post = json[0]
-        assert post_model.id == post['id']
-        assert post_model.title == post['title']
-        assert post_model.published_at == post['publishedAt']
-        assert post_model.meta == post['meta']
+        result = response.json()
+        assert len(result) == 1
+        assert result[0]['id'] == post_model.id
+        assert result[0]['title'] == post_model.title
+        assert result[0]['publishedAt'] == post_model.published_at
+        assert result[0]['meta'] == post_model.meta
 
     async def test_fail_to_get_post_by_uuid_due_to_not_found(
         self, post_model: Post, test_client: TestClient
@@ -134,25 +134,25 @@ class TestPostsApi:
             f'{self.BASE_URL}/653000ce-4b15-4242-a07d-fd8eed656d36'
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        json = response.json()
-        assert json['status'] == status.HTTP_404_NOT_FOUND
-        assert json['message'] == self.ERROR_MESSAGE_NOT_FOUND
+        result = response.json()
+        assert result['status'] == status.HTTP_404_NOT_FOUND
+        assert result['id']
+        assert result['message'] == self.ERROR_MESSAGE_NOT_FOUND
 
     async def test_successfully_get_post_by_uuid(
         self, post_model: Post, test_client: TestClient
     ):
         response = test_client.get(f'{self.BASE_URL}/{post_model.id}')
         assert response.status_code == status.HTTP_200_OK
-        post = response.json()
-        assert post['id'] == post_model.id
+        result = response.json()
+        assert result['id'] == post_model.id
 
     async def test_successfully_get_archive(self, test_client: TestClient):
         response = test_client.get(f'{self.BASE_URL}/archive')
         assert response.status_code == status.HTTP_200_OK
-        archive = response.json()
+        result = response.json()
         date = pendulum.now().format('YYYY-MM')
-        assert archive.get(date)
-        assert archive[date] == 1
+        assert result[date] == 1
 
     async def test_successfully_get_post_by_date_and_slug(
         self, post_model: Post, test_client: TestClient
@@ -172,9 +172,10 @@ class TestPostsApi:
             f'{self.BASE_URL}/{random.randint(1970, 2999)}/{random.randint(1, 12)}/{random.randint(1, 31)}/slug'
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
-        json = response.json()
-        assert json['status'] == status.HTTP_404_NOT_FOUND
-        assert json['message'] == self.ERROR_MESSAGE_NOT_FOUND
+        result = response.json()
+        assert result['status'] == status.HTTP_404_NOT_FOUND
+        assert result['id']
+        assert result['message'] == self.ERROR_MESSAGE_NOT_FOUND
 
     async def test_fail_to_delete_post_due_to_not_found(
         self,
@@ -210,6 +211,7 @@ class TestPostsApi:
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
         assert result['status'] == status.HTTP_403_FORBIDDEN
+        assert result['id']
         assert result['message'] == self.ERROR_MESSAGE_NOT_AUTHENTICATED
 
     async def test_fail_to_delete_post_due_to_blacklisted_jwt_token(
@@ -324,10 +326,10 @@ class TestPostsApi:
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         result = response.json()
-        assert result.get('status') == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert result.get('id')
-        assert result.get('message')
-        assert result.get('errors')
+        assert result['status'] == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert result['id']
+        assert result['message']
+        assert result['errors']
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
 
@@ -344,6 +346,7 @@ class TestPostsApi:
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
         assert result['status'] == status.HTTP_403_FORBIDDEN
+        assert result['id']
         assert result['message'] == self.ERROR_MESSAGE_NOT_AUTHENTICATED
 
     async def test_fail_to_create_post_due_to_blacklisted_jwt_token(
@@ -501,10 +504,10 @@ class TestPostsApi:
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         result = response.json()
-        assert result.get('status') == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert result.get('id')
-        assert result.get('message')
-        assert result.get('errors')
+        assert result['status'] == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert result['id']
+        assert result['message']
+        assert result['errors']
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
 
@@ -521,6 +524,7 @@ class TestPostsApi:
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
         assert result['status'] == status.HTTP_403_FORBIDDEN
+        assert result['id']
         assert result['message'] == self.ERROR_MESSAGE_NOT_AUTHENTICATED
 
     async def test_fail_to_update_post_due_to_blacklisted_jwt_token(
