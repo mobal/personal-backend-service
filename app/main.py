@@ -7,6 +7,7 @@ from aws_lambda_powertools.metrics import MetricUnit
 from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi_camelcase import CamelModel
 from httpx import HTTPError
 from mangum import Mangum
@@ -67,7 +68,7 @@ async def error_handler(request: Request, error) -> JSONResponse:
     )
 
 
-@app.exception_handler(StarletteHTTPException)
+@app.exception_handler(HTTPException)
 async def starlette_http_exception_handler(
     request: Request, error: HTTPException
 ) -> JSONResponse:
@@ -82,6 +83,7 @@ async def starlette_http_exception_handler(
     )
 
 
+@app.exception_handler(RequestValidationError)
 @app.exception_handler(ValidationError)
 async def validation_error_handler(
     request: Request, error: ValidationError

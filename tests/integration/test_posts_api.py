@@ -201,9 +201,7 @@ class TestPostsApi:
         )
 
     async def test_fail_to_delete_post_due_to_unauthorized(
-        self,
-        respx_mock: MockRouter,
-        test_client: TestClient,
+        self, test_client: TestClient
     ):
         response = test_client.delete(
             f'{self.BASE_URL}/{str(uuid.uuid4())}',
@@ -308,10 +306,34 @@ class TestPostsApi:
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
 
+    async def test_fail_to_create_post_due_to_bad_request(
+        self,
+        cache_service_response_404,
+        respx_mock: MockRouter,
+        test_client: TestClient,
+    ):
+        jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
+        cache_service_mock = await self._generate_respx_mock(
+            'GET',
+            cache_service_response_404,
+            respx_mock,
+            self.CACHE_SERVICE_URL,
+        )
+        response = test_client.post(
+            self.BASE_URL, headers={'Authorization': f'Bearer {jwt_token}'}, json={}
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        result = response.json()
+        assert result.get('status') == status.HTTP_400_BAD_REQUEST
+        assert result.get('id')
+        assert result.get('message')
+        assert result.get('errors')
+        assert cache_service_mock.called
+        assert cache_service_mock.call_count == 1
+
     async def test_fail_to_create_post_due_to_unauthorized(
         self,
         post_model: Post,
-        respx_mock: MockRouter,
         test_client: TestClient,
     ):
         response = test_client.post(
@@ -452,10 +474,43 @@ class TestPostsApi:
             response,
         )
 
+    async def test_fail_to_update_post_due_to_bad_request(
+        self,
+        cache_service_response_404,
+        post_model: Post,
+        respx_mock: MockRouter,
+        test_client: TestClient,
+    ):
+        jwt_token = await self._generate_jwt_token(self.ROLE_POST_EDIT)
+        cache_service_mock = await self._generate_respx_mock(
+            'GET',
+            cache_service_response_404,
+            respx_mock,
+            self.CACHE_SERVICE_URL,
+        )
+        response = test_client.put(
+            f'{self.BASE_URL}/{post_model.id}',
+            headers={'Authorization': f'Bearer {jwt_token}'},
+            json={
+                'author': 'a',
+                'title': 't',
+                'content': 'c',
+                'tags': [],
+                'published_at': 0,
+            },
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        result = response.json()
+        assert result.get('status') == status.HTTP_400_BAD_REQUEST
+        assert result.get('id')
+        assert result.get('message')
+        assert result.get('errors')
+        assert cache_service_mock.called
+        assert cache_service_mock.call_count == 1
+
     async def test_fail_to_update_post_due_to_unauthorized(
         self,
         post_model: Post,
-        respx_mock: MockRouter,
         test_client: TestClient,
     ):
         response = test_client.put(

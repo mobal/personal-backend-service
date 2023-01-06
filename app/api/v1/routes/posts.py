@@ -2,7 +2,7 @@ from typing import Any, List
 
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.metrics import Metrics, MetricUnit
-from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 from starlette.responses import Response
 
 from app.auth import JWTBearer
@@ -34,10 +34,9 @@ async def authorize(role: Role, token: JWTToken) -> bool:
 @router.post('')
 @tracer.capture_method
 async def create_post(
-    request: Request, token: JWTToken = Depends(jwt_bearer)
+    model: CreatePost, token: JWTToken = Depends(jwt_bearer)
 ) -> Response:
     if await authorize(Role.POST_CREATE, token):
-        model = CreatePost.parse_raw(await request.body())
         post = await post_service.create_post(model)
         metrics.add_metric(name='CreatePost', unit=MetricUnit.Count, value=1)
         return Response(
@@ -105,9 +104,8 @@ async def get_post_by_uuid(uuid: str) -> PostResponse:
 )
 @tracer.capture_method
 async def update_post(
-    request: Request, uuid: str, token: JWTToken = Depends(jwt_bearer)
+    model: UpdatePost, uuid: str, token: JWTToken = Depends(jwt_bearer)
 ):
     if await authorize(Role.POST_UPDATE, token):
-        model = UpdatePost.parse_raw(await request.body())
         await post_service.update_post(uuid, model)
         metrics.add_metric(name='UpdatePost', unit=MetricUnit.Count, value=1)
