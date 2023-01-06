@@ -13,7 +13,6 @@ from httpx import HTTPError
 from mangum import Mangum
 from pydantic import ValidationError
 from starlette import status
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import JSONResponse
@@ -54,7 +53,7 @@ class ValidationErrorResponse(ErrorResponse):
 @app.exception_handler(ClientError)
 @app.exception_handler(HTTPError)
 @app.exception_handler(Exception)
-async def error_handler(request: Request, error) -> JSONResponse:
+async def error_handler(request: Request, error: Exception) -> JSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error) if settings.app_debug else 'Internal Server Error'
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -69,7 +68,7 @@ async def error_handler(request: Request, error) -> JSONResponse:
 
 
 @app.exception_handler(HTTPException)
-async def starlette_http_exception_handler(
+async def http_exception_handler(
     request: Request, error: HTTPException
 ) -> JSONResponse:
     error_id = uuid.uuid4()
