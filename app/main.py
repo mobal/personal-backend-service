@@ -90,7 +90,7 @@ async def validation_error_handler(
 ) -> JSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error)
-    status_code = status.HTTP_400_BAD_REQUEST
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     logger.error(f'{error_message} with {status_code=} and {error_id=}')
     metrics.add_metric(name='ValidationErrorHandler', unit=MetricUnit.Count, value=1)
     return JSONResponse(

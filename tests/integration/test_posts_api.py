@@ -322,9 +322,9 @@ class TestPostsApi:
         response = test_client.post(
             self.BASE_URL, headers={'Authorization': f'Bearer {jwt_token}'}, json={}
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         result = response.json()
-        assert result.get('status') == status.HTTP_400_BAD_REQUEST
+        assert result.get('status') == status.HTTP_422_UNPROCESSABLE_ENTITY
         assert result.get('id')
         assert result.get('message')
         assert result.get('errors')
@@ -499,9 +499,9 @@ class TestPostsApi:
                 'published_at': 0,
             },
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         result = response.json()
-        assert result.get('status') == status.HTTP_400_BAD_REQUEST
+        assert result.get('status') == status.HTTP_422_UNPROCESSABLE_ENTITY
         assert result.get('id')
         assert result.get('message')
         assert result.get('errors')
