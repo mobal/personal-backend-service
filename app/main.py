@@ -9,17 +9,15 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi_camelcase import CamelModel
-from httpx import NetworkError
+from httpx import HTTPError
 from mangum import Mangum
 from pydantic import ValidationError
 from starlette import status
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.exceptions import ExceptionMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import JSONResponse
 
 from app.api.v1.api import router
-from app.exceptions import CacheServiceException
 from app.middlewares import CorrelationIdMiddleware
 from app.settings import Settings
 
@@ -53,9 +51,9 @@ class ValidationErrorResponse(ErrorResponse):
 
 @app.exception_handler(BotoCoreError)
 @app.exception_handler(ClientError)
-@app.exception_handler(NetworkError)
+@app.exception_handler(HTTPError)
 @app.exception_handler(Exception)
-async def error_handler(request: Request, error) -> JSONResponse:
+async def error_handler(request: Request, error: Exception) -> JSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error) if settings.app_debug else 'Internal Server Error'
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -69,9 +67,7 @@ async def error_handler(request: Request, error) -> JSONResponse:
     )
 
 
-@app.exception_handler(CacheServiceException)
 @app.exception_handler(HTTPException)
-@app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(
     request: Request, error: HTTPException
 ) -> JSONResponse:
@@ -93,7 +89,7 @@ async def validation_error_handler(
 ) -> JSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error)
-    status_code = status.HTTP_400_BAD_REQUEST
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     logger.error(f'{error_message} with {status_code=} and {error_id=}')
     metrics.add_metric(name='ValidationErrorHandler', unit=MetricUnit.Count, value=1)
     return JSONResponse(
