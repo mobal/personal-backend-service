@@ -7,8 +7,8 @@
 1. Install dependencies in the `Pipfile` and `package.json`
 
 ```sh
-$ python -m pipenv install
-$ npm i
+python -m pipenv install
+npm i
 ```
 
 2. Deploy to AWS
