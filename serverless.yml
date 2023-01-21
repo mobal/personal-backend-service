@@ -42,6 +42,7 @@ package:
   excludeDevDependencies: true
 provider:
   name: aws
+  memorySize: 512
   region: ${env:AWS_REGION, 'eu-central-1'}
   runtime: python3.9
   stage: dev
