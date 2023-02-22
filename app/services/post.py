@@ -50,7 +50,7 @@ class PostService:
         data['id'] = str(uuid.uuid4())
         data['created_at'] = pendulum.now().to_iso8601_string()
         data['deleted_at'] = None
-        data['slug'] = slugify(data["title"])
+        data['slug'] = slugify(data['title'])
         data['updated_at'] = None
         await self._repository.create_post(data)
         return Post(**data)
@@ -65,13 +65,13 @@ class PostService:
         self._logger.info(f'Post successfully deleted {post_uuid=}')
 
     @tracer.capture_method
-    async def get_all_posts(self) -> List[PostResponse]:
+    async def get_all_posts(self, descending: bool = True) -> List[PostResponse]:
         items = await self._repository.get_all_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
             ['id', 'title', 'meta', 'published_at', 'updated_at'],
         )
         result = []
-        for item in items:
+        for item in sorted(items, key=lambda i: i['published_at'], reverse=descending):
             result.append(PostResponse(**item))
         return result
 
