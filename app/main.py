@@ -5,6 +5,7 @@ from typing import List
 import botocore
 import uvicorn
 from aws_lambda_powertools import Logger, Metrics, Tracer
+from aws_lambda_powertools.logging.logger import set_package_logger
 from aws_lambda_powertools.metrics import MetricUnit
 from botocore.exceptions import BotoCoreError
 from fastapi import FastAPI, HTTPException, Request
@@ -21,6 +22,10 @@ from app.middlewares import CorrelationIdMiddleware
 from app.settings import Settings
 
 settings = Settings()
+
+if settings.app_debug:
+    set_package_logger()
+
 logger = Logger()
 metrics = Metrics()
 tracer = Tracer()

@@ -22,13 +22,15 @@ functions:
       JWT_SECRET: ${env:JWT_SECRET}
       LOG_LEVEL: DEBUG
       POWERTOOLS_LOGGER_LOG_EVENT: true
-      POWERTOOLS_METRICS_NAMESPACE: personal
+      POWERTOOLS_METRICS_NAMESPACE: personal-backend-service-metrics
       POWERTOOLS_SERVICE_NAME: personal-backend-service
+      POWERTOOLS_TRACE_DISABLED: false
+      POWERTOOLS_DEBUG: false
     events:
       - httpApi: '*'
     handler: app.main.handler
     layers:
-      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:16
+      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:20
       - Ref: PythonRequirementsLambdaLayer
 package:
   patterns:
