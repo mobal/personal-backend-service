@@ -1,5 +1,5 @@
 black:
-	python3 -m pipenv run black --skip-string-normalization app/ tests/
+	python3 -m pipenv run black --skip-string-normalization ./
 
 deploy:
 	python3 -m pipenv run sls deploy
