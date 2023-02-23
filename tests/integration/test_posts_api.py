@@ -132,7 +132,7 @@ class TestPostsApi:
     ):
         response = test_client.get(self.BASE_URL)
         assert response.status_code == status.HTTP_200_OK
-        result = response.json()
+        result = response.json()['data']
         assert len(result) == 1
         assert result[0]['id'] == post_model.id
         assert result[0]['title'] == post_model.title
@@ -181,7 +181,7 @@ class TestPostsApi:
         self, test_client: TestClient
     ):
         response = test_client.get(
-            f'{self.BASE_URL}/{random.randint(1970, 2999)}/{random.randint(1, 12)}/{random.randint(1, 31)}/slug'
+            f'{self.BASE_URL}/{random.randint(1970, 2999)}/{random.randint(3, 12)}/{random.randint(1, 30)}/slug'
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
         result = response.json()

@@ -93,8 +93,9 @@ class TestPostService:
             return_value=[post_model.dict()],
         )
         result = await post_service.get_all_posts()
-        assert len(result) == 1
-        assert PostResponse(**post_model.dict()) == result[0]
+        assert result.exclusive_start_key is None
+        assert len(result.data) == 1
+        assert PostResponse(**post_model.dict()) == result.data[0]
         post_repository.get_all_posts.assert_called_once()
 
     async def test_successfully_get_post_by_uuid(

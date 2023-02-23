@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 import markdown
 import pendulum
@@ -9,6 +9,7 @@ from slugify import slugify
 
 from app.exceptions import PostNotFoundException
 from app.models.post import Post
+from app.models.response import Page
 from app.models.response import Post as PostResponse
 from app.repositories.post import PostRepository
 from app.schemas.post import CreatePost, UpdatePost
@@ -65,15 +66,15 @@ class PostService:
         self._logger.info(f'Post successfully deleted {post_uuid=}')
 
     @tracer.capture_method
-    async def get_all_posts(self, descending: bool = True) -> List[PostResponse]:
+    async def get_all_posts(self, descending: bool = True) -> Page:
         items = await self._repository.get_all_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
             ['id', 'title', 'meta', 'published_at', 'updated_at'],
         )
-        result = []
+        posts = []
         for item in sorted(items, key=lambda i: i['published_at'], reverse=descending):
-            result.append(PostResponse(**item))
-        return result
+            posts.append(PostResponse(**item))
+        return Page(data=posts)
 
     @tracer.capture_method
     async def get_post(self, post_uuid: str) -> PostResponse:
@@ -98,6 +99,18 @@ class PostService:
             self._logger.error(f'Failed to get post {filter_expression=}')
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return await _item_to_response(item, to_markdown=True)
+
+    @tracer.capture_method
+    async def get_posts(self, exclusive_start_key: Optional[str]) -> Page:
+        response = await self._repository.get_posts(
+            FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
+            exclusive_start_key,
+            ['id', 'title', 'meta', 'published_at', 'updated_at'],
+        )
+        posts = []
+        for item in response[1]:
+            posts.append(PostResponse(**item))
+        return Page(exclusive_start_key=response[0], data=posts)
 
     @tracer.capture_method
     async def update_post(self, post_uuid: str, update_post: UpdatePost):

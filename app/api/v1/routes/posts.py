@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Union
 
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.metrics import Metrics, MetricUnit
@@ -7,6 +7,7 @@ from starlette.responses import Response
 
 from app.auth import JWTBearer
 from app.models.auth import JWTToken, Role, User
+from app.models.response import Page
 from app.models.response import Post as PostResponse
 from app.schemas.post import CreatePost, UpdatePost
 from app.services.post import PostService
@@ -56,19 +57,6 @@ async def delete_post(uuid: str, token: JWTToken = Depends(jwt_bearer)):
         metrics.add_metric(name='DeletePost', unit=MetricUnit.Count, value=1)
 
 
-@router.get(
-    '',
-    response_model=List[PostResponse],
-    response_model_exclude_none=True,
-    status_code=status.HTTP_200_OK,
-)
-@tracer.capture_method
-async def get_all_posts() -> List[PostResponse]:
-    posts = await post_service.get_all_posts()
-    metrics.add_metric(name='GetAllPosts', unit=MetricUnit.Count, value=1)
-    return posts
-
-
 @router.get('/archive', status_code=status.HTTP_200_OK)
 @tracer.capture_method
 async def get_archive() -> dict[str, Any]:
@@ -96,6 +84,22 @@ async def get_post_by_uuid(uuid: str) -> PostResponse:
     post_response = await post_service.get_post(uuid)
     metrics.add_metric(name='GetPostByUuid', unit=MetricUnit.Count, value=1)
     return post_response
+
+
+@router.get(
+    '',
+    response_model=Page,
+    response_model_exclude_none=True,
+    status_code=status.HTTP_200_OK,
+)
+@tracer.capture_method
+async def get_posts(exclusive_start_key: Union[str, None] = None) -> Page:
+    if exclusive_start_key:
+        response = await post_service.get_posts(exclusive_start_key)
+    else:
+        response = await post_service.get_all_posts()
+    metrics.add_metric(name='GetPosts', unit=MetricUnit.Count, value=1)
+    return response
 
 
 @router.put(

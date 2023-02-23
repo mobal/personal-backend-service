@@ -15,9 +15,11 @@ JWT_SECRET = '6fl3AkTFmG2rVveLglUW8DOmp8J4Bvi3'
 
 @pytest.fixture(autouse=True)
 def set_environment_variables(monkeypatch):
-    monkeypatch.setenv('APP_DEBUG', 'true')
+    monkeypatch.setenv('DEBUG', 'false')
+    monkeypatch.setenv('LOG_LEVEL', 'INFO')
+    monkeypatch.setenv('STAGE', 'test')
+
     monkeypatch.setenv('APP_NAME', 'personal-backend-service')
-    monkeypatch.setenv('APP_STAGE', 'test')
     monkeypatch.setenv('APP_TIMEZONE', 'Europe/Budapest')
 
     monkeypatch.setenv('CACHE_SERVICE_BASE_URL', CACHE_SERVICE_BASE_URL)
@@ -27,10 +29,10 @@ def set_environment_variables(monkeypatch):
     monkeypatch.setenv('AWS_ACCESS_KEY_ID', 'aws_access_key_id')
     monkeypatch.setenv('AWS_SECRET_ACCESS_KEY', 'aws_secret_access_key')
 
-    monkeypatch.setenv('LOG_LEVEL', 'DEBUG')
     monkeypatch.setenv('POWERTOOLS_LOGGER_LOG_EVENT', 'true')
     monkeypatch.setenv('POWERTOOLS_METRICS_NAMESPACE', 'personal')
     monkeypatch.setenv('POWERTOOLS_SERVICE_NAME', 'personal-backend-service')
+    monkeypatch.setenv('POWERTOOLS_TRACE_DISABLED', 'true')
 
 
 def pytest_configure():

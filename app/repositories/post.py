@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import boto3
 from aws_lambda_powertools import Logger, Tracer
@@ -16,7 +16,7 @@ class PostRepository:
         self._logger = Logger()
         settings = Settings()
         self._table = (
-            boto3.Session().resource('dynamodb').Table(f'{settings.app_stage}-posts')
+            boto3.Session().resource('dynamodb').Table(f'{settings.stage}-posts')
         )
 
     @tracer.capture_method
@@ -42,6 +42,7 @@ class PostRepository:
             items.extend(response['Items'])
         return items
 
+    @tracer.capture_method
     async def count_all_posts(self, filter_expression: AttributeBase) -> int:
         response = self._table.scan(
             Select=PostRepository.SELECT_COUNT,
@@ -73,6 +74,21 @@ class PostRepository:
         if response['Items']:
             return response['Items'][0]
         return None
+
+    @tracer.capture_method
+    async def get_posts(
+        self,
+        filter_expression: AttributeBase,
+        exclusive_start_key: Optional[str],
+        fields: List[str] = None,
+    ) -> Tuple[str, List[dict]]:
+        response = self._table.query(
+            ExclusiveStartKey=exclusive_start_key,
+            FilterExpression=filter_expression,
+            ProjectionExpression=','.join(fields),
+            ScanIndexForward=False,
+        )
+        return response['LastEvaluatedKey'], response['Items']
 
     @tracer.capture_method
     async def update_post(
