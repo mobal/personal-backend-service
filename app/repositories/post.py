@@ -81,14 +81,15 @@ class PostRepository:
         filter_expression: AttributeBase,
         exclusive_start_key: Optional[str],
         fields: List[str] = None,
-    ) -> Tuple[str, List[dict]]:
-        response = self._table.query(
-            ExclusiveStartKey=exclusive_start_key,
-            FilterExpression=filter_expression,
-            ProjectionExpression=','.join(fields),
-            ScanIndexForward=False,
-        )
-        return response['LastEvaluatedKey'], response['Items']
+    ) -> Tuple[Optional[str], List[dict]]:
+        kwargs = {
+            'FilterExpression': filter_expression,
+            'ProjectionExpression': ','.join(fields),
+        }
+        if exclusive_start_key:
+            kwargs['ExclusiveStartKey'] = exclusive_start_key
+        response = self._table.scan(**kwargs)
+        return response.get('LastEvaluatedKey'), response['Items']
 
     @tracer.capture_method
     async def update_post(

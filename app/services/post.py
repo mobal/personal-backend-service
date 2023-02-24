@@ -101,7 +101,7 @@ class PostService:
         return await _item_to_response(item, to_markdown=True)
 
     @tracer.capture_method
-    async def get_posts(self, exclusive_start_key: Optional[str]) -> Page:
+    async def get_posts(self, exclusive_start_key: Optional[str] = None) -> Page:
         response = await self._repository.get_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
             exclusive_start_key,

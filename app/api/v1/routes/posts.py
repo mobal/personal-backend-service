@@ -97,7 +97,7 @@ async def get_posts(exclusive_start_key: Union[str, None] = None) -> Page:
     if exclusive_start_key:
         response = await post_service.get_posts(exclusive_start_key)
     else:
-        response = await post_service.get_all_posts()
+        response = await post_service.get_posts()
     metrics.add_metric(name='GetPosts', unit=MetricUnit.Count, value=1)
     return response
 

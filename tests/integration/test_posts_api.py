@@ -127,7 +127,7 @@ class TestPostsApi:
 
         return TestClient(app, raise_server_exceptions=False)
 
-    async def test_successfully_get_all_posts(
+    async def test_successfully_get_posts(
         self, post_model: Post, test_client: TestClient
     ):
         response = test_client.get(self.BASE_URL)

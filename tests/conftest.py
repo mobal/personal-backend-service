@@ -15,8 +15,8 @@ JWT_SECRET = '6fl3AkTFmG2rVveLglUW8DOmp8J4Bvi3'
 
 @pytest.fixture(autouse=True)
 def set_environment_variables(monkeypatch):
-    monkeypatch.setenv('DEBUG', 'false')
-    monkeypatch.setenv('LOG_LEVEL', 'INFO')
+    monkeypatch.setenv('DEBUG', 'true')
+    monkeypatch.setenv('LOG_LEVEL', 'DEBUG')
     monkeypatch.setenv('STAGE', 'test')
 
     monkeypatch.setenv('APP_NAME', 'personal-backend-service')
