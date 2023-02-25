@@ -32,6 +32,7 @@ respx = ">=0.20.1"
 isort = ">=5.11.4"
 aws-lambda-powertools = {extras = ["all"], version = ">=2.7.1"}
 autoflake = ">=2.0.1"
+faker = ">=17.0.0"
 
 [requires]
 python_version = "3.9"

@@ -1,6 +1,6 @@
 import random
 import uuid
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import jwt
 import pendulum
@@ -111,14 +111,14 @@ class TestPostsApi:
         )
 
     @pytest.fixture
-    def create_post(self, post_model: Post) -> CreatePost:
+    def create_post(self, posts: List[Post]) -> CreatePost:
         return CreatePost(
-            author=post_model.author,
-            title=post_model.title,
-            content=post_model.content,
-            tags=post_model.tags,
-            meta=post_model.meta.dict(),
-            published_at=post_model.published_at,
+            author=posts[0].author,
+            title=posts[0].title,
+            content=posts[0].content,
+            tags=posts[0].tags,
+            meta=posts[0].meta.dict(),
+            published_at=posts[0].published_at,
         )
 
     @pytest.fixture
@@ -128,19 +128,15 @@ class TestPostsApi:
         return TestClient(app, raise_server_exceptions=False)
 
     async def test_successfully_get_posts(
-        self, post_model: Post, test_client: TestClient
+        self, posts: List[Post], test_client: TestClient
     ):
         response = test_client.get(self.BASE_URL)
         assert response.status_code == status.HTTP_200_OK
         result = response.json()['data']
-        assert len(result) == 1
-        assert result[0]['id'] == post_model.id
-        assert result[0]['title'] == post_model.title
-        assert result[0]['publishedAt'] == post_model.published_at
-        assert result[0]['meta'] == post_model.meta
+        assert len(result) == len(posts)
 
     async def test_fail_to_get_post_by_uuid_due_to_not_found(
-        self, post_model: Post, test_client: TestClient
+        self, posts: List[Post], test_client: TestClient
     ):
         response = test_client.get(
             f'{self.BASE_URL}/653000ce-4b15-4242-a07d-fd8eed656d36'
@@ -152,30 +148,30 @@ class TestPostsApi:
         assert result['message'] == self.ERROR_MESSAGE_NOT_FOUND
 
     async def test_successfully_get_post_by_uuid(
-        self, post_model: Post, test_client: TestClient
+        self, posts: List[Post], test_client: TestClient
     ):
-        response = test_client.get(f'{self.BASE_URL}/{post_model.id}')
+        response = test_client.get(f'{self.BASE_URL}/{posts[0].id}')
         assert response.status_code == status.HTTP_200_OK
         result = response.json()
-        assert result['id'] == post_model.id
+        assert result['id'] == posts[0].id
 
-    async def test_successfully_get_archive(self, test_client: TestClient):
+    async def test_successfully_get_archive(self, posts: List[Post], test_client: TestClient):
         response = test_client.get(f'{self.BASE_URL}/archive')
         assert response.status_code == status.HTTP_200_OK
         result = response.json()
         date = pendulum.now().format('YYYY-MM')
-        assert result[date] == 1
+        assert result[date] == len(posts)
 
     async def test_successfully_get_post_by_date_and_slug(
-        self, post_model: Post, test_client: TestClient
+        self, posts: List[Post], test_client: TestClient
     ):
         now = pendulum.now()
         response = test_client.get(
-            f'{self.BASE_URL}/{now.year}/{now.month}/{now.day}/{post_model.slug}'
+            f'{self.BASE_URL}/{now.year}/{now.month}/{now.day}/{posts[0].slug}'
         )
         assert response.status_code == status.HTTP_200_OK
         post = response.json()
-        assert post['id'] == post_model.id
+        assert post['id'] == posts[0].id
 
     async def test_fail_to_get_post_by_date_and_slug_due_to_not_found(
         self, test_client: TestClient
@@ -301,7 +297,7 @@ class TestPostsApi:
     async def test_successfully_delete_post(
         self,
         cache_service_response_404: Response,
-        post_model: Post,
+        posts: List[Post],
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -313,7 +309,7 @@ class TestPostsApi:
             self.CACHE_SERVICE_URL,
         )
         response = test_client.delete(
-            f'{self.BASE_URL}/{post_model.id}',
+            f'{self.BASE_URL}/{posts[0].id}',
             headers={'Authorization': f'Bearer {jwt_token}'},
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -492,7 +488,7 @@ class TestPostsApi:
     async def test_fail_to_update_post_due_to_bad_request(
         self,
         cache_service_response_404,
-        post_model: Post,
+        posts: List[Post],
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -504,7 +500,7 @@ class TestPostsApi:
             self.CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f'{self.BASE_URL}/{post_model.id}',
+            f'{self.BASE_URL}/{posts[0].id}',
             headers={'Authorization': f'Bearer {jwt_token}'},
             json={
                 'author': 'a',
@@ -620,7 +616,7 @@ class TestPostsApi:
     async def test_successfully_update_post(
         self,
         cache_service_response_404: Response,
-        post_model: Post,
+        posts: List[Post],
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -632,9 +628,9 @@ class TestPostsApi:
             self.CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f'{self.BASE_URL}/{post_model.id}',
+            f'{self.BASE_URL}/{posts[0].id}',
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=post_model.dict(),
+            json=posts[0].dict(),
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert cache_service_mock.called
