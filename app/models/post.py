@@ -1,10 +1,10 @@
 from typing import Optional
 
 from fastapi_camelcase import CamelModel
-from pydantic import conlist
+from pydantic import BaseModel, conlist
 
 
-class Meta(CamelModel):
+class Meta(BaseModel):
     category: str
     description: str
     language: str

@@ -84,7 +84,7 @@ class TestJWTAuth:
         valid_request: Request,
     ):
         mocker.patch('app.services.cache.CacheService.get', return_value=jwt_token.jti)
-        with (pytest.raises(HTTPException)) as excinfo:
+        with pytest.raises(HTTPException) as excinfo:
             await jwt_bearer(valid_request)
         assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
@@ -94,7 +94,7 @@ class TestJWTAuth:
         self, empty_request: Mock
     ):
         jwt_bearer = JWTBearer()
-        with (pytest.raises(HTTPException)) as excinfo:
+        with pytest.raises(HTTPException) as excinfo:
             await jwt_bearer(empty_request)
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
         assert NOT_AUTHENTICATED == excinfo.value.detail
@@ -113,7 +113,7 @@ class TestJWTAuth:
         request.headers = {
             'Authorization': f'Basic {jwt.encode(jwt_token.dict(), settings.jwt_secret)}'
         }
-        with (pytest.raises(HTTPException)) as excinfo:
+        with pytest.raises(HTTPException) as excinfo:
             await jwt_bearer(request)
         assert excinfo.value.status_code == status.HTTP_403_FORBIDDEN
         assert excinfo.value.detail == 'Invalid authentication credentials'

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from fastapi_camelcase import CamelModel
 
@@ -15,3 +15,8 @@ class Post(CamelModel):
     slug: Optional[str]
     tags: Optional[List[str]]
     meta: Optional[Meta]
+
+
+class Page(CamelModel):
+    exclusive_start_key: Optional[str]
+    data: List[Post]

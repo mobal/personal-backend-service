@@ -24,12 +24,15 @@ pytest-asyncio = ">=0.20.3"
 pytest-cov = ">=4.0.0"
 pytest-dotenv = ">=0.5.2"
 pytest-mock = ">=3.10.0"
+pytest-xdist = ">=3.1.0"
 moto = ">=4.0.12"
 pycodestyle = ">=2.10.0"
 black = ">=22.12.0"
 respx = ">=0.20.1"
 isort = ">=5.11.4"
-aws-lambda-powertools = {extras = ["all"], version = ">=2.5.0"}
+aws-lambda-powertools = {extras = ["all"], version = ">=2.7.1"}
+autoflake = ">=2.0.1"
+faker = ">=17.0.0"
 
 [requires]
 python_version = "3.9"

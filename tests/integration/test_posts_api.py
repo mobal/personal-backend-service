@@ -1,6 +1,6 @@
 import random
 import uuid
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import jwt
 import pendulum
@@ -11,6 +11,7 @@ from starlette import status
 from starlette.testclient import TestClient
 
 from app.models.post import Post
+from app.schemas.post import CreatePost
 
 
 @pytest.mark.asyncio
@@ -27,7 +28,7 @@ class TestPostsApi:
 
     async def _assert_response(
         self,
-        cache_service_mock: MockRouter,
+        cache_service_mock: Route,
         message: str,
         status_code: int,
         response: Response,
@@ -110,25 +111,32 @@ class TestPostsApi:
         )
 
     @pytest.fixture
+    def create_post(self, posts: List[Post]) -> CreatePost:
+        return CreatePost(
+            author=posts[0].author,
+            title=posts[0].title,
+            content=posts[0].content,
+            tags=posts[0].tags,
+            meta=posts[0].meta.dict(),
+            published_at=posts[0].published_at,
+        )
+
+    @pytest.fixture
     def test_client(self, initialize_posts_table) -> TestClient:
         from app.main import app
 
         return TestClient(app, raise_server_exceptions=False)
 
-    async def test_successfully_get_all_posts(
-        self, post_model: Post, test_client: TestClient
+    async def test_successfully_get_posts(
+        self, posts: List[Post], test_client: TestClient
     ):
         response = test_client.get(self.BASE_URL)
         assert response.status_code == status.HTTP_200_OK
-        result = response.json()
-        assert len(result) == 1
-        assert result[0]['id'] == post_model.id
-        assert result[0]['title'] == post_model.title
-        assert result[0]['publishedAt'] == post_model.published_at
-        assert result[0]['meta'] == post_model.meta
+        result = response.json()['data']
+        assert len(result) == len(posts)
 
     async def test_fail_to_get_post_by_uuid_due_to_not_found(
-        self, post_model: Post, test_client: TestClient
+        self, posts: List[Post], test_client: TestClient
     ):
         response = test_client.get(
             f'{self.BASE_URL}/653000ce-4b15-4242-a07d-fd8eed656d36'
@@ -140,36 +148,38 @@ class TestPostsApi:
         assert result['message'] == self.ERROR_MESSAGE_NOT_FOUND
 
     async def test_successfully_get_post_by_uuid(
-        self, post_model: Post, test_client: TestClient
+        self, posts: List[Post], test_client: TestClient
     ):
-        response = test_client.get(f'{self.BASE_URL}/{post_model.id}')
+        response = test_client.get(f'{self.BASE_URL}/{posts[0].id}')
         assert response.status_code == status.HTTP_200_OK
         result = response.json()
-        assert result['id'] == post_model.id
+        assert result['id'] == posts[0].id
 
-    async def test_successfully_get_archive(self, test_client: TestClient):
+    async def test_successfully_get_archive(
+        self, posts: List[Post], test_client: TestClient
+    ):
         response = test_client.get(f'{self.BASE_URL}/archive')
         assert response.status_code == status.HTTP_200_OK
         result = response.json()
         date = pendulum.now().format('YYYY-MM')
-        assert result[date] == 1
+        assert result[date] == len(posts)
 
     async def test_successfully_get_post_by_date_and_slug(
-        self, post_model: Post, test_client: TestClient
+        self, posts: List[Post], test_client: TestClient
     ):
         now = pendulum.now()
         response = test_client.get(
-            f'{self.BASE_URL}/{now.year}/{now.month}/{now.day}/{post_model.slug}'
+            f'{self.BASE_URL}/{now.year}/{now.month}/{now.day}/{posts[0].slug}'
         )
         assert response.status_code == status.HTTP_200_OK
         post = response.json()
-        assert post['id'] == post_model.id
+        assert post['id'] == posts[0].id
 
     async def test_fail_to_get_post_by_date_and_slug_due_to_not_found(
         self, test_client: TestClient
     ):
         response = test_client.get(
-            f'{self.BASE_URL}/{random.randint(1970, 2999)}/{random.randint(1, 12)}/{random.randint(1, 31)}/slug'
+            f'{self.BASE_URL}/{random.randint(1970, 2999)}/{random.randint(3, 12)}/{random.randint(1, 30)}/slug'
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
         result = response.json()
@@ -289,7 +299,7 @@ class TestPostsApi:
     async def test_successfully_delete_post(
         self,
         cache_service_response_404: Response,
-        post_model: Post,
+        posts: List[Post],
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -301,7 +311,7 @@ class TestPostsApi:
             self.CACHE_SERVICE_URL,
         )
         response = test_client.delete(
-            f'{self.BASE_URL}/{post_model.id}',
+            f'{self.BASE_URL}/{posts[0].id}',
             headers={'Authorization': f'Bearer {jwt_token}'},
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -335,13 +345,13 @@ class TestPostsApi:
 
     async def test_fail_to_create_post_due_to_unauthorized(
         self,
-        post_model: Post,
+        create_post: CreatePost,
         test_client: TestClient,
     ):
         response = test_client.post(
             self.BASE_URL,
             headers={'Authorization': f'Bearer '},
-            json=post_model.dict(),
+            json=create_post.dict(by_alias=True),
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
@@ -352,7 +362,7 @@ class TestPostsApi:
     async def test_fail_to_create_post_due_to_blacklisted_jwt_token(
         self,
         cache_service_response_200: Response,
-        post_model: Post,
+        create_post: CreatePost,
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -366,7 +376,7 @@ class TestPostsApi:
         response = test_client.post(
             self.BASE_URL,
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=post_model.dict(),
+            json=create_post.dict(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -378,7 +388,7 @@ class TestPostsApi:
     async def test_fail_to_create_post_due_to_missing_privileges(
         self,
         cache_service_response_404: Response,
-        post_model: Post,
+        create_post: CreatePost,
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -392,7 +402,7 @@ class TestPostsApi:
         response = test_client.post(
             self.BASE_URL,
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=post_model.dict(),
+            json=create_post.dict(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -404,7 +414,7 @@ class TestPostsApi:
     async def test_fail_to_create_post_due_to_unexpected_cache_service_exception(
         self,
         cache_service_response_500: Response,
-        post_model: Post,
+        create_post: CreatePost,
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -418,7 +428,7 @@ class TestPostsApi:
         response = test_client.post(
             self.BASE_URL,
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=post_model.dict(),
+            json=create_post.dict(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -430,7 +440,7 @@ class TestPostsApi:
     async def test_successfully_create_post(
         self,
         cache_service_response_404: Response,
-        post_model: Post,
+        create_post: CreatePost,
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -444,7 +454,7 @@ class TestPostsApi:
         response = test_client.post(
             self.BASE_URL,
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=post_model.dict(),
+            json=create_post.dict(by_alias=True),
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert response.headers['Location']
@@ -454,7 +464,7 @@ class TestPostsApi:
     async def test_fail_to_update_post_due_to_not_found(
         self,
         cache_service_response_404: Response,
-        post_model: Post,
+        create_post: CreatePost,
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -468,7 +478,7 @@ class TestPostsApi:
         response = test_client.put(
             f'{self.BASE_URL}/{str(uuid.uuid4())}',
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=post_model.dict(),
+            json=create_post.dict(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -480,7 +490,7 @@ class TestPostsApi:
     async def test_fail_to_update_post_due_to_bad_request(
         self,
         cache_service_response_404,
-        post_model: Post,
+        posts: List[Post],
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -492,7 +502,7 @@ class TestPostsApi:
             self.CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f'{self.BASE_URL}/{post_model.id}',
+            f'{self.BASE_URL}/{posts[0].id}',
             headers={'Authorization': f'Bearer {jwt_token}'},
             json={
                 'author': 'a',
@@ -513,13 +523,13 @@ class TestPostsApi:
 
     async def test_fail_to_update_post_due_to_unauthorized(
         self,
-        post_model: Post,
+        create_post: CreatePost,
         test_client: TestClient,
     ):
         response = test_client.put(
             f'{self.BASE_URL}/{str(uuid.uuid4())}',
             headers={'Authorization': f'Bearer '},
-            json=post_model.dict(),
+            json=create_post.dict(by_alias=True),
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
@@ -530,7 +540,7 @@ class TestPostsApi:
     async def test_fail_to_update_post_due_to_blacklisted_jwt_token(
         self,
         cache_service_response_200: Response,
-        post_model: Post,
+        create_post: CreatePost,
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -544,7 +554,7 @@ class TestPostsApi:
         response = test_client.put(
             f'{self.BASE_URL}/{str(uuid.uuid4())}',
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=post_model.dict(),
+            json=create_post.dict(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -556,7 +566,7 @@ class TestPostsApi:
     async def test_fail_to_update_post_due_to_missing_privileges(
         self,
         cache_service_response_404: Response,
-        post_model: Post,
+        create_post: CreatePost,
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -570,7 +580,7 @@ class TestPostsApi:
         response = test_client.put(
             f'{self.BASE_URL}/{str(uuid.uuid4())}',
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=post_model.dict(),
+            json=create_post.dict(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -582,7 +592,7 @@ class TestPostsApi:
     async def test_fail_to_update_post_due_to_unexpected_cache_service_exception(
         self,
         cache_service_response_500: Response,
-        post_model: Post,
+        create_post: CreatePost,
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -596,7 +606,7 @@ class TestPostsApi:
         response = test_client.put(
             f'{self.BASE_URL}/{str(uuid.uuid4())}',
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=post_model.dict(),
+            json=create_post.dict(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -608,7 +618,7 @@ class TestPostsApi:
     async def test_successfully_update_post(
         self,
         cache_service_response_404: Response,
-        post_model: Post,
+        posts: List[Post],
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -620,9 +630,9 @@ class TestPostsApi:
             self.CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f'{self.BASE_URL}/{post_model.id}',
+            f'{self.BASE_URL}/{posts[0].id}',
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=post_model.dict(),
+            json=posts[0].dict(),
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert cache_service_mock.called

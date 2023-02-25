@@ -5,6 +5,7 @@ from typing import List
 import botocore
 import uvicorn
 from aws_lambda_powertools import Logger, Metrics, Tracer
+from aws_lambda_powertools.logging.logger import set_package_logger
 from aws_lambda_powertools.metrics import MetricUnit
 from botocore.exceptions import BotoCoreError
 from fastapi import FastAPI, HTTPException, Request
@@ -21,11 +22,15 @@ from app.middlewares import CorrelationIdMiddleware
 from app.settings import Settings
 
 settings = Settings()
+
+if settings.debug:
+    set_package_logger()
+
 logger = Logger()
 metrics = Metrics()
 tracer = Tracer()
 
-app = FastAPI(debug=settings.app_debug, title='PersonalBackendApp', version='1.0.0')
+app = FastAPI(debug=settings.debug, title='PersonalBackendApp', version='1.0.0')
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(GZipMiddleware)
 app.include_router(router, prefix='/api/v1')
@@ -51,7 +56,7 @@ async def botocore_error_handler(
     request: Request, error: BotoCoreError
 ) -> JSONResponse:
     error_id = uuid.uuid4()
-    error_message = str(error) if settings.app_debug else 'Internal Server Error'
+    error_message = str(error) if settings.debug else 'Internal Server Error'
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     logger.error(f'{str(error)} with {status_code=} and {error_id=}')
     metrics.add_metric(name='ErrorHandler', unit=MetricUnit.Count, value=1)

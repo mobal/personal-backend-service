@@ -1,3 +1,4 @@
+from typing import List
 from unittest.mock import ANY
 
 import pendulum
@@ -30,42 +31,41 @@ class TestPostService:
     async def test_successfully_create_post(
         self,
         mocker,
-        post_dict: dict,
-        post_model: Post,
+        posts: List[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
         mocker.patch('app.repositories.post.PostRepository.create_post')
-        create_post = CreatePost(**post_dict)
+        create_post = CreatePost(**posts[0].dict())
         result = await post_service.create_post(create_post)
-        assert post_dict['author'] == result.author
-        assert post_dict['content'] == result.content
-        assert post_dict['meta'] == result.meta
-        assert post_dict['published_at'] == result.published_at
-        assert post_dict['tags'] == result.tags
-        assert post_dict['title'] == result.title
+        assert posts[0].author == result.author
+        assert posts[0].content == result.content
+        assert posts[0].meta == result.meta
+        assert posts[0].published_at == result.published_at
+        assert posts[0].tags == result.tags
+        assert posts[0].title == result.title
         assert result.is_deleted is False
         post_repository.create_post.assert_called_once()
 
     async def test_successfully_delete_post(
         self,
         mocker,
-        post_model: Post,
+        posts: List[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
         mocker.patch(
-            self.PROFILE_REPOSITORY_GET_POST_BY_UUID, return_value=post_model.dict()
+            self.PROFILE_REPOSITORY_GET_POST_BY_UUID, return_value=posts[0].dict()
         )
         mocker.patch(self.PROFILE_REPOSITORY_UPDATE_POST)
-        await post_service.delete_post(post_model.id)
-        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id, ANY)
-        post_repository.update_post.assert_called_once_with(post_model.id, ANY, ANY)
+        await post_service.delete_post(posts[0].id)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
+        post_repository.update_post.assert_called_once_with(posts[0].id, ANY, ANY)
 
     async def test_fail_to_delete_post_by_uuid_due_post_not_found_exception(
         self,
         mocker,
-        post_model: Post,
+        posts: List[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
@@ -74,48 +74,49 @@ class TestPostService:
             return_value=None,
         )
         with pytest.raises(PostNotFoundException) as excinfo:
-            await post_service.delete_post(post_model.id)
+            await post_service.delete_post(posts[0].id)
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert self.ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
 
     async def test_successfully_get_all_posts(
         self,
         mocker,
         post_fields: str,
-        post_model: Post,
+        posts: List[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
         mocker.patch(
             self.PROFILE_REPOSITORY_GET_ALL_POSTS,
-            return_value=[post_model.dict()],
+            return_value=[posts[0].dict()],
         )
         result = await post_service.get_all_posts()
-        assert len(result) == 1
-        assert PostResponse(**post_model.dict()) == result[0]
+        assert result.exclusive_start_key is None
+        assert len(result.data) == 1
+        assert PostResponse(**posts[0].dict()) == result.data[0]
         post_repository.get_all_posts.assert_called_once()
 
     async def test_successfully_get_post_by_uuid(
         self,
         mocker,
-        post_model: Post,
+        posts: List[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
         mocker.patch(
             self.PROFILE_REPOSITORY_GET_POST_BY_UUID,
-            return_value=post_model.dict(),
+            return_value=posts[0].dict(),
         )
-        result = await post_service.get_post(post_model.id)
+        result = await post_service.get_post(posts[0].id)
         assert PostResponse(**result.dict()) == result
-        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
 
     async def test_fail_to_get_post_by_uuid_due_post_not_found_exception(
         self,
         mocker,
-        post_model: Post,
+        posts: List[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
@@ -124,31 +125,31 @@ class TestPostService:
             return_value=None,
         )
         with pytest.raises(PostNotFoundException) as excinfo:
-            await post_service.get_post(post_model.id)
+            await post_service.get_post(posts[0].id)
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert self.ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
 
     async def test_successfully_update_post(
         self,
         mocker,
-        post_model: Post,
+        posts: List[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ) -> None:
         mocker.patch(
-            self.PROFILE_REPOSITORY_GET_POST_BY_UUID, return_value=post_model.dict()
+            self.PROFILE_REPOSITORY_GET_POST_BY_UUID, return_value=posts[0].dict()
         )
         mocker.patch(self.PROFILE_REPOSITORY_UPDATE_POST)
         update_post = UpdatePost(content='Updated content', title='Updated title')
-        await post_service.update_post(post_model.id, update_post)
-        post_repository.update_post.assert_called_once_with(post_model.id, ANY, ANY)
+        await post_service.update_post(posts[0].id, update_post)
+        post_repository.update_post.assert_called_once_with(posts[0].id, ANY, ANY)
 
     async def test_fail_to_update_post_due_post_not_found_exception(
         self,
         mocker,
-        post_model: Post,
+        posts: List[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
@@ -158,32 +159,30 @@ class TestPostService:
         )
         update_post = UpdatePost(**{'content': 'Updated content'})
         with pytest.raises(PostNotFoundException) as excinfo:
-            await post_service.update_post(post_model.id, update_post)
+            await post_service.update_post(posts[0].id, update_post)
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert self.ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_uuid.assert_called_once_with(post_model.id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
 
     async def test_successfully_get_archive(
         self,
         mocker,
-        post_model: Post,
+        posts: List[Post],
         post_service: PostService,
         post_repository: PostRepository,
     ):
         mocker.patch(
             self.PROFILE_REPOSITORY_GET_ALL_POSTS,
-            return_value=[post_model.dict()],
+            return_value=[posts[0].dict()],
         )
         result = await post_service.get_archive()
-        assert (
-            result.get(pendulum.parse(post_model.published_at).format('YYYY-MM')) == 1
-        )
+        assert result.get(pendulum.parse(posts[0].published_at).format('YYYY-MM')) == 1
 
     async def test_successfully_get_archive_and_return_none(
         self,
         mocker,
-        post_model: Post,
+        posts: List[Post],
         post_service: PostService,
         post_repository: PostRepository,
     ):
@@ -197,26 +196,26 @@ class TestPostService:
     async def test_successfully_get_post_by_date_and_slug(
         self,
         mocker,
-        post_model: Post,
+        posts: List[Post],
         post_service: PostService,
         post_repository: PostRepository,
     ):
         mocker.patch(
             'app.repositories.post.PostRepository.get_post',
-            return_value=post_model.dict(),
+            return_value=posts[0].dict(),
         )
-        dt = pendulum.parse(post_model.published_at)
+        dt = pendulum.parse(posts[0].published_at)
         result = await post_service.get_post_by_date_and_slug(
-            dt.year, dt.month, dt.day, post_model.slug
+            dt.year, dt.month, dt.day, posts[0].slug
         )
-        assert post_model.slug == result.slug
-        assert post_model.published_at == result.published_at
+        assert posts[0].slug == result.slug
+        assert posts[0].published_at == result.published_at
         post_repository.get_post.assert_called_once()
 
     async def test_fail_to_get_post_by_date_and_slug_due_post_not_found_exception(
         self,
         mocker,
-        post_model: Post,
+        posts: List[Post],
         post_service: PostService,
         post_repository: PostRepository,
     ):
@@ -224,10 +223,10 @@ class TestPostService:
             'app.repositories.post.PostRepository.get_post',
             return_value=None,
         )
-        dt = pendulum.parse(post_model.published_at)
+        dt = pendulum.parse(posts[0].published_at)
         with pytest.raises(PostNotFoundException) as excinfo:
             await post_service.get_post_by_date_and_slug(
-                dt.year, dt.month, dt.day, post_model.slug
+                dt.year, dt.month, dt.day, posts[0].slug
             )
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
