@@ -177,14 +177,12 @@ class TestPostService:
             return_value=[posts[0].dict()],
         )
         result = await post_service.get_archive()
-        assert (
-                result.get(pendulum.parse(posts[0].published_at).format('YYYY-MM')) == 1
-        )
+        assert result.get(pendulum.parse(posts[0].published_at).format('YYYY-MM')) == 1
 
     async def test_successfully_get_archive_and_return_none(
         self,
         mocker,
-            posts,
+        posts: List[Post],
         post_service: PostService,
         post_repository: PostRepository,
     ):
@@ -217,7 +215,7 @@ class TestPostService:
     async def test_fail_to_get_post_by_date_and_slug_due_post_not_found_exception(
         self,
         mocker,
-            posts,
+        posts: List[Post],
         post_service: PostService,
         post_repository: PostRepository,
     ):

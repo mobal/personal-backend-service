@@ -1,12 +1,11 @@
 import uuid
 from random import randint
-
-from faker import Faker
 from typing import List
 
 import boto3
 import pendulum
 import pytest
+from faker import Faker
 from moto import mock_dynamodb
 
 from app.models.post import Post
@@ -93,7 +92,7 @@ def posts() -> List[Post]:
                     'description': fake.sentence(),
                     'language': 'en',
                     'keywords': fake.words(randint(1, 6)),
-                    'title': fake.word()
+                    'title': fake.word(),
                 },
             )
         )

@@ -1,6 +1,6 @@
 import random
 import uuid
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
 import jwt
 import pendulum
@@ -155,7 +155,9 @@ class TestPostsApi:
         result = response.json()
         assert result['id'] == posts[0].id
 
-    async def test_successfully_get_archive(self, posts: List[Post], test_client: TestClient):
+    async def test_successfully_get_archive(
+        self, posts: List[Post], test_client: TestClient
+    ):
         response = test_client.get(f'{self.BASE_URL}/archive')
         assert response.status_code == status.HTTP_200_OK
         result = response.json()

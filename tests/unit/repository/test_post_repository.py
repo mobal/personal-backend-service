@@ -20,7 +20,9 @@ class TestPostRepository:
         post_dict = posts[0].dict()
         post_dict['id'] = str(uuid.uuid4())
         await post_repository.create_post(post_dict)
-        response = posts_table.query(KeyConditionExpression=Key('id').eq(post_dict['id']))
+        response = posts_table.query(
+            KeyConditionExpression=Key('id').eq(post_dict['id'])
+        )
         assert 1 == response['Count']
         item = response['Items'][0]
         assert item == post_dict
@@ -126,7 +128,9 @@ class TestPostRepository:
         )
         assert await post_repository.get_post(filter_expression) is None
 
-    async def test_successfully_get_item_count(self, posts: List[Post], post_repository: PostRepository):
+    async def test_successfully_get_item_count(
+        self, posts: List[Post], post_repository: PostRepository
+    ):
         assert len(posts) == await post_repository.item_count()
 
     async def test_successfully_count_all_posts(
