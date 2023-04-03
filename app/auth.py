@@ -32,7 +32,9 @@ class HTTPBearer(FastAPIHTTPBearer):
         if authorization is not None:
             return await self._get_authorization_credentials_from_header(authorization)
         else:
-            self._logger.info('Missing authentication header, attempt to use token query param')
+            self._logger.info(
+                'Missing authentication header, attempt to use token query param'
+            )
             return await self._get_authorization_credentials_from_token(
                 request.query_params.get('token')
             )
