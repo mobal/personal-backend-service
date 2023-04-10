@@ -33,7 +33,8 @@ def authorize(roles: List[str]):
             else:
                 logger.error(f'The {user=} does not have the appropriate {roles=}')
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized'
+                )
 
         return wrapper
 
@@ -44,7 +45,7 @@ def authorize(roles: List[str]):
 @authorize(roles=[Role.POST_CREATE])
 @tracer.capture_method
 async def create_post(
-        model: CreatePost, token: JWTToken = Depends(jwt_bearer)
+    model: CreatePost, token: JWTToken = Depends(jwt_bearer)
 ) -> Response:
     post = await post_service.create_post(model)
     metrics.add_metric(name='CreatePost', unit=MetricUnit.Count, value=1)
@@ -76,10 +77,10 @@ async def get_archive() -> dict[str, Any]:
 @router.get('/{year}/{month}/{day}/{slug}', status_code=status.HTTP_200_OK)
 @tracer.capture_method
 async def get_post_by_date_and_slug(
-        slug: str,
-        year: int = Path(ge=1970),
-        month: int = Path(ge=1, le=12),
-        day: int = Path(ge=1, le=31),
+    slug: str,
+    year: int = Path(ge=1970),
+    month: int = Path(ge=1, le=12),
+    day: int = Path(ge=1, le=31),
 ) -> PostResponse:
     post_response = await post_service.get_post_by_date_and_slug(year, month, day, slug)
     metrics.add_metric(name='GetPostByDateAndSlug', unit=MetricUnit.Count, value=1)
@@ -117,7 +118,7 @@ async def get_posts(exclusive_start_key: Union[str, None] = None) -> Page:
 @authorize(roles=[Role.POST_UPDATE])
 @tracer.capture_method
 async def update_post(
-        model: UpdatePost, uuid: str, token: JWTToken = Depends(jwt_bearer)
+    model: UpdatePost, uuid: str, token: JWTToken = Depends(jwt_bearer)
 ):
     await post_service.update_post(uuid, model)
     metrics.add_metric(name='UpdatePost', unit=MetricUnit.Count, value=1)
