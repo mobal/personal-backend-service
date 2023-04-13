@@ -5,7 +5,6 @@ from typing import List
 import boto3
 import pendulum
 import pytest
-from faker import Faker
 from moto import mock_dynamodb
 
 from app.models.post import Post
@@ -71,28 +70,27 @@ def initialize_posts_table(dynamodb_resource, posts: List[Post], posts_table):
 
 
 @pytest.fixture
-def posts() -> List[Post]:
-    fake = Faker()
+def posts(faker) -> List[Post]:
     posts = []
     for _ in range(5):
         posts.append(
             Post(
                 id=str(uuid.uuid4()),
-                author=fake.name(),
-                content=fake.text(),
+                author=faker.name(),
+                content=faker.text(),
                 created_at=pendulum.now().to_iso8601_string(),
                 deleted_at=None,
                 published_at=pendulum.now().to_iso8601_string(),
-                slug=fake.slug(),
-                tags=fake.words(randint(1, 6)),
-                title=fake.word(),
+                slug=faker.slug(),
+                tags=faker.words(randint(1, 6)),
+                title=faker.sentence(),
                 updated_at=None,
                 meta={
-                    'category': fake.word(),
-                    'description': fake.sentence(),
+                    'category': faker.word(),
+                    'description': faker.sentence(),
                     'language': 'en',
-                    'keywords': fake.words(randint(1, 6)),
-                    'title': fake.word(),
+                    'keywords': faker.words(randint(1, 6)),
+                    'title': faker.word(),
                 },
             )
         )
