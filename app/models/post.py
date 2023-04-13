@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi_camelcase import CamelModel
-from pydantic import BaseModel, conlist
+from pydantic import BaseModel, conlist, constr
 
 
 class Meta(BaseModel):
@@ -14,9 +14,9 @@ class Meta(BaseModel):
 
 class Post(CamelModel):
     id: str
-    author: str
-    title: str
-    content: str
+    author: constr(strip_whitespace=True, min_length=3)
+    title: constr(strip_whitespace=True, min_length=3)
+    content: constr(strip_whitespace=True, min_length=3)
     created_at: str
     deleted_at: Optional[str] = None
     published_at: Optional[str] = None
