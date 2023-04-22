@@ -1,5 +1,5 @@
 import functools
-from typing import Any, List, Union
+from typing import Any, List
 
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.metrics import Metrics, MetricUnit
@@ -13,7 +13,7 @@ from app.models.response import Post as PostResponse
 from app.schemas.post import CreatePost, UpdatePost
 from app.services.post import PostService
 
-logger = Logger()
+logger = Logger(utc=True)
 
 jwt_bearer = JWTBearer()
 metrics = Metrics()
@@ -102,7 +102,7 @@ async def get_post_by_uuid(uuid: str) -> PostResponse:
     status_code=status.HTTP_200_OK,
 )
 @tracer.capture_method
-async def get_posts(exclusive_start_key: Union[str, None] = None) -> Page:
+async def get_posts(exclusive_start_key: (str | None) = None) -> Page:
     if exclusive_start_key:
         response = await post_service.get_posts(exclusive_start_key)
     else:

@@ -32,7 +32,7 @@ class PostService:
     ERROR_MESSAGE_POST_WAS_NOT_FOUND: str = 'The requested post was not found'
 
     def __init__(self):
-        self._logger = Logger()
+        self._logger = Logger(utc=True)
         self._repository = PostRepository()
 
     @tracer.capture_method

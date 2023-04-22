@@ -46,7 +46,7 @@ provider:
   name: aws
   memorySize: 512
   region: ${env:AWS_REGION, 'eu-central-1'}
-  runtime: python3.9
+  runtime: python3.10
   stage: dev
   tracing:
     lambda: true

@@ -18,7 +18,7 @@ correlation_id: ContextVar[Optional[str]] = ContextVar(
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp):
         super().__init__(app)
-        self._logger = Logger()
+        self._logger = Logger(utc=True)
         self._tracer = Tracer()
 
     async def dispatch(
