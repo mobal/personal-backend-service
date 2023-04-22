@@ -13,7 +13,7 @@ from app.models.response import Post as PostResponse
 from app.schemas.post import CreatePost, UpdatePost
 from app.services.post import PostService
 
-logger = Logger()
+logger = Logger(utc=True)
 
 jwt_bearer = JWTBearer()
 metrics = Metrics()

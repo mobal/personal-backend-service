@@ -13,6 +13,7 @@ from app.models.auth import JWTToken
 from app.services.cache import CacheService
 from app.settings import Settings
 
+logger = Logger(utc=True)
 tracer = Tracer()
 
 ERROR_MESSAGE_NOT_AUTHENTICATED = 'Not authenticated'
@@ -21,7 +22,6 @@ ERROR_MESSAGE_NOT_AUTHENTICATED = 'Not authenticated'
 class HTTPBearer(FastAPIHTTPBearer):
     def __init__(self, auto_error: bool = True):
         super().__init__(auto_error=auto_error)
-        self._logger = Logger()
         self.auto_error = auto_error
 
     @tracer.capture_method
@@ -32,7 +32,7 @@ class HTTPBearer(FastAPIHTTPBearer):
         if authorization is not None:
             return await self._get_authorization_credentials_from_header(authorization)
         else:
-            self._logger.info(
+            logger.info(
                 'Missing authentication header, attempt to use token query param'
             )
             return await self._get_authorization_credentials_from_token(
@@ -45,7 +45,7 @@ class HTTPBearer(FastAPIHTTPBearer):
     ) -> Optional[HTTPAuthorizationCredentials]:
         scheme, credentials = get_authorization_scheme_param(authorization)
         if not (authorization and scheme and credentials):
-            self._logger.error(f'Missing {authorization=}, {scheme=} or {credentials=}')
+            logger.error(f'Missing {authorization=}, {scheme=} or {credentials=}')
             if self.auto_error:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -54,7 +54,7 @@ class HTTPBearer(FastAPIHTTPBearer):
             else:
                 return None
         if scheme.lower() != 'bearer':
-            self._logger.error(f'Invalid {scheme=}')
+            logger.error(f'Invalid {scheme=}')
             if self.auto_error:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -82,7 +82,6 @@ class HTTPBearer(FastAPIHTTPBearer):
 class JWTBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
         super().__init__(auto_error=auto_error)
-        self._logger = Logger()
         self.auto_error = auto_error
         self.cache_service = CacheService()
         self.settings = Settings()
@@ -93,7 +92,7 @@ class JWTBearer(HTTPBearer):
         if credentials:
             if not await self._validate_token(credentials.credentials):
                 if self.auto_error:
-                    self._logger.error(f'Invalid authentication token {credentials=}')
+                    logger.error(f'Invalid authentication token {credentials=}')
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail=ERROR_MESSAGE_NOT_AUTHENTICATED,
@@ -111,12 +110,12 @@ class JWTBearer(HTTPBearer):
                 **jwt.decode(token, self.settings.jwt_secret, algorithms='HS256')
             )
             if await self.cache_service.get(f'jti_{decoded_token.jti}') is False:
-                self._logger.debug(f'Token is not blacklisted {decoded_token=}')
+                logger.debug(f'Token is not blacklisted {decoded_token=}')
                 self.decoded_token = decoded_token
                 return True
-            self._logger.debug(f'Token blacklisted {decoded_token=}')
+            logger.debug(f'Token blacklisted {decoded_token=}')
         except DecodeError as err:
-            self._logger.error(f'Error occurred during token decoding {err=}')
+            logger.error(f'Error occurred during token decoding {err=}')
         except ExpiredSignatureError as err:
-            self._logger.error(f'Expired signature {err=}')
+            logger.error(f'Expired signature {err=}')
         return False

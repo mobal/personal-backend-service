@@ -13,7 +13,7 @@ class PostRepository:
     SELECT_COUNT = 'COUNT'
 
     def __init__(self):
-        self._logger = Logger()
+        self._logger = Logger(utc=True)
         settings = Settings()
         self._table = (
             boto3.Session().resource('dynamodb').Table(f'{settings.stage}-posts')

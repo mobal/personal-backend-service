@@ -26,7 +26,7 @@ settings = Settings()
 if settings.debug:
     set_package_logger()
 
-logger = Logger()
+logger = Logger(utc=True)
 metrics = Metrics()
 tracer = Tracer()
 
