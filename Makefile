@@ -21,4 +21,4 @@ sort:
 	python3 -m pipenv run python -m isort --atomic app/ tests/
 
 test:
-	python3 -m pipenv run python -m pytest --cache-clear --cov-report term --cov=app/
+	python3 -m pipenv run python -m pytest
