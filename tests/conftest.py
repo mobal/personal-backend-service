@@ -1,3 +1,4 @@
+import os
 import uuid
 from random import randint
 from typing import List
@@ -10,35 +11,31 @@ from moto import mock_dynamodb
 from app.models.post import Post
 from app.settings import Settings
 
-CACHE_SERVICE_BASE_URL = 'https://localhost'
-JWT_SECRET = '6fl3AkTFmG2rVveLglUW8DOmp8J4Bvi3'
-
-
-@pytest.fixture(autouse=True)
-def set_environment_variables(monkeypatch):
-    monkeypatch.setenv('DEBUG', 'true')
-    monkeypatch.setenv('LOG_LEVEL', 'DEBUG')
-    monkeypatch.setenv('STAGE', 'test')
-
-    monkeypatch.setenv('APP_NAME', 'personal-backend-service')
-    monkeypatch.setenv('APP_TIMEZONE', 'Europe/Budapest')
-
-    monkeypatch.setenv('CACHE_SERVICE_BASE_URL', CACHE_SERVICE_BASE_URL)
-    monkeypatch.setenv('JWT_SECRET', JWT_SECRET)
-
-    monkeypatch.setenv('AWS_REGION', 'eu-central-1')
-    monkeypatch.setenv('AWS_ACCESS_KEY_ID', 'aws_access_key_id')
-    monkeypatch.setenv('AWS_SECRET_ACCESS_KEY', 'aws_secret_access_key')
-
-    monkeypatch.setenv('POWERTOOLS_LOGGER_LOG_EVENT', 'true')
-    monkeypatch.setenv('POWERTOOLS_METRICS_NAMESPACE', 'personal')
-    monkeypatch.setenv('POWERTOOLS_SERVICE_NAME', 'personal-backend-service')
-    monkeypatch.setenv('POWERTOOLS_TRACE_DISABLED', 'true')
-
 
 def pytest_configure():
-    pytest.cache_service_base_url = CACHE_SERVICE_BASE_URL
-    pytest.jwt_secret = JWT_SECRET
+    pytest.cache_service_base_url = 'https://localhost'
+    pytest.jwt_secret = '6fl3AkTFmG2rVveLglUW8DOmp8J4Bvi3'
+
+
+def pytest_sessionstart():
+    os.environ['DEBUG'] = 'true'
+    os.environ['LOG_LEVEL'] = 'DEBUG'
+    os.environ['STAGE'] = 'test'
+
+    os.environ['APP_NAME'] = 'personal-backend-service'
+    os.environ['APP_TIMEZONE'] = 'Europe/Budapest'
+
+    os.environ['CACHE_SERVICE_BASE_URL'] = pytest.cache_service_base_url
+    os.environ['JWT_SECRET'] = pytest.jwt_secret
+
+    os.environ['AWS_REGION'] = 'eu-central-1'
+    os.environ['AWS_ACCESS_KEY_ID'] = 'aws_access_key_id'
+    os.environ['AWS_SECRET_ACCESS_KEY'] = 'aws_secret_access_key'
+
+    os.environ['POWERTOOLS_LOGGER_LOG_EVENT'] = 'true'
+    os.environ['POWERTOOLS_METRICS_NAMESPACE'] = 'personal'
+    os.environ['POWERTOOLS_SERVICE_NAME'] = 'personal-backend-service'
+    os.environ['POWERTOOLS_TRACE_DISABLED'] = 'true'
 
 
 @pytest.fixture
