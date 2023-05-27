@@ -1,13 +1,11 @@
 import uuid
-from inspect import isclass
 from typing import List
 
-import botocore
 import uvicorn
 from aws_lambda_powertools import Logger, Metrics, Tracer
 from aws_lambda_powertools.logging.logger import set_package_logger
 from aws_lambda_powertools.metrics import MetricUnit
-from botocore.exceptions import BotoCoreError
+from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -52,6 +50,8 @@ class ValidationErrorResponse(ErrorResponse):
     errors: List[dict]
 
 
+@app.exception_handler(BotoCoreError)
+@app.exception_handler(ClientError)
 async def botocore_error_handler(
     request: Request, error: BotoCoreError
 ) -> JSONResponse:
@@ -66,15 +66,6 @@ async def botocore_error_handler(
         ),
         status_code=status_code,
     )
-
-
-for k, v in sorted(
-    filter(
-        lambda elem: isclass(elem[1]) and issubclass(elem[1], BotoCoreError),
-        botocore.exceptions.__dict__.items(),
-    )
-):
-    app.add_exception_handler(v, botocore_error_handler)
 
 
 @app.exception_handler(HTTPException)
@@ -115,4 +106,4 @@ async def request_validation_exception_handler(
 
 
 if __name__ == '__main__':
-    uvicorn.run('app.main:app', host='localhost', port=3000, reload=True)
+    uvicorn.run('app.main:app', host='localhost', port=8080, reload=True)

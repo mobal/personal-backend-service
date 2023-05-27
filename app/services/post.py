@@ -7,7 +7,7 @@ from aws_lambda_powertools import Logger, Tracer
 from boto3.dynamodb.conditions import Attr
 from slugify import slugify
 
-from app.exceptions import PostNotFoundException
+from app.exceptions import PostAlreadyExistsException, PostNotFoundException
 from app.models.post import Post
 from app.models.response import Page
 from app.models.response import Post as PostResponse
@@ -29,6 +29,7 @@ async def _item_to_response(item: dict, to_markdown: bool = False) -> PostRespon
 
 
 class PostService:
+    ERROR_MESSAGE_POST_ALREADY_EXISTS: str = 'There is already a post with this title'
     ERROR_MESSAGE_POST_WAS_NOT_FOUND: str = 'The requested post was not found'
 
     def __init__(self):
@@ -47,6 +48,11 @@ class PostService:
 
     @tracer.capture_method
     async def create_post(self, create_post: CreatePost) -> Post:
+        filter_expression = Attr('title').eq(create_post.title)
+        if await self._repository.get_post(filter_expression):
+            raise PostAlreadyExistsException(
+                PostService.ERROR_MESSAGE_POST_ALREADY_EXISTS
+            )
         data = create_post.dict()
         data['id'] = str(uuid.uuid4())
         data['created_at'] = pendulum.now().to_iso8601_string()

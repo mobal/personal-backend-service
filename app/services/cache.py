@@ -1,5 +1,7 @@
+import json
 from typing import Optional
 
+import boto3
 import httpx
 from aws_lambda_powertools import Logger, Tracer
 from starlette import status

@@ -67,30 +67,36 @@ def initialize_posts_table(dynamodb_resource, posts: List[Post], posts_table):
 
 
 @pytest.fixture
-def posts(faker) -> List[Post]:
+def make_post(faker):
+    def make() -> Post:
+        return Post(
+            id=str(uuid.uuid4()),
+            author=faker.name(),
+            content=faker.text(),
+            created_at=pendulum.now().to_iso8601_string(),
+            deleted_at=None,
+            published_at=pendulum.now().to_iso8601_string(),
+            slug=faker.slug(),
+            tags=faker.words(randint(1, 6)),
+            title=faker.sentence(),
+            updated_at=None,
+            meta={
+                'category': faker.word(),
+                'description': faker.sentence(),
+                'language': 'en',
+                'keywords': faker.words(randint(1, 6)),
+                'title': faker.word(),
+            },
+        )
+
+    return make
+
+
+@pytest.fixture
+def posts(faker, make_post) -> List[Post]:
     posts = []
     for _ in range(5):
-        posts.append(
-            Post(
-                id=str(uuid.uuid4()),
-                author=faker.name(),
-                content=faker.text(),
-                created_at=pendulum.now().to_iso8601_string(),
-                deleted_at=None,
-                published_at=pendulum.now().to_iso8601_string(),
-                slug=faker.slug(),
-                tags=faker.words(randint(1, 6)),
-                title=faker.sentence(),
-                updated_at=None,
-                meta={
-                    'category': faker.word(),
-                    'description': faker.sentence(),
-                    'language': 'en',
-                    'keywords': faker.words(randint(1, 6)),
-                    'title': faker.word(),
-                },
-            )
-        )
+        posts.append(make_post())
     return posts
 
 
