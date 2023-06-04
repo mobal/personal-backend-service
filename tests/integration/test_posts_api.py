@@ -111,14 +111,15 @@ class TestPostsApi:
         )
 
     @pytest.fixture
-    def create_post(self, posts: List[Post]) -> CreatePost:
+    def create_post(self, make_post) -> CreatePost:
+        post = make_post()
         return CreatePost(
-            author=posts[0].author,
-            title=posts[0].title,
-            content=posts[0].content,
-            tags=posts[0].tags,
-            meta=posts[0].meta.dict(),
-            published_at=posts[0].published_at,
+            author=post.author,
+            title=post.title,
+            content=post.content,
+            tags=post.tags,
+            meta=post.meta.dict(),
+            published_at=post.published_at,
         )
 
     @pytest.fixture
@@ -458,6 +459,29 @@ class TestPostsApi:
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert response.headers['Location']
+        assert cache_service_mock.called
+        assert cache_service_mock.call_count == 1
+
+    async def test_successfully_fail_tocreate_post_due_to_already_exists_by_title(
+        self,
+        cache_service_response_404: Response,
+        posts: List[Post],
+        respx_mock: MockRouter,
+        test_client: TestClient,
+    ):
+        jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
+        cache_service_mock = await self._generate_respx_mock(
+            'GET',
+            cache_service_response_404,
+            respx_mock,
+            self.CACHE_SERVICE_URL,
+        )
+        response = test_client.post(
+            self.BASE_URL,
+            headers={'Authorization': f'Bearer {jwt_token}'},
+            json=CreatePost(**posts[0].dict()).dict(by_alias=True),
+        )
+        assert response.status_code == status.HTTP_409_CONFLICT
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
 

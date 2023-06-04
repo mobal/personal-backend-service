@@ -5,7 +5,7 @@ import pendulum
 import pytest
 from starlette import status
 
-from app.exceptions import PostNotFoundException
+from app.exceptions import PostAlreadyExistsException, PostNotFoundException
 from app.models.post import Post
 from app.models.response import Post as PostResponse
 from app.repositories.post import PostRepository
@@ -16,6 +16,8 @@ from app.services.post import PostService
 @pytest.mark.asyncio
 class TestPostService:
     ERROR_MESSAGE_POST_WAS_NOT_FOUND = 'The requested post was not found'
+    ERROR_MESSAGE_POST_ALREADY_EXISTS = 'There is already a post with this title'
+    PROFILE_REPOSITORY_GET_POST = 'app.repositories.post.PostRepository.get_post'
     PROFILE_REPOSITORY_GET_ALL_POSTS = (
         'app.repositories.post.PostRepository.get_all_posts'
     )
@@ -31,21 +33,37 @@ class TestPostService:
     async def test_successfully_create_post(
         self,
         mocker,
+        make_post,
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        mocker.patch(self.PROFILE_REPOSITORY_GET_POST, return_value=None)
+        mocker.patch('app.repositories.post.PostRepository.create_post')
+        post = make_post()
+        result = await post_service.create_post(CreatePost(**post.dict()))
+        assert post.author == result.author
+        assert post.content == result.content
+        assert post.meta == result.meta
+        assert post.published_at == result.published_at
+        assert post.tags == result.tags
+        assert post.title == result.title
+        assert result.is_deleted is False
+        post_repository.get_post.assert_called_once()
+        post_repository.create_post.assert_called_once()
+
+    async def test_fail_to_create_post_due_to_already_exists_by_title(
+        self,
+        mocker,
         posts: List[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
-        mocker.patch('app.repositories.post.PostRepository.create_post')
-        create_post = CreatePost(**posts[0].dict())
-        result = await post_service.create_post(create_post)
-        assert posts[0].author == result.author
-        assert posts[0].content == result.content
-        assert posts[0].meta == result.meta
-        assert posts[0].published_at == result.published_at
-        assert posts[0].tags == result.tags
-        assert posts[0].title == result.title
-        assert result.is_deleted is False
-        post_repository.create_post.assert_called_once()
+        mocker.patch(self.PROFILE_REPOSITORY_GET_POST, return_value=posts[0].dict())
+        with pytest.raises(PostAlreadyExistsException) as excinfo:
+            await post_service.create_post(CreatePost(**posts[0].dict()))
+        assert status.HTTP_409_CONFLICT == excinfo.value.status_code
+        assert self.ERROR_MESSAGE_POST_ALREADY_EXISTS == excinfo.value.detail
+        post_repository.get_post.assert_called_once()
 
     async def test_successfully_delete_post(
         self,
@@ -170,7 +188,6 @@ class TestPostService:
         mocker,
         posts: List[Post],
         post_service: PostService,
-        post_repository: PostRepository,
     ):
         mocker.patch(
             self.PROFILE_REPOSITORY_GET_ALL_POSTS,
@@ -182,9 +199,7 @@ class TestPostService:
     async def test_successfully_get_archive_and_return_none(
         self,
         mocker,
-        posts: List[Post],
         post_service: PostService,
-        post_repository: PostRepository,
     ):
         mocker.patch(
             self.PROFILE_REPOSITORY_GET_ALL_POSTS,
@@ -201,7 +216,7 @@ class TestPostService:
         post_repository: PostRepository,
     ):
         mocker.patch(
-            'app.repositories.post.PostRepository.get_post',
+            self.PROFILE_REPOSITORY_GET_POST,
             return_value=posts[0].dict(),
         )
         dt = pendulum.parse(posts[0].published_at)
@@ -220,7 +235,7 @@ class TestPostService:
         post_repository: PostRepository,
     ):
         mocker.patch(
-            'app.repositories.post.PostRepository.get_post',
+            self.PROFILE_REPOSITORY_GET_POST,
             return_value=None,
         )
         dt = pendulum.parse(posts[0].published_at)

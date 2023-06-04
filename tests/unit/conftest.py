@@ -35,7 +35,7 @@ def filter_expression() -> AttributeBase:
 def jwt_token() -> JWTToken:
     now = pendulum.now()
     return JWTToken(
-        exp=now.add(hours=1).int_timestamp,
+        exp=now.add(years=1).int_timestamp,
         iat=now.int_timestamp,
         iss='https://netcode.hu',
         jti=str(uuid.uuid4()),
