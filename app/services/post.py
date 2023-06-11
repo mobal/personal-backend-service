@@ -48,14 +48,17 @@ class PostService:
 
     @tracer.capture_method
     async def create_post(self, create_post: CreatePost) -> Post:
-        filter_expression = Attr('title').eq(create_post.title)
+        now = pendulum.now()
+        filter_expression = Attr('title').eq(create_post.title) & Attr(
+            'created_at'
+        ).between(now.start_of('day').isoformat('T'), now.end_of('day').isoformat('T'))
         if await self._repository.get_post(filter_expression):
             raise PostAlreadyExistsException(
                 PostService.ERROR_MESSAGE_POST_ALREADY_EXISTS
             )
         data = create_post.dict()
         data['id'] = str(uuid.uuid4())
-        data['created_at'] = pendulum.now().to_iso8601_string()
+        data['created_at'] = now.to_iso8601_string()
         data['deleted_at'] = None
         data['slug'] = slugify(data['title'])
         data['updated_at'] = None

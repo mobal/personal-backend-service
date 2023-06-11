@@ -462,7 +462,7 @@ class TestPostsApi:
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
 
-    async def test_successfully_fail_tocreate_post_due_to_already_exists_by_title(
+    async def test_fail_to_create_post_due_to_already_exists_by_title(
         self,
         cache_service_response_404: Response,
         posts: List[Post],
