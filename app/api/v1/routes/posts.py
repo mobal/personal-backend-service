@@ -31,7 +31,7 @@ def authorize(roles: List[str]):
             if all(role in user.roles for role in roles):
                 return await func(*args, **kwargs)
             else:
-                logger.error(f'The {user=} does not have the appropriate {roles=}')
+                logger.warning(f'The {user=} does not have the appropriate {roles=}')
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized'
                 )

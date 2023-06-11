@@ -45,7 +45,7 @@ class HTTPBearer(FastAPIHTTPBearer):
     ) -> Optional[HTTPAuthorizationCredentials]:
         scheme, credentials = get_authorization_scheme_param(authorization)
         if not (authorization and scheme and credentials):
-            logger.error(f'Missing {authorization=}, {scheme=} or {credentials=}')
+            logger.warning(f'Missing {authorization=}, {scheme=} or {credentials=}')
             if self.auto_error:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -54,7 +54,7 @@ class HTTPBearer(FastAPIHTTPBearer):
             else:
                 return None
         if scheme.lower() != 'bearer':
-            logger.error(f'Invalid {scheme=}')
+            logger.warning(f'Invalid {scheme=}')
             if self.auto_error:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -92,7 +92,7 @@ class JWTBearer(HTTPBearer):
         if credentials:
             if not await self._validate_token(credentials.credentials):
                 if self.auto_error:
-                    logger.error(f'Invalid authentication token {credentials=}')
+                    logger.warning(f'Invalid authentication token {credentials=}')
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail=ERROR_MESSAGE_NOT_AUTHENTICATED,
@@ -115,7 +115,7 @@ class JWTBearer(HTTPBearer):
                 return True
             logger.debug(f'Token blacklisted {decoded_token=}')
         except DecodeError as err:
-            logger.error(f'Error occurred during token decoding {err=}')
+            logger.exception(f'Error occurred during token decoding {err=}')
         except ExpiredSignatureError as err:
-            logger.error(f'Expired signature {err=}')
+            logger.exception(f'Expired signature {err=}')
         return False

@@ -42,7 +42,7 @@ class PostService:
             post_uuid, FilterExpressions.NOT_DELETED
         )
         if item is None:
-            self._logger.error(f'Post was not found with UUID {post_uuid=}')
+            self._logger.warning(f'Post was not found with UUID {post_uuid=}')
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return Post.parse_obj(item)
 
@@ -105,7 +105,7 @@ class PostService:
         )
         item = await self._repository.get_post(filter_expression)
         if item is None:
-            self._logger.error(f'Failed to get post {filter_expression=}')
+            self._logger.warning(f'Failed to get post {filter_expression=}')
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return await _item_to_response(item, to_markdown=True)
 
@@ -127,7 +127,7 @@ class PostService:
             post_uuid, FilterExpressions.NOT_DELETED
         )
         if item is None:
-            self._logger.error(f'Post was not found by UUID {post_uuid=}')
+            self._logger.warning(f'Post was not found by UUID {post_uuid=}')
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         item.update(update_post.dict(exclude_unset=True))
         post = Post.parse_obj(item)
