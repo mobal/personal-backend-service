@@ -32,5 +32,5 @@ class CacheService:
         elif response.status_code == status.HTTP_404_NOT_FOUND:
             self._logger.debug(f'Cache was not found for {key=}')
             return False
-        self._logger.error(f'Unexpected error {response=}')
+        self._logger.exception(f'Unexpected error {response=}')
         raise CacheServiceException(response.json()['message'])

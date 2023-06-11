@@ -58,8 +58,8 @@ async def botocore_error_handler(
     error_id = uuid.uuid4()
     error_message = str(error) if settings.debug else 'Internal Server Error'
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    logger.error(f'{str(error)} with {status_code=} and {error_id=}')
-    metrics.add_metric(name='ErrorHandler', unit=MetricUnit.Count, value=1)
+    logger.exception(f'Received botocore error {error_id=}')
+    metrics.add_metric(name='BotocoreErrorHandler', unit=MetricUnit.Count, value=1)
     return JSONResponse(
         content=jsonable_encoder(
             ErrorResponse(status=status_code, id=error_id, message=error_message)
@@ -73,7 +73,7 @@ async def http_exception_handler(
     request: Request, error: HTTPException
 ) -> JSONResponse:
     error_id = uuid.uuid4()
-    logger.error(f'{error.detail} with {error.status_code=} and {error_id=}')
+    logger.exception(f'Received http exception {error_id=}')
     metrics.add_metric(name='HttpExceptionHandler', unit=MetricUnit.Count, value=1)
     return JSONResponse(
         content=jsonable_encoder(
@@ -84,21 +84,22 @@ async def http_exception_handler(
 
 
 @app.exception_handler(RequestValidationError)
-async def request_validation_exception_handler(
-    request: Request, exc: RequestValidationError
+async def request_validation_error_handler(
+    request: Request, error: RequestValidationError
 ) -> JSONResponse:
     error_id = uuid.uuid4()
-    error_message = str(exc)
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
-    logger.error(f'{error_message} with {status_code=} and {error_id=}')
-    metrics.add_metric(name='ValidationErrorHandler', unit=MetricUnit.Count, value=1)
+    logger.exception(f'Received request validation error {error_id=}')
+    metrics.add_metric(
+        name='RequestValidationErrorHandler', unit=MetricUnit.Count, value=1
+    )
     return JSONResponse(
         content=jsonable_encoder(
             ValidationErrorResponse(
                 status=status_code,
                 id=error_id,
-                message=str(exc),
-                errors=exc.errors(),
+                message=str(error),
+                errors=error.errors(),
             )
         ),
         status_code=status_code,

@@ -42,20 +42,23 @@ class PostService:
             post_uuid, FilterExpressions.NOT_DELETED
         )
         if item is None:
-            self._logger.error(f'Post was not found with UUID {post_uuid=}')
+            self._logger.warning(f'Post was not found with UUID {post_uuid=}')
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return Post.parse_obj(item)
 
     @tracer.capture_method
     async def create_post(self, create_post: CreatePost) -> Post:
-        filter_expression = Attr('title').eq(create_post.title)
+        now = pendulum.now()
+        filter_expression = Attr('title').eq(create_post.title) & Attr(
+            'created_at'
+        ).between(now.start_of('day').isoformat('T'), now.end_of('day').isoformat('T'))
         if await self._repository.get_post(filter_expression):
             raise PostAlreadyExistsException(
                 PostService.ERROR_MESSAGE_POST_ALREADY_EXISTS
             )
         data = create_post.dict()
         data['id'] = str(uuid.uuid4())
-        data['created_at'] = pendulum.now().to_iso8601_string()
+        data['created_at'] = now.to_iso8601_string()
         data['deleted_at'] = None
         data['slug'] = slugify(data['title'])
         data['updated_at'] = None
@@ -102,7 +105,7 @@ class PostService:
         )
         item = await self._repository.get_post(filter_expression)
         if item is None:
-            self._logger.error(f'Failed to get post {filter_expression=}')
+            self._logger.warning(f'Failed to get post {filter_expression=}')
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return await _item_to_response(item, to_markdown=True)
 
@@ -124,7 +127,7 @@ class PostService:
             post_uuid, FilterExpressions.NOT_DELETED
         )
         if item is None:
-            self._logger.error(f'Post was not found by UUID {post_uuid=}')
+            self._logger.warning(f'Post was not found by UUID {post_uuid=}')
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         item.update(update_post.dict(exclude_unset=True))
         post = Post.parse_obj(item)
