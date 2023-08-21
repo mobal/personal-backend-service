@@ -18,6 +18,6 @@ class User(BaseModel):
 class JWTToken(BaseModel):
     exp: int
     iat: int
-    iss: Optional[str]
+    iss: Optional[str] = None
     jti: str
     sub: Any

@@ -4,6 +4,7 @@ from typing import List
 import pendulum
 import pytest
 from boto3.dynamodb.conditions import Attr, AttributeBase, Key
+from pydantic import BaseModel
 
 from app.models.post import Post
 from app.repositories.post import PostRepository
@@ -17,7 +18,7 @@ class TestPostRepository:
         post_repository: PostRepository,
         posts_table,
     ):
-        post_dict = posts[0].dict()
+        post_dict = posts[0].model_dump()
         post_dict['id'] = str(uuid.uuid4())
         await post_repository.create_post(post_dict)
         response = posts_table.query(
@@ -34,10 +35,10 @@ class TestPostRepository:
         post_repository: PostRepository,
     ):
         items = await post_repository.get_all_posts(
-            filter_expression, list(posts[0].__fields__.keys())
+            filter_expression, list(posts[0].model_fields.keys())
         )
         assert len(items) == len(posts)
-        assert posts[0] == items[0]
+        assert posts[0].model_dump() == items[0]
 
     async def test_successfully_get_all_posts_with_fields_filter(
         self,
@@ -50,7 +51,10 @@ class TestPostRepository:
         assert len(items) == len(posts)
         assert 4 == len(items[0])
         for k, v in items[0].items():
-            assert getattr(posts[0], k) == v
+            attr = getattr(posts[0], k)
+            if issubclass(type(attr), BaseModel):
+                attr = attr.model_dump()
+            assert attr == v
 
     async def test_successfully_get_post_by_uuid(
         self,
@@ -59,7 +63,7 @@ class TestPostRepository:
         post_repository: PostRepository,
     ):
         item = await post_repository.get_post_by_uuid(posts[0].id, filter_expression)
-        assert posts[0].dict() == item
+        assert posts[0].model_dump() == item
 
     async def test_fail_to_get_post_by_uuid(
         self,
@@ -89,7 +93,7 @@ class TestPostRepository:
         item = response['Items'][0]
         assert posts[0].id == item['id']
         assert posts[0].author == item['author']
-        assert posts[0].meta == item['meta']
+        assert posts[0].meta.model_dump() == item['meta']
         assert posts[0].slug == item['slug']
         assert posts[0].tags == item['tags']
         assert posts[0].title == item['title']
@@ -113,7 +117,7 @@ class TestPostRepository:
             posts[0].slug
         )
         item = await post_repository.get_post(filter_expression)
-        assert posts[0].dict() == item
+        assert posts[0].model_dump() == item
 
     async def test_fail_to_get_post(
         self, posts: List[Post], post_repository: PostRepository
