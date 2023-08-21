@@ -9,7 +9,6 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi_camelcase import CamelModel
 from mangum import Mangum
 from starlette import status
 from starlette.middleware.gzip import GZipMiddleware
@@ -17,6 +16,7 @@ from starlette.responses import JSONResponse
 
 from app.api.v1.api import router
 from app.middlewares import CorrelationIdMiddleware
+from app.models.camel_model import CamelModel
 from app.settings import Settings
 
 settings = Settings()

@@ -40,7 +40,7 @@ class TestPostService:
         mocker.patch(self.PROFILE_REPOSITORY_GET_POST, return_value=None)
         mocker.patch('app.repositories.post.PostRepository.create_post')
         post = make_post()
-        result = await post_service.create_post(CreatePost(**post.dict()))
+        result = await post_service.create_post(CreatePost(**post.model_dump()))
         assert post.author == result.author
         assert post.content == result.content
         assert post.meta == result.meta
@@ -58,9 +58,11 @@ class TestPostService:
         post_repository: PostRepository,
         post_service: PostService,
     ):
-        mocker.patch(self.PROFILE_REPOSITORY_GET_POST, return_value=posts[0].dict())
+        mocker.patch(
+            self.PROFILE_REPOSITORY_GET_POST, return_value=posts[0].model_dump()
+        )
         with pytest.raises(PostAlreadyExistsException) as excinfo:
-            await post_service.create_post(CreatePost(**posts[0].dict()))
+            await post_service.create_post(CreatePost(**posts[0].model_dump()))
         assert status.HTTP_409_CONFLICT == excinfo.value.status_code
         assert self.ERROR_MESSAGE_POST_ALREADY_EXISTS == excinfo.value.detail
         post_repository.get_post.assert_called_once()
@@ -73,7 +75,7 @@ class TestPostService:
         post_service: PostService,
     ):
         mocker.patch(
-            self.PROFILE_REPOSITORY_GET_POST_BY_UUID, return_value=posts[0].dict()
+            self.PROFILE_REPOSITORY_GET_POST_BY_UUID, return_value=posts[0].model_dump()
         )
         mocker.patch(self.PROFILE_REPOSITORY_UPDATE_POST)
         await post_service.delete_post(posts[0].id)
@@ -101,19 +103,18 @@ class TestPostService:
     async def test_successfully_get_all_posts(
         self,
         mocker,
-        post_fields: str,
         posts: List[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
         mocker.patch(
             self.PROFILE_REPOSITORY_GET_ALL_POSTS,
-            return_value=[posts[0].dict()],
+            return_value=[posts[0].model_dump()],
         )
         result = await post_service.get_all_posts()
         assert result.exclusive_start_key is None
         assert len(result.data) == 1
-        assert PostResponse(**posts[0].dict()) == result.data[0]
+        assert PostResponse(**posts[0].model_dump()) == result.data[0]
         post_repository.get_all_posts.assert_called_once()
 
     async def test_successfully_get_post_by_uuid(
@@ -125,10 +126,10 @@ class TestPostService:
     ):
         mocker.patch(
             self.PROFILE_REPOSITORY_GET_POST_BY_UUID,
-            return_value=posts[0].dict(),
+            return_value=posts[0].model_dump(),
         )
         result = await post_service.get_post(posts[0].id)
-        assert PostResponse(**result.dict()) == result
+        assert PostResponse(**result.model_dump()) == result
         post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
 
     async def test_fail_to_get_post_by_uuid_due_post_not_found_exception(
@@ -157,7 +158,7 @@ class TestPostService:
         post_service: PostService,
     ) -> None:
         mocker.patch(
-            self.PROFILE_REPOSITORY_GET_POST_BY_UUID, return_value=posts[0].dict()
+            self.PROFILE_REPOSITORY_GET_POST_BY_UUID, return_value=posts[0].model_dump()
         )
         mocker.patch(self.PROFILE_REPOSITORY_UPDATE_POST)
         update_post = UpdatePost(content='Updated content', title='Updated title')
@@ -191,7 +192,7 @@ class TestPostService:
     ):
         mocker.patch(
             self.PROFILE_REPOSITORY_GET_ALL_POSTS,
-            return_value=[posts[0].dict()],
+            return_value=[posts[0].model_dump()],
         )
         result = await post_service.get_archive()
         assert result.get(pendulum.parse(posts[0].published_at).format('YYYY-MM')) == 1
@@ -217,7 +218,7 @@ class TestPostService:
     ):
         mocker.patch(
             self.PROFILE_REPOSITORY_GET_POST,
-            return_value=posts[0].dict(),
+            return_value=posts[0].model_dump(),
         )
         dt = pendulum.parse(posts[0].published_at)
         result = await post_service.get_post_by_date_and_slug(

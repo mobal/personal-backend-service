@@ -44,7 +44,7 @@ class PostService:
         if item is None:
             self._logger.warning(f'Post was not found with UUID {post_uuid=}')
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
-        return Post.parse_obj(item)
+        return Post(**item)
 
     @tracer.capture_method
     async def create_post(self, create_post: CreatePost) -> Post:
@@ -56,7 +56,7 @@ class PostService:
             raise PostAlreadyExistsException(
                 PostService.ERROR_MESSAGE_POST_ALREADY_EXISTS
             )
-        data = create_post.dict()
+        data = create_post.model_dump()
         data['id'] = str(uuid.uuid4())
         data['created_at'] = now.to_iso8601_string()
         data['deleted_at'] = None
@@ -70,7 +70,7 @@ class PostService:
         post = await self._get_post_by_uuid(post_uuid)
         post.deleted_at = pendulum.now().to_iso8601_string()
         await self._repository.update_post(
-            post_uuid, post.dict(exclude={'id'}), FilterExpressions.NOT_DELETED
+            post_uuid, post.model_dump(exclude={'id'}), FilterExpressions.NOT_DELETED
         )
         self._logger.info(f'Post successfully deleted {post_uuid=}')
 
@@ -88,7 +88,7 @@ class PostService:
     @tracer.capture_method
     async def get_post(self, post_uuid: str) -> PostResponse:
         return await _item_to_response(
-            (await self._get_post_by_uuid(post_uuid)).dict(), to_markdown=True
+            (await self._get_post_by_uuid(post_uuid)).model_dump(), to_markdown=True
         )
 
     @tracer.capture_method
@@ -129,11 +129,11 @@ class PostService:
         if item is None:
             self._logger.warning(f'Post was not found by UUID {post_uuid=}')
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
-        item.update(update_post.dict(exclude_unset=True))
-        post = Post.parse_obj(item)
+        item.update(update_post.model_dump(exclude_unset=True))
+        post = Post(**item)
         post.updated_at = pendulum.now().to_iso8601_string()
         await self._repository.update_post(
-            post_uuid, post.dict(exclude={'id'}), FilterExpressions.NOT_DELETED
+            post_uuid, post.model_dump(exclude={'id'}), FilterExpressions.NOT_DELETED
         )
         self._logger.info(f'Post successfully updated {post_uuid=}')
 

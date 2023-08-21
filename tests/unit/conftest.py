@@ -23,7 +23,7 @@ def jwt_bearer() -> JWTBearer:
 
 @pytest.fixture
 def post_fields() -> str:
-    return ','.join(Post.__fields__)
+    return ','.join(Post.model_fields)
 
 
 @pytest.fixture
