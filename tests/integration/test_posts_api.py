@@ -118,7 +118,7 @@ class TestPostsApi:
             title=post.title,
             content=post.content,
             tags=post.tags,
-            meta=post.meta.dict(),
+            meta=post.meta.model_dump(),
             published_at=post.published_at,
         )
 
@@ -352,7 +352,7 @@ class TestPostsApi:
         response = test_client.post(
             self.BASE_URL,
             headers={'Authorization': f'Bearer '},
-            json=create_post.dict(by_alias=True),
+            json=create_post.model_dump(by_alias=True),
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
@@ -377,7 +377,7 @@ class TestPostsApi:
         response = test_client.post(
             self.BASE_URL,
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=create_post.dict(by_alias=True),
+            json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -403,7 +403,7 @@ class TestPostsApi:
         response = test_client.post(
             self.BASE_URL,
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=create_post.dict(by_alias=True),
+            json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -429,7 +429,7 @@ class TestPostsApi:
         response = test_client.post(
             self.BASE_URL,
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=create_post.dict(by_alias=True),
+            json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -455,7 +455,7 @@ class TestPostsApi:
         response = test_client.post(
             self.BASE_URL,
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=create_post.dict(by_alias=True),
+            json=create_post.model_dump(by_alias=True),
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert response.headers['Location']
@@ -479,7 +479,7 @@ class TestPostsApi:
         response = test_client.post(
             self.BASE_URL,
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=CreatePost(**posts[0].dict()).dict(by_alias=True),
+            json=CreatePost(**posts[0].model_dump()).model_dump(by_alias=True),
         )
         assert response.status_code == status.HTTP_409_CONFLICT
         assert cache_service_mock.called
@@ -502,7 +502,7 @@ class TestPostsApi:
         response = test_client.put(
             f'{self.BASE_URL}/{str(uuid.uuid4())}',
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=create_post.dict(by_alias=True),
+            json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -552,8 +552,8 @@ class TestPostsApi:
     ):
         response = test_client.put(
             f'{self.BASE_URL}/{str(uuid.uuid4())}',
-            headers={'Authorization': f'Bearer '},
-            json=create_post.dict(by_alias=True),
+            headers={'Authorization': 'Bearer '},
+            json=create_post.model_dump(by_alias=True),
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
@@ -578,7 +578,7 @@ class TestPostsApi:
         response = test_client.put(
             f'{self.BASE_URL}/{str(uuid.uuid4())}',
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=create_post.dict(by_alias=True),
+            json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -604,7 +604,7 @@ class TestPostsApi:
         response = test_client.put(
             f'{self.BASE_URL}/{str(uuid.uuid4())}',
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=create_post.dict(by_alias=True),
+            json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -630,7 +630,7 @@ class TestPostsApi:
         response = test_client.put(
             f'{self.BASE_URL}/{str(uuid.uuid4())}',
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=create_post.dict(by_alias=True),
+            json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
@@ -656,7 +656,7 @@ class TestPostsApi:
         response = test_client.put(
             f'{self.BASE_URL}/{posts[0].id}',
             headers={'Authorization': f'Bearer {jwt_token}'},
-            json=posts[0].dict(),
+            json=posts[0].model_dump(),
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert cache_service_mock.called
