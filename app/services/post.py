@@ -146,7 +146,7 @@ class PostService:
         archive = {}
         if items:
             dates = list(map(lambda x: x['published_at'], items))
-            for dt in pendulum.period(
+            for dt in pendulum.interval(
                 pendulum.parse(min(dates)).start_of('month'),
                 pendulum.parse(max(dates)).end_of('month'),
             ).range('months'):
