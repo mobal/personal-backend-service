@@ -1,3 +1,5 @@
+all: black flake pycodestyle sort test
+
 black:
 	pipenv run black --skip-string-normalization ./
 
