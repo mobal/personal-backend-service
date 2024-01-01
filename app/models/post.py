@@ -9,7 +9,7 @@ class Meta(BaseModel):
     category: str
     description: str
     language: str
-    keywords: conlist(item_type=str, min_items=1)
+    keywords: conlist(item_type=str, min_length=1)
     title: str
 
 
@@ -23,7 +23,7 @@ class Post(CamelModel):
     published_at: Optional[str] = None
     updated_at: Optional[str] = None
     slug: str
-    tags: conlist(item_type=str, min_items=1)
+    tags: conlist(item_type=str, min_length=1)
     meta: Meta
 
     @property

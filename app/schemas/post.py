@@ -10,7 +10,7 @@ class CreatePost(CamelModel):
     author: constr(strip_whitespace=True, min_length=3)
     title: constr(strip_whitespace=True, min_length=3)
     content: constr(strip_whitespace=True, min_length=3)
-    tags: conlist(str, min_items=1)
+    tags: conlist(str, min_length=1)
     meta: Meta
     published_at: Optional[str]
 
@@ -21,6 +21,6 @@ class UpdatePost(CreatePost):
     author: Optional[constr(strip_whitespace=True, min_length=3)] = None
     title: Optional[constr(strip_whitespace=True, min_length=3)] = None
     content: Optional[constr(strip_whitespace=True, min_length=3)] = None
-    tags: Optional[conlist(str, min_items=1)] = None
+    tags: Optional[conlist(str, min_length=1)] = None
     meta: Optional[Meta] = None
     published_at: Optional[str] = None
