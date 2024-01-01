@@ -10,12 +10,12 @@ jobs:
       Coverage_File: coverage.xml
     steps:
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
     - name: Set up Python 3.12
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         cache: pipenv
         python-version: "3.12"
@@ -46,7 +46,7 @@ jobs:
         pipenv run python utils/coverage.py --coverage-file coverage.xml --find $GITHUB_WORKSPACE --replace /github/workspace
 
     - name: Scan with Sonar scanner
-      uses: sonarsource/sonarqube-scan-action@master
+      uses: sonarsource/sonarqube-scan-action@v2
       with:
         args: >
           -Dsonar.language=python
