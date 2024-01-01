@@ -5,7 +5,7 @@ plugins:
   - serverless-python-requirements
 custom:
   pythonRequirements:
-    dockerImage: public.ecr.aws/sam/build-python3.11
+    dockerImage: public.ecr.aws/sam/build-python3.12
     dockerizePip: 'non-linux'
     layer: true
     slim: true
@@ -45,7 +45,7 @@ provider:
   name: aws
   memorySize: 512
   region: ${env:AWS_REGION, 'eu-central-1'}
-  runtime: python3.11
+  runtime: python3.12
   stage: dev
   tracing:
     lambda: true
