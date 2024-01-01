@@ -14,7 +14,7 @@ from starlette import status
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.responses import JSONResponse
 
-from app.api.v1.api import router
+from app.api.v1.api import router as api_v1_router
 from app.middlewares import CorrelationIdMiddleware
 from app.models.camel_model import CamelModel
 from app.settings import Settings
@@ -31,7 +31,7 @@ tracer = Tracer()
 app = FastAPI(debug=settings.debug, title='PersonalBackendApp', version='1.0.0')
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(GZipMiddleware)
-app.include_router(router, prefix='/api/v1')
+app.include_router(api_v1_router)
 
 handler = Mangum(app)
 handler.__name__ = 'handler'
