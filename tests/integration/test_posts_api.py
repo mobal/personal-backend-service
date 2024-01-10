@@ -16,15 +16,15 @@ from app.schemas.post import CreatePost
 
 @pytest.mark.asyncio
 class TestPostsApi:
-    BASE_URL = '/api/v1/posts'
-    CACHE_SERVICE_URL = f'{pytest.cache_service_base_url}/api/cache'
-    ERROR_MESSAGE_INTERNAL_SERVER_ERROR = 'Internal server error'
-    ERROR_MESSAGE_NOT_AUTHENTICATED = 'Not authenticated'
-    ERROR_MESSAGE_NOT_AUTHORIZED = 'Not authorized'
-    ERROR_MESSAGE_NOT_FOUND = 'The requested post was not found'
-    ROLE_POST_CREATE = 'post:create'
-    ROLE_POST_DELETE = 'post:delete'
-    ROLE_POST_EDIT = 'post:edit'
+    BASE_URL = "/api/v1/posts"
+    CACHE_SERVICE_URL = f"{pytest.cache_service_base_url}/api/cache"
+    ERROR_MESSAGE_INTERNAL_SERVER_ERROR = "Internal server error"
+    ERROR_MESSAGE_NOT_AUTHENTICATED = "Not authenticated"
+    ERROR_MESSAGE_NOT_AUTHORIZED = "Not authorized"
+    ERROR_MESSAGE_NOT_FOUND = "The requested post was not found"
+    ROLE_POST_CREATE = "post:create"
+    ROLE_POST_DELETE = "post:delete"
+    ROLE_POST_EDIT = "post:edit"
 
     async def _assert_response(
         self,
@@ -35,9 +35,9 @@ class TestPostsApi:
     ):
         assert response.status_code == status_code
         result = response.json()
-        assert result['status'] == status_code
-        assert result['id']
-        assert result['message'] == message
+        assert result["status"] == status_code
+        assert result["id"]
+        assert result["message"] == message
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
 
@@ -46,10 +46,10 @@ class TestPostsApi:
         exp = iat.add(hours=exp)
         return jwt.encode(
             {
-                'exp': exp.int_timestamp,
-                'iat': iat.int_timestamp,
-                'jti': str(uuid.uuid4()),
-                'sub': {'id': str(uuid.uuid4()), 'roles': [role]},
+                "exp": exp.int_timestamp,
+                "iat": iat.int_timestamp,
+                "jti": str(uuid.uuid4()),
+                "sub": {"id": str(uuid.uuid4()), "roles": [role]},
             },
             pytest.jwt_secret,
         )
@@ -71,9 +71,9 @@ class TestPostsApi:
         return Response(
             status_code=status.HTTP_200_OK,
             json={
-                'key': 'jti_',
-                'value': 'asd',
-                'createdAt': pendulum.now().to_iso8601_string(),
+                "key": "jti_",
+                "value": "asd",
+                "createdAt": pendulum.now().to_iso8601_string(),
             },
         )
 
@@ -82,9 +82,9 @@ class TestPostsApi:
         return Response(
             status_code=status.HTTP_403_FORBIDDEN,
             json={
-                'status': status.HTTP_403_FORBIDDEN,
-                'id': str(uuid.uuid4()),
-                'message': self.ERROR_MESSAGE_NOT_AUTHENTICATED,
+                "status": status.HTTP_403_FORBIDDEN,
+                "id": str(uuid.uuid4()),
+                "message": self.ERROR_MESSAGE_NOT_AUTHENTICATED,
             },
         )
 
@@ -93,9 +93,9 @@ class TestPostsApi:
         return Response(
             status_code=status.HTTP_404_NOT_FOUND,
             json={
-                'status': status.HTTP_404_NOT_FOUND,
-                'id': str(uuid.uuid4()),
-                'message': 'Not found',
+                "status": status.HTTP_404_NOT_FOUND,
+                "id": str(uuid.uuid4()),
+                "message": "Not found",
             },
         )
 
@@ -104,9 +104,9 @@ class TestPostsApi:
         return Response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             json={
-                'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
-                'id': str(uuid.uuid4()),
-                'message': 'Internal server error',
+                "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "id": str(uuid.uuid4()),
+                "message": "Internal server error",
             },
         )
 
@@ -133,36 +133,36 @@ class TestPostsApi:
     ):
         response = test_client.get(self.BASE_URL)
         assert response.status_code == status.HTTP_200_OK
-        result = response.json()['data']
+        result = response.json()["data"]
         assert len(result) == len(posts)
 
     async def test_fail_to_get_post_by_uuid_due_to_not_found(
         self, posts: List[Post], test_client: TestClient
     ):
         response = test_client.get(
-            f'{self.BASE_URL}/653000ce-4b15-4242-a07d-fd8eed656d36'
+            f"{self.BASE_URL}/653000ce-4b15-4242-a07d-fd8eed656d36"
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
         result = response.json()
-        assert result['status'] == status.HTTP_404_NOT_FOUND
-        assert result['id']
-        assert result['message'] == self.ERROR_MESSAGE_NOT_FOUND
+        assert result["status"] == status.HTTP_404_NOT_FOUND
+        assert result["id"]
+        assert result["message"] == self.ERROR_MESSAGE_NOT_FOUND
 
     async def test_successfully_get_post_by_uuid(
         self, posts: List[Post], test_client: TestClient
     ):
-        response = test_client.get(f'{self.BASE_URL}/{posts[0].id}')
+        response = test_client.get(f"{self.BASE_URL}/{posts[0].id}")
         assert response.status_code == status.HTTP_200_OK
         result = response.json()
-        assert result['id'] == posts[0].id
+        assert result["id"] == posts[0].id
 
     async def test_successfully_get_archive(
         self, posts: List[Post], test_client: TestClient
     ):
-        response = test_client.get(f'{self.BASE_URL}/archive')
+        response = test_client.get(f"{self.BASE_URL}/archive")
         assert response.status_code == status.HTTP_200_OK
         result = response.json()
-        date = pendulum.now().format('YYYY-MM')
+        date = pendulum.now().format("YYYY-MM")
         assert result[date] == len(posts)
 
     async def test_successfully_get_post_by_date_and_slug(
@@ -170,23 +170,23 @@ class TestPostsApi:
     ):
         now = pendulum.now()
         response = test_client.get(
-            f'{self.BASE_URL}/{now.year}/{now.month}/{now.day}/{posts[0].slug}'
+            f"{self.BASE_URL}/{now.year}/{now.month}/{now.day}/{posts[0].slug}"
         )
         assert response.status_code == status.HTTP_200_OK
         post = response.json()
-        assert post['id'] == posts[0].id
+        assert post["id"] == posts[0].id
 
     async def test_fail_to_get_post_by_date_and_slug_due_to_not_found(
         self, test_client: TestClient
     ):
         response = test_client.get(
-            f'{self.BASE_URL}/{random.randint(1970, 2999)}/{random.randint(3, 12)}/{random.randint(1, 30)}/slug'
+            f"{self.BASE_URL}/{random.randint(1970, 2999)}/{random.randint(3, 12)}/{random.randint(1, 30)}/slug"
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
         result = response.json()
-        assert result['status'] == status.HTTP_404_NOT_FOUND
-        assert result['id']
-        assert result['message'] == self.ERROR_MESSAGE_NOT_FOUND
+        assert result["status"] == status.HTTP_404_NOT_FOUND
+        assert result["id"]
+        assert result["message"] == self.ERROR_MESSAGE_NOT_FOUND
 
     async def test_fail_to_delete_post_due_to_not_found(
         self,
@@ -196,14 +196,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_404,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.delete(
-            f'{self.BASE_URL}/{str(uuid.uuid4())}',
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
         )
         await self._assert_response(
             cache_service_mock,
@@ -216,14 +216,14 @@ class TestPostsApi:
         self, test_client: TestClient
     ):
         response = test_client.delete(
-            f'{self.BASE_URL}/{str(uuid.uuid4())}',
-            headers={'Authorization': f'Bearer '},
+            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            headers={"Authorization": f"Bearer "},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
-        assert result['status'] == status.HTTP_403_FORBIDDEN
-        assert result['id']
-        assert result['message'] == self.ERROR_MESSAGE_NOT_AUTHENTICATED
+        assert result["status"] == status.HTTP_403_FORBIDDEN
+        assert result["id"]
+        assert result["message"] == self.ERROR_MESSAGE_NOT_AUTHENTICATED
 
     async def test_fail_to_delete_post_due_to_blacklisted_jwt_token(
         self,
@@ -233,14 +233,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_200,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.delete(
-            f'{self.BASE_URL}/{str(uuid.uuid4())}',
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
         )
         await self._assert_response(
             cache_service_mock,
@@ -257,14 +257,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_404,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.delete(
-            f'{self.BASE_URL}/{str(uuid.uuid4())}',
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
         )
         await self._assert_response(
             cache_service_mock,
@@ -281,14 +281,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_500,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.delete(
-            f'{self.BASE_URL}/{str(uuid.uuid4())}',
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
         )
         await self._assert_response(
             cache_service_mock,
@@ -306,14 +306,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_404,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.delete(
-            f'{self.BASE_URL}/{posts[0].id}',
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            f"{self.BASE_URL}/{posts[0].id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert cache_service_mock.called
@@ -327,20 +327,20 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_404,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.post(
-            self.BASE_URL, headers={'Authorization': f'Bearer {jwt_token}'}, json={}
+            self.BASE_URL, headers={"Authorization": f"Bearer {jwt_token}"}, json={}
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         result = response.json()
-        assert result['status'] == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert result['id']
-        assert result['message']
-        assert result['errors']
+        assert result["status"] == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert result["id"]
+        assert result["message"]
+        assert result["errors"]
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
 
@@ -351,14 +351,14 @@ class TestPostsApi:
     ):
         response = test_client.post(
             self.BASE_URL,
-            headers={'Authorization': f'Bearer '},
+            headers={"Authorization": f"Bearer "},
             json=create_post.model_dump(by_alias=True),
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
-        assert result['status'] == status.HTTP_403_FORBIDDEN
-        assert result['id']
-        assert result['message'] == self.ERROR_MESSAGE_NOT_AUTHENTICATED
+        assert result["status"] == status.HTTP_403_FORBIDDEN
+        assert result["id"]
+        assert result["message"] == self.ERROR_MESSAGE_NOT_AUTHENTICATED
 
     async def test_fail_to_create_post_due_to_blacklisted_jwt_token(
         self,
@@ -369,14 +369,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_200,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.post(
             self.BASE_URL,
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
@@ -395,14 +395,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_404,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.post(
             self.BASE_URL,
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
@@ -421,14 +421,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_500,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.post(
             self.BASE_URL,
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
@@ -447,18 +447,18 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_404,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.post(
             self.BASE_URL,
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.headers['Location']
+        assert response.headers["Location"]
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
 
@@ -471,14 +471,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_404,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.post(
             self.BASE_URL,
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            headers={"Authorization": f"Bearer {jwt_token}"},
             json=CreatePost(**posts[0].model_dump()).model_dump(by_alias=True),
         )
         assert response.status_code == status.HTTP_409_CONFLICT
@@ -494,14 +494,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_EDIT)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_404,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f'{self.BASE_URL}/{str(uuid.uuid4())}',
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
@@ -520,28 +520,28 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_EDIT)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_404,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f'{self.BASE_URL}/{posts[0].id}',
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            f"{self.BASE_URL}/{posts[0].id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
             json={
-                'author': 'a',
-                'title': 't',
-                'content': 'c',
-                'tags': [],
-                'published_at': 0,
+                "author": "a",
+                "title": "t",
+                "content": "c",
+                "tags": [],
+                "published_at": 0,
             },
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         result = response.json()
-        assert result['status'] == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert result['id']
-        assert result['message']
-        assert result['errors']
+        assert result["status"] == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert result["id"]
+        assert result["message"]
+        assert result["errors"]
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
 
@@ -551,15 +551,15 @@ class TestPostsApi:
         test_client: TestClient,
     ):
         response = test_client.put(
-            f'{self.BASE_URL}/{str(uuid.uuid4())}',
-            headers={'Authorization': 'Bearer '},
+            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            headers={"Authorization": "Bearer "},
             json=create_post.model_dump(by_alias=True),
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
-        assert result['status'] == status.HTTP_403_FORBIDDEN
-        assert result['id']
-        assert result['message'] == self.ERROR_MESSAGE_NOT_AUTHENTICATED
+        assert result["status"] == status.HTTP_403_FORBIDDEN
+        assert result["id"]
+        assert result["message"] == self.ERROR_MESSAGE_NOT_AUTHENTICATED
 
     async def test_fail_to_update_post_due_to_blacklisted_jwt_token(
         self,
@@ -570,14 +570,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_200,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f'{self.BASE_URL}/{str(uuid.uuid4())}',
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
@@ -596,14 +596,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_404,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f'{self.BASE_URL}/{str(uuid.uuid4())}',
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
@@ -622,14 +622,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_500,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f'{self.BASE_URL}/{str(uuid.uuid4())}',
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
@@ -648,14 +648,14 @@ class TestPostsApi:
     ):
         jwt_token = await self._generate_jwt_token(self.ROLE_POST_EDIT)
         cache_service_mock = await self._generate_respx_mock(
-            'GET',
+            "GET",
             cache_service_response_404,
             respx_mock,
             self.CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f'{self.BASE_URL}/{posts[0].id}',
-            headers={'Authorization': f'Bearer {jwt_token}'},
+            f"{self.BASE_URL}/{posts[0].id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
             json=posts[0].model_dump(),
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT

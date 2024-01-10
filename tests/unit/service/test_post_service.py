@@ -15,16 +15,16 @@ from app.services.post import PostService
 
 @pytest.mark.asyncio
 class TestPostService:
-    ERROR_MESSAGE_POST_WAS_NOT_FOUND = 'The requested post was not found'
-    ERROR_MESSAGE_POST_ALREADY_EXISTS = 'There is already a post with this title'
-    PROFILE_REPOSITORY_GET_POST = 'app.repositories.post.PostRepository.get_post'
+    ERROR_MESSAGE_POST_WAS_NOT_FOUND = "The requested post was not found"
+    ERROR_MESSAGE_POST_ALREADY_EXISTS = "There is already a post with this title"
+    PROFILE_REPOSITORY_GET_POST = "app.repositories.post.PostRepository.get_post"
     PROFILE_REPOSITORY_GET_ALL_POSTS = (
-        'app.repositories.post.PostRepository.get_all_posts'
+        "app.repositories.post.PostRepository.get_all_posts"
     )
     PROFILE_REPOSITORY_GET_POST_BY_UUID = (
-        'app.repositories.post.PostRepository.get_post_by_uuid'
+        "app.repositories.post.PostRepository.get_post_by_uuid"
     )
-    PROFILE_REPOSITORY_UPDATE_POST = 'app.repositories.post.PostRepository.update_post'
+    PROFILE_REPOSITORY_UPDATE_POST = "app.repositories.post.PostRepository.update_post"
 
     @pytest.fixture
     def post_service(self) -> PostService:
@@ -38,7 +38,7 @@ class TestPostService:
         post_service: PostService,
     ):
         mocker.patch(self.PROFILE_REPOSITORY_GET_POST, return_value=None)
-        mocker.patch('app.repositories.post.PostRepository.create_post')
+        mocker.patch("app.repositories.post.PostRepository.create_post")
         post = make_post()
         result = await post_service.create_post(CreatePost(**post.model_dump()))
         assert post.author == result.author
@@ -161,7 +161,7 @@ class TestPostService:
             self.PROFILE_REPOSITORY_GET_POST_BY_UUID, return_value=posts[0].model_dump()
         )
         mocker.patch(self.PROFILE_REPOSITORY_UPDATE_POST)
-        update_post = UpdatePost(content='Updated content', title='Updated title')
+        update_post = UpdatePost(content="Updated content", title="Updated title")
         await post_service.update_post(posts[0].id, update_post)
         post_repository.update_post.assert_called_once_with(posts[0].id, ANY, ANY)
 
@@ -176,7 +176,7 @@ class TestPostService:
             self.PROFILE_REPOSITORY_GET_POST_BY_UUID,
             return_value=None,
         )
-        update_post = UpdatePost(**{'content': 'Updated content'})
+        update_post = UpdatePost(**{"content": "Updated content"})
         with pytest.raises(PostNotFoundException) as excinfo:
             await post_service.update_post(posts[0].id, update_post)
         assert PostNotFoundException.__name__ == excinfo.typename
@@ -195,7 +195,7 @@ class TestPostService:
             return_value=[posts[0].model_dump()],
         )
         result = await post_service.get_archive()
-        assert result.get(pendulum.parse(posts[0].published_at).format('YYYY-MM')) == 1
+        assert result.get(pendulum.parse(posts[0].published_at).format("YYYY-MM")) == 1
 
     async def test_successfully_get_archive_and_return_none(
         self,

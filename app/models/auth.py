@@ -5,9 +5,9 @@ from pydantic import BaseModel
 
 
 class Role(str, Enum):
-    POST_CREATE = 'post:create'
-    POST_DELETE = 'post:delete'
-    POST_UPDATE = 'post:edit'
+    POST_CREATE = "post:create"
+    POST_DELETE = "post:delete"
+    POST_UPDATE = "post:edit"
 
 
 class User(BaseModel):
