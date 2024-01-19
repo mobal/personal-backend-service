@@ -9,10 +9,10 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette import status
-from starlette.middleware.gzip import GZipMiddleware
-from starlette.responses import JSONResponse
 
 from app.api.v1.api import router as api_v1_router
 from app.middlewares import CorrelationIdMiddleware
@@ -28,7 +28,7 @@ logger = Logger(utc=True)
 metrics = Metrics()
 tracer = Tracer()
 
-app = FastAPI(debug=settings.debug, title="PersonalBackendApp", version="1.0.0")
+app = FastAPI(debug=settings.debug, title="PersonalBackendApplication", version="1.0.0")
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(GZipMiddleware)
 app.include_router(api_v1_router)
