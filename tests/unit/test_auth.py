@@ -3,6 +3,7 @@ from unittest.mock import Mock
 import jwt
 import pytest
 from fastapi import HTTPException
+from pytest_mock import MockerFixture
 from starlette import status
 from starlette.requests import Request
 
@@ -77,13 +78,13 @@ class TestJWTAuth:
 
     async def test_fail_to_authorize_request_due_to_blacklisted_token(
         self,
-        mocker,
+        mocker: MockerFixture,
         cache_service: CacheService,
         jwt_bearer: JWTBearer,
         jwt_token: JWTToken,
         valid_request: Request,
     ):
-        mocker.patch("app.services.cache.CacheService.get", return_value=jwt_token.jti)
+        mocker.patch.object(CacheService, "get", return_value=jwt_token.jti)
         with pytest.raises(HTTPException) as excinfo:
             await jwt_bearer(valid_request)
         assert NOT_AUTHENTICATED == excinfo.value.detail
@@ -120,26 +121,26 @@ class TestJWTAuth:
 
     async def test_successfully_authorize_request(
         self,
-        mocker,
+        mocker: MockerFixture,
         cache_service: CacheService,
         jwt_bearer: JWTBearer,
         jwt_token: JWTToken,
         valid_request: Request,
     ):
-        mocker.patch("app.services.cache.CacheService.get", return_value=False)
+        mocker.patch.object(CacheService, "get", return_value=False)
         result = await jwt_bearer(valid_request)
         assert jwt_token.model_dump() == result.model_dump()
         cache_service.get.assert_called_once_with(f"jti_{jwt_token.jti}")
 
     async def test_successfully_authorize_request_with_query_token(
         self,
-        mocker,
+        mocker: MockerFixture,
         cache_service: CacheService,
         jwt_bearer: JWTBearer,
         jwt_token: JWTToken,
         settings: Settings,
     ):
-        mocker.patch("app.services.cache.CacheService.get", return_value=False)
+        mocker.patch.object(CacheService, "get", return_value=False)
         request = Mock()
         request.headers = {}
         request.query_params = {

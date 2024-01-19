@@ -7,7 +7,7 @@ deploy:
 	pipenv run npx sls deploy
 
 flake:
-	pipenv run autoflake --in-place --remove-unused-variables app/*.py tests/*.py
+	pipenv run autoflake --in-place --recursive --remove-all-unused-imports --remove-unused-variables app/*.py tests/*.py
 
 install: install-python install-node
 

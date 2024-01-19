@@ -217,7 +217,7 @@ class TestPostsApi:
     ):
         response = test_client.delete(
             f"{self.BASE_URL}/{str(uuid.uuid4())}",
-            headers={"Authorization": f"Bearer "},
+            headers={"Authorization": "Bearer "},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
