@@ -34,7 +34,7 @@ def _save(et: ElementTree, path: str):
 
 
 def main(coverage_file: str, path_to_find: str, path_to_replace: str):
-    if exists(coverage_file) is False:
+    if not exists(coverage_file):
         logger.error(f"File {coverage_file=} is not exists")
         sys.exit(-2)
     logger.info(f"Load {coverage_file=}")

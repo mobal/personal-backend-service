@@ -13,19 +13,20 @@ from starlette.testclient import TestClient
 from app.models.post import Post
 from app.schemas.post import CreatePost
 
+BASE_URL = "/api/v1/posts"
+CACHE_SERVICE_URL = f"{pytest.cache_service_base_url}/api/cache"
+ERROR_MESSAGE_INTERNAL_SERVER_ERROR = "Internal server error"
+ERROR_MESSAGE_NOT_AUTHENTICATED = "Not authenticated"
+ERROR_MESSAGE_NOT_AUTHORIZED = "Not authorized"
+ERROR_MESSAGE_NOT_FOUND = "The requested post was not found"
+HEADER_EMPTY_BEARER = "Bearer "
+ROLE_POST_CREATE = "post:create"
+ROLE_POST_DELETE = "post:delete"
+ROLE_POST_EDIT = "post:edit"
+
 
 @pytest.mark.asyncio
 class TestPostsApi:
-    BASE_URL = "/api/v1/posts"
-    CACHE_SERVICE_URL = f"{pytest.cache_service_base_url}/api/cache"
-    ERROR_MESSAGE_INTERNAL_SERVER_ERROR = "Internal server error"
-    ERROR_MESSAGE_NOT_AUTHENTICATED = "Not authenticated"
-    ERROR_MESSAGE_NOT_AUTHORIZED = "Not authorized"
-    ERROR_MESSAGE_NOT_FOUND = "The requested post was not found"
-    ROLE_POST_CREATE = "post:create"
-    ROLE_POST_DELETE = "post:delete"
-    ROLE_POST_EDIT = "post:edit"
-
     async def _assert_response(
         self,
         cache_service_mock: Route,
@@ -84,7 +85,7 @@ class TestPostsApi:
             json={
                 "status": status.HTTP_403_FORBIDDEN,
                 "id": str(uuid.uuid4()),
-                "message": self.ERROR_MESSAGE_NOT_AUTHENTICATED,
+                "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
             },
         )
 
@@ -131,7 +132,7 @@ class TestPostsApi:
     async def test_successfully_get_posts(
         self, posts: List[Post], test_client: TestClient
     ):
-        response = test_client.get(self.BASE_URL)
+        response = test_client.get(BASE_URL)
         assert response.status_code == status.HTTP_200_OK
         result = response.json()["data"]
         assert len(result) == len(posts)
@@ -139,19 +140,17 @@ class TestPostsApi:
     async def test_fail_to_get_post_by_uuid_due_to_not_found(
         self, posts: List[Post], test_client: TestClient
     ):
-        response = test_client.get(
-            f"{self.BASE_URL}/653000ce-4b15-4242-a07d-fd8eed656d36"
-        )
+        response = test_client.get(f"{BASE_URL}/653000ce-4b15-4242-a07d-fd8eed656d36")
         assert response.status_code == status.HTTP_404_NOT_FOUND
         result = response.json()
         assert result["status"] == status.HTTP_404_NOT_FOUND
         assert result["id"]
-        assert result["message"] == self.ERROR_MESSAGE_NOT_FOUND
+        assert result["message"] == ERROR_MESSAGE_NOT_FOUND
 
     async def test_successfully_get_post_by_uuid(
         self, posts: List[Post], test_client: TestClient
     ):
-        response = test_client.get(f"{self.BASE_URL}/{posts[0].id}")
+        response = test_client.get(f"{BASE_URL}/{posts[0].id}")
         assert response.status_code == status.HTTP_200_OK
         result = response.json()
         assert result["id"] == posts[0].id
@@ -159,7 +158,7 @@ class TestPostsApi:
     async def test_successfully_get_archive(
         self, posts: List[Post], test_client: TestClient
     ):
-        response = test_client.get(f"{self.BASE_URL}/archive")
+        response = test_client.get(f"{BASE_URL}/archive")
         assert response.status_code == status.HTTP_200_OK
         result = response.json()
         date = pendulum.now().format("YYYY-MM")
@@ -170,7 +169,7 @@ class TestPostsApi:
     ):
         now = pendulum.now()
         response = test_client.get(
-            f"{self.BASE_URL}/{now.year}/{now.month}/{now.day}/{posts[0].slug}"
+            f"{BASE_URL}/{now.year}/{now.month}/{now.day}/{posts[0].slug}"
         )
         assert response.status_code == status.HTTP_200_OK
         post = response.json()
@@ -180,13 +179,13 @@ class TestPostsApi:
         self, test_client: TestClient
     ):
         response = test_client.get(
-            f"{self.BASE_URL}/{random.randint(1970, 2999)}/{random.randint(3, 12)}/{random.randint(1, 30)}/slug"
+            f"{BASE_URL}/{random.randint(1970, 2999)}/{random.randint(3, 12)}/{random.randint(1, 30)}/slug"
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
         result = response.json()
         assert result["status"] == status.HTTP_404_NOT_FOUND
         assert result["id"]
-        assert result["message"] == self.ERROR_MESSAGE_NOT_FOUND
+        assert result["message"] == ERROR_MESSAGE_NOT_FOUND
 
     async def test_fail_to_delete_post_due_to_not_found(
         self,
@@ -194,20 +193,20 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.delete(
-            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            f"{BASE_URL}/{str(uuid.uuid4())}",
             headers={"Authorization": f"Bearer {jwt_token}"},
         )
         await self._assert_response(
             cache_service_mock,
-            self.ERROR_MESSAGE_NOT_FOUND,
+            ERROR_MESSAGE_NOT_FOUND,
             status.HTTP_404_NOT_FOUND,
             response,
         )
@@ -216,14 +215,14 @@ class TestPostsApi:
         self, test_client: TestClient
     ):
         response = test_client.delete(
-            f"{self.BASE_URL}/{str(uuid.uuid4())}",
-            headers={"Authorization": "Bearer "},
+            f"{BASE_URL}/{str(uuid.uuid4())}",
+            headers={"Authorization": HEADER_EMPTY_BEARER},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
         assert result["status"] == status.HTTP_403_FORBIDDEN
         assert result["id"]
-        assert result["message"] == self.ERROR_MESSAGE_NOT_AUTHENTICATED
+        assert result["message"] == ERROR_MESSAGE_NOT_AUTHENTICATED
 
     async def test_fail_to_delete_post_due_to_blacklisted_jwt_token(
         self,
@@ -231,20 +230,20 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_200,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.delete(
-            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            f"{BASE_URL}/{str(uuid.uuid4())}",
             headers={"Authorization": f"Bearer {jwt_token}"},
         )
         await self._assert_response(
             cache_service_mock,
-            self.ERROR_MESSAGE_NOT_AUTHENTICATED,
+            ERROR_MESSAGE_NOT_AUTHENTICATED,
             status.HTTP_403_FORBIDDEN,
             response,
         )
@@ -255,20 +254,20 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_CREATE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.delete(
-            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            f"{BASE_URL}/{str(uuid.uuid4())}",
             headers={"Authorization": f"Bearer {jwt_token}"},
         )
         await self._assert_response(
             cache_service_mock,
-            self.ERROR_MESSAGE_NOT_AUTHORIZED,
+            ERROR_MESSAGE_NOT_AUTHORIZED,
             status.HTTP_401_UNAUTHORIZED,
             response,
         )
@@ -279,20 +278,20 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_CREATE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_500,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.delete(
-            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            f"{BASE_URL}/{str(uuid.uuid4())}",
             headers={"Authorization": f"Bearer {jwt_token}"},
         )
         await self._assert_response(
             cache_service_mock,
-            self.ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
+            ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             response,
         )
@@ -304,15 +303,15 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.delete(
-            f"{self.BASE_URL}/{posts[0].id}",
+            f"{BASE_URL}/{posts[0].id}",
             headers={"Authorization": f"Bearer {jwt_token}"},
         )
         assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -325,15 +324,15 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_CREATE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.post(
-            self.BASE_URL, headers={"Authorization": f"Bearer {jwt_token}"}, json={}
+            BASE_URL, headers={"Authorization": f"Bearer {jwt_token}"}, json={}
         )
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
         result = response.json()
@@ -350,15 +349,15 @@ class TestPostsApi:
         test_client: TestClient,
     ):
         response = test_client.post(
-            self.BASE_URL,
-            headers={"Authorization": f"Bearer "},
+            BASE_URL,
+            headers={"Authorization": HEADER_EMPTY_BEARER},
             json=create_post.model_dump(by_alias=True),
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
         assert result["status"] == status.HTTP_403_FORBIDDEN
         assert result["id"]
-        assert result["message"] == self.ERROR_MESSAGE_NOT_AUTHENTICATED
+        assert result["message"] == ERROR_MESSAGE_NOT_AUTHENTICATED
 
     async def test_fail_to_create_post_due_to_blacklisted_jwt_token(
         self,
@@ -367,21 +366,21 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_CREATE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_200,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.post(
-            self.BASE_URL,
+            BASE_URL,
             headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
-            self.ERROR_MESSAGE_NOT_AUTHENTICATED,
+            ERROR_MESSAGE_NOT_AUTHENTICATED,
             status.HTTP_403_FORBIDDEN,
             response,
         )
@@ -393,21 +392,21 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.post(
-            self.BASE_URL,
+            BASE_URL,
             headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
-            self.ERROR_MESSAGE_NOT_AUTHORIZED,
+            ERROR_MESSAGE_NOT_AUTHORIZED,
             status.HTTP_401_UNAUTHORIZED,
             response,
         )
@@ -419,21 +418,21 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_500,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.post(
-            self.BASE_URL,
+            BASE_URL,
             headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
-            self.ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
+            ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             response,
         )
@@ -445,15 +444,15 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_CREATE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.post(
-            self.BASE_URL,
+            BASE_URL,
             headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
@@ -469,15 +468,15 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_CREATE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_CREATE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.post(
-            self.BASE_URL,
+            BASE_URL,
             headers={"Authorization": f"Bearer {jwt_token}"},
             json=CreatePost(**posts[0].model_dump()).model_dump(by_alias=True),
         )
@@ -492,21 +491,21 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_EDIT)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_EDIT)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            f"{BASE_URL}/{str(uuid.uuid4())}",
             headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
-            self.ERROR_MESSAGE_NOT_FOUND,
+            ERROR_MESSAGE_NOT_FOUND,
             status.HTTP_404_NOT_FOUND,
             response,
         )
@@ -518,15 +517,15 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_EDIT)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_EDIT)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f"{self.BASE_URL}/{posts[0].id}",
+            f"{BASE_URL}/{posts[0].id}",
             headers={"Authorization": f"Bearer {jwt_token}"},
             json={
                 "author": "a",
@@ -551,15 +550,15 @@ class TestPostsApi:
         test_client: TestClient,
     ):
         response = test_client.put(
-            f"{self.BASE_URL}/{str(uuid.uuid4())}",
-            headers={"Authorization": "Bearer "},
+            f"{BASE_URL}/{str(uuid.uuid4())}",
+            headers={"Authorization": HEADER_EMPTY_BEARER},
             json=create_post.model_dump(by_alias=True),
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
         result = response.json()
         assert result["status"] == status.HTTP_403_FORBIDDEN
         assert result["id"]
-        assert result["message"] == self.ERROR_MESSAGE_NOT_AUTHENTICATED
+        assert result["message"] == ERROR_MESSAGE_NOT_AUTHENTICATED
 
     async def test_fail_to_update_post_due_to_blacklisted_jwt_token(
         self,
@@ -568,21 +567,21 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_200,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            f"{BASE_URL}/{str(uuid.uuid4())}",
             headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
-            self.ERROR_MESSAGE_NOT_AUTHENTICATED,
+            ERROR_MESSAGE_NOT_AUTHENTICATED,
             status.HTTP_403_FORBIDDEN,
             response,
         )
@@ -594,21 +593,21 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            f"{BASE_URL}/{str(uuid.uuid4())}",
             headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
-            self.ERROR_MESSAGE_NOT_AUTHORIZED,
+            ERROR_MESSAGE_NOT_AUTHORIZED,
             status.HTTP_401_UNAUTHORIZED,
             response,
         )
@@ -620,21 +619,21 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_DELETE)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_500,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f"{self.BASE_URL}/{str(uuid.uuid4())}",
+            f"{BASE_URL}/{str(uuid.uuid4())}",
             headers={"Authorization": f"Bearer {jwt_token}"},
             json=create_post.model_dump(by_alias=True),
         )
         await self._assert_response(
             cache_service_mock,
-            self.ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
+            ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             response,
         )
@@ -646,15 +645,15 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(self.ROLE_POST_EDIT)
+        jwt_token = await self._generate_jwt_token(ROLE_POST_EDIT)
         cache_service_mock = await self._generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
-            self.CACHE_SERVICE_URL,
+            CACHE_SERVICE_URL,
         )
         response = test_client.put(
-            f"{self.BASE_URL}/{posts[0].id}",
+            f"{BASE_URL}/{posts[0].id}",
             headers={"Authorization": f"Bearer {jwt_token}"},
             json=posts[0].model_dump(),
         )
