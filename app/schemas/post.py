@@ -14,7 +14,7 @@ class CreatePost(CamelModel):
     meta: Meta
     published_at: Optional[str]
 
-    model_config = ConfigDict(extra='ignore')
+    model_config = ConfigDict(extra="ignore")
 
 
 class UpdatePost(CreatePost):

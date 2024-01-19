@@ -16,7 +16,6 @@ pydantic = {extras = ["email"], version = ">=2.5.3"}
 pydantic-settings = ">=2.1.0"
 httpx = ">=0.26.0"
 markdown = ">=3.5.1"
-pyhumps = ">=3.8.0"
 
 [dev-packages]
 pytest = ">=7.4.4"

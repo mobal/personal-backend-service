@@ -10,13 +10,13 @@ tracer = Tracer()
 
 
 class PostRepository:
-    SELECT_COUNT = 'COUNT'
+    SELECT_COUNT = "COUNT"
 
     def __init__(self):
         self._logger = Logger(utc=True)
         settings = Settings()
         self._table = (
-            boto3.Session().resource('dynamodb').Table(f'{settings.stage}-posts')
+            boto3.Session().resource("dynamodb").Table(f"{settings.stage}-posts")
         )
 
     @tracer.capture_method
@@ -27,19 +27,19 @@ class PostRepository:
     async def get_all_posts(
         self, filter_expression: AttributeBase, fields: List[str] = None
     ) -> List[dict]:
-        projection_expression = ','.join(fields)
+        projection_expression = ",".join(fields)
         response = self._table.scan(
             FilterExpression=filter_expression,
             ProjectionExpression=projection_expression,
         )
-        items = response['Items']
-        while 'LastEvaluatedKey' in response:
+        items = response["Items"]
+        while "LastEvaluatedKey" in response:
             response = self._table.scan(
-                ExclusiveStartKey=response['LastEvaluatedKey'],
+                ExclusiveStartKey=response["LastEvaluatedKey"],
                 FilterExpression=filter_expression,
                 ProjectionExpression=projection_expression,
             )
-            items.extend(response['Items'])
+            items.extend(response["Items"])
         return items
 
     @tracer.capture_method
@@ -48,7 +48,7 @@ class PostRepository:
             Select=PostRepository.SELECT_COUNT,
             FilterExpression=filter_expression,
         )
-        return response['Count']
+        return response["Count"]
 
     @tracer.capture_method
     async def item_count(self) -> int:
@@ -57,8 +57,8 @@ class PostRepository:
     @tracer.capture_method
     async def get_post(self, filter_expression: AttributeBase) -> Optional[dict]:
         response = self._table.scan(FilterExpression=filter_expression)
-        if response['Items']:
-            return response['Items'][0]
+        if response["Items"]:
+            return response["Items"][0]
         return None
 
     @tracer.capture_method
@@ -68,11 +68,11 @@ class PostRepository:
         filter_expression: AttributeBase,
     ) -> Optional[dict]:
         response = self._table.query(
-            KeyConditionExpression=Key('id').eq(post_uuid),
+            KeyConditionExpression=Key("id").eq(post_uuid),
             FilterExpression=filter_expression,
         )
-        if response['Items']:
-            return response['Items'][0]
+        if response["Items"]:
+            return response["Items"][0]
         return None
 
     @tracer.capture_method
@@ -83,13 +83,13 @@ class PostRepository:
         fields: List[str] = None,
     ) -> Tuple[Optional[str], List[dict]]:
         kwargs = {
-            'FilterExpression': filter_expression,
-            'ProjectionExpression': ','.join(fields),
+            "FilterExpression": filter_expression,
+            "ProjectionExpression": ",".join(fields),
         }
         if exclusive_start_key:
-            kwargs['ExclusiveStartKey'] = exclusive_start_key
+            kwargs["ExclusiveStartKey"] = exclusive_start_key
         response = self._table.scan(**kwargs)
-        return response.get('LastEvaluatedKey'), response['Items']
+        return response.get("LastEvaluatedKey"), response["Items"]
 
     @tracer.capture_method
     async def update_post(
@@ -99,13 +99,13 @@ class PostRepository:
         attribute_values = {}
         update_expression = []
         for k, v in data.items():
-            attribute_names[f'#{k}'] = k
-            attribute_values[f':{k}'] = v
-            update_expression.append(f'#{k}=:{k}')
+            attribute_names[f"#{k}"] = k
+            attribute_values[f":{k}"] = v
+            update_expression.append(f"#{k}=:{k}")
         self._table.update_item(
-            Key={'id': post_uuid},
+            Key={"id": post_uuid},
             ConditionExpression=condition_expression,
-            UpdateExpression='SET ' + ','.join(update_expression),
+            UpdateExpression="SET " + ",".join(update_expression),
             ExpressionAttributeNames=attribute_names,
             ExpressionAttributeValues=attribute_values,
         )

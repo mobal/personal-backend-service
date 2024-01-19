@@ -19,13 +19,13 @@ class TestPostRepository:
         posts_table,
     ):
         post_dict = posts[0].model_dump()
-        post_dict['id'] = str(uuid.uuid4())
+        post_dict["id"] = str(uuid.uuid4())
         await post_repository.create_post(post_dict)
         response = posts_table.query(
-            KeyConditionExpression=Key('id').eq(post_dict['id'])
+            KeyConditionExpression=Key("id").eq(post_dict["id"])
         )
-        assert 1 == response['Count']
-        item = response['Items'][0]
+        assert 1 == response["Count"]
+        item = response["Items"][0]
         assert item == post_dict
 
     async def test_successfully_get_all_posts(
@@ -46,7 +46,7 @@ class TestPostRepository:
         posts: List[Post],
         post_repository: PostRepository,
     ):
-        fields = ['id', 'title', 'meta', 'published_at']
+        fields = ["id", "title", "meta", "published_at"]
         items = await post_repository.get_all_posts(filter_expression, fields)
         assert len(items) == len(posts)
         assert 4 == len(items[0])
@@ -83,36 +83,36 @@ class TestPostRepository:
         posts_table,
     ):
         now = pendulum.now()
-        data = {'content': 'Updated content', 'updated_at': now.to_iso8601_string()}
+        data = {"content": "Updated content", "updated_at": now.to_iso8601_string()}
         await post_repository.update_post(posts[0].id, data, filter_expression)
         response = posts_table.query(
-            KeyConditionExpression=Key('id').eq(posts[0].id),
-            FilterExpression=Attr('deleted_at').eq(None),
+            KeyConditionExpression=Key("id").eq(posts[0].id),
+            FilterExpression=Attr("deleted_at").eq(None),
         )
-        assert response['Count'] == 1
-        item = response['Items'][0]
-        assert posts[0].id == item['id']
-        assert posts[0].author == item['author']
-        assert posts[0].meta.model_dump() == item['meta']
-        assert posts[0].slug == item['slug']
-        assert posts[0].tags == item['tags']
-        assert posts[0].title == item['title']
-        assert posts[0].created_at == item['created_at']
-        assert posts[0].deleted_at == item['deleted_at']
-        assert posts[0].published_at == item['published_at']
-        assert 'Updated content' == item['content']
-        assert now.to_iso8601_string() == item['updated_at']
+        assert response["Count"] == 1
+        item = response["Items"][0]
+        assert posts[0].id == item["id"]
+        assert posts[0].author == item["author"]
+        assert posts[0].meta.model_dump() == item["meta"]
+        assert posts[0].slug == item["slug"]
+        assert posts[0].tags == item["tags"]
+        assert posts[0].title == item["title"]
+        assert posts[0].created_at == item["created_at"]
+        assert posts[0].deleted_at == item["deleted_at"]
+        assert posts[0].published_at == item["published_at"]
+        assert "Updated content" == item["content"]
+        assert now.to_iso8601_string() == item["updated_at"]
 
     async def test_successfully_get_post(
         self, posts: List[Post], post_repository: PostRepository
     ):
         dt = pendulum.parse(posts[0].published_at)
-        filter_expression = Attr('deleted_at').eq(None) | Attr(
-            'deleted_at'
-        ).not_exists() & Attr('published_at').between(
-            dt.start_of('day').isoformat('T'), dt.end_of('day').isoformat('T')
+        filter_expression = Attr("deleted_at").eq(None) | Attr(
+            "deleted_at"
+        ).not_exists() & Attr("published_at").between(
+            dt.start_of("day").isoformat("T"), dt.end_of("day").isoformat("T")
         ) & Attr(
-            'slug'
+            "slug"
         ).eq(
             posts[0].slug
         )
@@ -124,11 +124,11 @@ class TestPostRepository:
     ):
         dt = pendulum.parse(posts[0].published_at).add(days=1)
         filter_expression = (
-            (Attr('deleted_at').eq(None) | Attr('deleted_at').not_exists())
-            & Attr('published_at').between(
-                dt.start_of('day').isoformat('T'), dt.end_of('day').isoformat('T')
+            (Attr("deleted_at").eq(None) | Attr("deleted_at").not_exists())
+            & Attr("published_at").between(
+                dt.start_of("day").isoformat("T"), dt.end_of("day").isoformat("T")
             )
-            & Attr('slug').eq(posts[0].slug)
+            & Attr("slug").eq(posts[0].slug)
         )
         assert await post_repository.get_post(filter_expression) is None
 
