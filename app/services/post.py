@@ -3,7 +3,7 @@ from typing import Optional
 
 import markdown
 import pendulum
-from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Attr
 from slugify import slugify
 
@@ -13,8 +13,6 @@ from app.models.response import Page
 from app.models.response import Post as PostResponse
 from app.repositories.post import PostRepository
 from app.schemas.post import CreatePost, UpdatePost
-
-tracer = Tracer()
 
 
 class FilterExpressions:
@@ -36,7 +34,6 @@ class PostService:
         self._logger = Logger(utc=True)
         self._repository = PostRepository()
 
-    @tracer.capture_method
     async def _get_post_by_uuid(self, post_uuid: str) -> Post:
         item = await self._repository.get_post_by_uuid(
             post_uuid, FilterExpressions.NOT_DELETED
@@ -46,7 +43,6 @@ class PostService:
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return Post(**item)
 
-    @tracer.capture_method
     async def create_post(self, create_post: CreatePost) -> Post:
         now = pendulum.now()
         filter_expression = Attr("title").eq(create_post.title) & Attr(
@@ -65,7 +61,6 @@ class PostService:
         await self._repository.create_post(data)
         return Post(**data)
 
-    @tracer.capture_method
     async def delete_post(self, post_uuid: str):
         post = await self._get_post_by_uuid(post_uuid)
         post.deleted_at = pendulum.now().to_iso8601_string()
@@ -74,7 +69,6 @@ class PostService:
         )
         self._logger.info(f"Post successfully deleted {post_uuid=}")
 
-    @tracer.capture_method
     async def get_all_posts(self, descending: bool = True) -> Page:
         items = await self._repository.get_all_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
@@ -85,13 +79,11 @@ class PostService:
             posts.append(PostResponse(**item))
         return Page(data=posts)
 
-    @tracer.capture_method
     async def get_post(self, post_uuid: str) -> PostResponse:
         return await _item_to_response(
             (await self._get_post_by_uuid(post_uuid)).model_dump(), to_markdown=True
         )
 
-    @tracer.capture_method
     async def get_post_by_date_and_slug(
         self, year: int, month: int, day: int, slug: str
     ) -> PostResponse:
@@ -109,7 +101,6 @@ class PostService:
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return await _item_to_response(item, to_markdown=True)
 
-    @tracer.capture_method
     async def get_posts(self, exclusive_start_key: Optional[str] = None) -> Page:
         response = await self._repository.get_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
@@ -121,7 +112,6 @@ class PostService:
             posts.append(PostResponse(**item))
         return Page(exclusive_start_key=response[0], data=posts)
 
-    @tracer.capture_method
     async def update_post(self, post_uuid: str, update_post: UpdatePost):
         item = await self._repository.get_post_by_uuid(
             post_uuid, FilterExpressions.NOT_DELETED
@@ -137,7 +127,6 @@ class PostService:
         )
         self._logger.info(f"Post successfully updated {post_uuid=}")
 
-    @tracer.capture_method
     async def get_archive(self) -> dict[str, int]:
         items = await self._repository.get_all_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
