@@ -1,12 +1,10 @@
 from typing import List, Optional, Tuple
 
 import boto3
-from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import AttributeBase, Key
 
 from app.settings import Settings
-
-tracer = Tracer()
 
 
 class PostRepository:
@@ -19,11 +17,9 @@ class PostRepository:
             boto3.Session().resource("dynamodb").Table(f"{settings.stage}-posts")
         )
 
-    @tracer.capture_method
     async def create_post(self, data: dict):
         self._table.put_item(Item=data)
 
-    @tracer.capture_method
     async def get_all_posts(
         self, filter_expression: AttributeBase, fields: List[str] = None
     ) -> List[dict]:
@@ -42,7 +38,6 @@ class PostRepository:
             items.extend(response["Items"])
         return items
 
-    @tracer.capture_method
     async def count_all_posts(self, filter_expression: AttributeBase) -> int:
         response = self._table.scan(
             Select=PostRepository.SELECT_COUNT,
@@ -50,18 +45,15 @@ class PostRepository:
         )
         return response["Count"]
 
-    @tracer.capture_method
     async def item_count(self) -> int:
         return self._table.item_count
 
-    @tracer.capture_method
     async def get_post(self, filter_expression: AttributeBase) -> Optional[dict]:
         response = self._table.scan(FilterExpression=filter_expression)
         if response["Items"]:
             return response["Items"][0]
         return None
 
-    @tracer.capture_method
     async def get_post_by_uuid(
         self,
         post_uuid: str,
@@ -75,7 +67,6 @@ class PostRepository:
             return response["Items"][0]
         return None
 
-    @tracer.capture_method
     async def get_posts(
         self,
         filter_expression: AttributeBase,
@@ -91,7 +82,6 @@ class PostRepository:
         response = self._table.scan(**kwargs)
         return response.get("LastEvaluatedKey"), response["Items"]
 
-    @tracer.capture_method
     async def update_post(
         self, post_uuid: str, data: dict, condition_expression: AttributeBase
     ):

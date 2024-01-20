@@ -2,7 +2,7 @@ import uuid
 from contextvars import ContextVar
 from typing import Optional
 
-from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools import Logger
 from starlette.middleware.base import (BaseHTTPMiddleware,
                                        RequestResponseEndpoint)
 from starlette.requests import Request
@@ -19,7 +19,6 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp):
         super().__init__(app)
         self._logger = Logger(utc=True)
-        self._tracer = Tracer()
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
@@ -27,7 +26,6 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
         if request.headers.get(X_CORRELATION_ID):
             correlation_id.set(request.headers[X_CORRELATION_ID])
         self._logger.set_correlation_id(correlation_id.get())
-        self._tracer.put_annotation(key="correlation_id", value=correlation_id.get())
         response = await call_next(request)
         response.headers[X_CORRELATION_ID] = correlation_id.get()
         return response

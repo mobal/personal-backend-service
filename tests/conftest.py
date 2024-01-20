@@ -33,9 +33,7 @@ def pytest_sessionstart():
     os.environ["AWS_SECRET_ACCESS_KEY"] = "aws_secret_access_key"
 
     os.environ["POWERTOOLS_LOGGER_LOG_EVENT"] = "true"
-    os.environ["POWERTOOLS_METRICS_NAMESPACE"] = "personal"
     os.environ["POWERTOOLS_SERVICE_NAME"] = "personal-backend-service"
-    os.environ["POWERTOOLS_TRACE_DISABLED"] = "true"
 
 
 @pytest.fixture

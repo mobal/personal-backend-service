@@ -3,14 +3,12 @@ from typing import Optional
 
 import boto3
 import httpx
-from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools import Logger
 from starlette import status
 
 from app.exceptions import CacheServiceException
 from app.middlewares import correlation_id
 from app.settings import Settings
-
-tracer = Tracer()
 
 
 class CacheService:
@@ -18,7 +16,6 @@ class CacheService:
         self._logger = Logger(utc=True)
         self._settings = Settings()
 
-    @tracer.capture_method
     async def get(self, key: str) -> Optional[bool]:
         async with httpx.AsyncClient() as client:
             url = f"{self._settings.cache_service_base_url}/api/cache/{key}"
