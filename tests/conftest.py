@@ -6,7 +6,7 @@ from typing import List
 import boto3
 import pendulum
 import pytest
-from moto import mock_dynamodb
+from moto import mock_aws
 
 from app.models.post import Post
 from app.settings import Settings
@@ -43,7 +43,7 @@ def settings() -> Settings:
 
 @pytest.fixture
 def dynamodb_resource(settings):
-    with mock_dynamodb():
+    with mock_aws():
         yield boto3.Session().resource(
             "dynamodb",
             region_name="eu-central-1",
