@@ -1,7 +1,7 @@
 from typing import Optional
 
 import jwt
-from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools import Logger
 from fastapi import HTTPException, Request
 from fastapi.security.http import HTTPAuthorizationCredentials
 from fastapi.security.http import HTTPBearer as FastAPIHTTPBearer
@@ -14,7 +14,6 @@ from app.services.cache import CacheService
 from app.settings import Settings
 
 logger = Logger(utc=True)
-tracer = Tracer()
 
 ERROR_MESSAGE_NOT_AUTHENTICATED = "Not authenticated"
 
@@ -24,7 +23,6 @@ class HTTPBearer(FastAPIHTTPBearer):
         super().__init__(auto_error=auto_error)
         self.auto_error = auto_error
 
-    @tracer.capture_method
     async def __call__(
         self, request: Request
     ) -> Optional[HTTPAuthorizationCredentials]:
@@ -39,7 +37,6 @@ class HTTPBearer(FastAPIHTTPBearer):
                 request.query_params.get("token")
             )
 
-    @tracer.capture_method
     async def _get_authorization_credentials_from_header(
         self, authorization: str
     ) -> Optional[HTTPAuthorizationCredentials]:
@@ -64,7 +61,6 @@ class HTTPBearer(FastAPIHTTPBearer):
                 return None
         return HTTPAuthorizationCredentials(scheme=scheme, credentials=credentials)
 
-    @tracer.capture_method
     async def _get_authorization_credentials_from_token(
         self, token: Optional[str]
     ) -> Optional[HTTPAuthorizationCredentials]:
@@ -86,7 +82,6 @@ class JWTBearer(HTTPBearer):
         self.cache_service = CacheService()
         self.settings = Settings()
 
-    @tracer.capture_method
     async def __call__(self, request: Request) -> Optional[JWTToken]:
         credentials = await super(JWTBearer, self).__call__(request)
         if credentials:
@@ -103,7 +98,6 @@ class JWTBearer(HTTPBearer):
         else:
             return None
 
-    @tracer.capture_method
     async def _validate_token(self, token: str) -> bool:
         try:
             decoded_token = JWTToken(

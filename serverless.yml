@@ -20,9 +20,7 @@ functions:
       JWT_SECRET: ${env:JWT_SECRET}
       LOG_LEVEL: DEBUG
       POWERTOOLS_LOGGER_LOG_EVENT: true
-      POWERTOOLS_METRICS_NAMESPACE: personal-backend-service-metrics
       POWERTOOLS_SERVICE_NAME: personal-backend-service
-      POWERTOOLS_TRACE_DISABLED: false
       POWERTOOLS_DEBUG: false
       STAGE: ${env:STAGE}
     events:
