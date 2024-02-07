@@ -7,8 +7,8 @@ custom:
   pythonRequirements:
     dockerImage: public.ecr.aws/sam/build-python3.12
     dockerizePip: 'non-linux'
+    dockerRunCmdExtraArgs: ['--platform', 'linux/amd64']
     layer: true
-    slim: true
     zip: true
 functions:
   app:
@@ -27,18 +27,8 @@ functions:
       - httpApi: '*'
     handler: app.main.handler
     layers:
-      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:20
+      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:61
       - Ref: PythonRequirementsLambdaLayer
-package:
-  patterns:
-    - '!.git/**'
-    - '!.gitignore'
-    - '!.DS_Store'
-    - '!npm-debug.log'
-    - '!.serverless/**'
-    - '!.serverless_plugins/**'
-    - '!.venv/**'
-  excludeDevDependencies: true
 provider:
   name: aws
   memorySize: 512
