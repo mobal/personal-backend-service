@@ -29,6 +29,15 @@ functions:
     layers:
       - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:61
       - Ref: PythonRequirementsLambdaLayer
+package:
+  patterns:
+    - '!.git/**'
+    - '!.gitignore'
+    - '!.DS_Store'
+    - '!npm-debug.log'
+    - '!.serverless/**'
+    - '!.serverless_plugins/**'
+    - '!.venv/**'
 provider:
   name: aws
   memorySize: 512
