@@ -44,8 +44,6 @@ provider:
   region: ${env:AWS_REGION, 'eu-central-1'}
   runtime: python3.12
   stage: dev
-  tracing:
-    lambda: true
   iam:
     role:
       statements:
