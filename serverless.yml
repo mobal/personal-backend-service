@@ -11,7 +11,7 @@ custom:
     layer: true
     zip: true
 functions:
-  app:
+  fastapi:
     environment:
       APP_NAME: ${env:APP_NAME}
       APP_TIMEZONE: ${env:APP_TIMEZONE}
@@ -27,7 +27,7 @@ functions:
       - httpApi: '*'
     handler: app.main.handler
     layers:
-      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:61
+      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:68
       - Ref: PythonRequirementsLambdaLayer
 package:
   patterns:
@@ -43,7 +43,7 @@ provider:
   memorySize: 512
   region: ${env:AWS_REGION, 'eu-central-1'}
   runtime: python3.12
-  stage: dev
+  stage: ${opt:stage, 'dev'}
   iam:
     role:
       statements:
@@ -53,5 +53,25 @@ provider:
             - dynamodb:Query
             - dynamodb:Scan
             - dynamodb:UpdateItem
-          Resource: ${env:AWS_ARN_DYNAMODB}
+          Resource:
+            Fn::GetAtt:
+              - postsTable
+              - Arn
+resources:
+  Resources:
+    postsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.stage}-posts
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: title
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+          - AttributeName: title
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
 useDotenv: true
