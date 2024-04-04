@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "649a75115cf12bd47d7af87f0379dde1867a505130382772cc2ef4fcfd8dfd6d"
+            "sha256": "412591c9b52404f0e3fedf67d0b15083de530d04715b4b4c6e7835a3da9d751f"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -70,20 +70,20 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:530a4cea3d40a6bd2f15a368ea395beef1ea6dff4491823bc48bd20c7d4da655",
-                "sha256:8c598382e8fb61cfa8f75056197e9b509eb52039ebc291af3b1096241ba2542c"
+                "sha256:7abd327980258ec2ae980d2ff7fc32ede7448146b14d34c56bf0be074e2a149b",
+                "sha256:8ebed4fa5a3b84dd4037f28226985af00e00fb860d739fc8b1ed6381caa4b330"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.8'",
-            "version": "==1.34.76"
+            "version": "==1.34.77"
         },
         "botocore": {
             "hashes": [
-                "sha256:62e45e7374844ee39e86a96fe7f5e973eb5bf3469da028b4e3a8caba0909fb1f",
-                "sha256:68be44487a95132fccbc0b836fded4190dae30324f6bf822e1b6efd385ffdc83"
+                "sha256:6d6a402032ca0b89525212356a865397f8f2839683dd53d41b8cee1aa84b2b4b",
+                "sha256:6dab60261cdbfb7d0059488ea39408d5522fad419c004ba5db3484e6df854ea8"
             ],
             "markers": "python_version >= '3.8'",
-            "version": "==1.34.76"
+            "version": "==1.34.77"
         },
         "certifi": {
             "hashes": [
@@ -450,7 +450,6 @@
                 "sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca",
                 "sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a"
             ],
-            "index": "pypi",
             "markers": "python_version >= '3.8'",
             "version": "==1.0.1"
         },
@@ -590,12 +589,12 @@
         },
         "uvicorn": {
             "hashes": [
-                "sha256:2c2aac7ff4f4365c206fd773a39bf4ebd1047c238f8b8268ad996829323473de",
-                "sha256:6a69214c0b6a087462412670b3ef21224fa48cae0e452b5883e8e8bdfdd11dd0"
+                "sha256:3d9a267296243532db80c83a959a3400502165ade2c1338dea4e67915fd4745a",
+                "sha256:5c89da2f3895767472a35556e539fd59f7edbe9b1e9c0e1c99eebeadc61838e4"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.8'",
-            "version": "==0.29.0"
+            "version": "==0.27.1"
         }
     },
     "develop": {
@@ -658,20 +657,20 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:530a4cea3d40a6bd2f15a368ea395beef1ea6dff4491823bc48bd20c7d4da655",
-                "sha256:8c598382e8fb61cfa8f75056197e9b509eb52039ebc291af3b1096241ba2542c"
+                "sha256:7abd327980258ec2ae980d2ff7fc32ede7448146b14d34c56bf0be074e2a149b",
+                "sha256:8ebed4fa5a3b84dd4037f28226985af00e00fb860d739fc8b1ed6381caa4b330"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.8'",
-            "version": "==1.34.76"
+            "version": "==1.34.77"
         },
         "botocore": {
             "hashes": [
-                "sha256:62e45e7374844ee39e86a96fe7f5e973eb5bf3469da028b4e3a8caba0909fb1f",
-                "sha256:68be44487a95132fccbc0b836fded4190dae30324f6bf822e1b6efd385ffdc83"
+                "sha256:6d6a402032ca0b89525212356a865397f8f2839683dd53d41b8cee1aa84b2b4b",
+                "sha256:6dab60261cdbfb7d0059488ea39408d5522fad419c004ba5db3484e6df854ea8"
             ],
             "markers": "python_version >= '3.8'",
-            "version": "==1.34.76"
+            "version": "==1.34.77"
         },
         "certifi": {
             "hashes": [
@@ -1238,7 +1237,6 @@
                 "sha256:e324ee90a023d808f1959c46bcbc04446a10ced277783dc6ee09987c37ec10ca",
                 "sha256:f7b63ef50f1b690dddf550d03497b66d609393b40b564ed0d674909a68ebf16a"
             ],
-            "index": "pypi",
             "markers": "python_version >= '3.8'",
             "version": "==1.0.1"
         },
