@@ -80,16 +80,44 @@ resource "aws_apigatewayv2_stage" "stage" {
 resource "aws_dynamodb_table" "posts_table" {
   name           = "${var.stage}-posts"
   billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "id"
-  range_key      = "title"
+  hash_key       = "post_path"
+  range_key      = "id"
+  
+  attribute {
+    name = "post_path"
+    type = "S"
+  }
   
   attribute {
     name = "id"
     type = "S"
   }
+
+  attribute {
+    name = "created_at"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "CreatedAtIndex"
+    hash_key        = "created_at"
+    projection_type = "ALL"
+  }
+}
+
+resource "aws_dynamodb_table" "meta_table" {
+  name          = "${var.stage}-meta"
+  billing_mode  = "PAY_PER_REQUEST"
+  hash_key      = "key"
+  range_key     = "value"
   
   attribute {
-    name = "title"
+    name = "key"
+    type = "S"
+  }
+  
+  attribute {
+    name = "value"
     type = "S"
   }
 }

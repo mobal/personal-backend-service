@@ -31,13 +31,20 @@ functions:
       - Ref: PythonRequirementsLambdaLayer
 package:
   patterns:
-    - '!.git/**'
-    - '!.gitignore'
     - '!.DS_Store'
-    - '!npm-debug.log'
+    - '!.coverage'
+    - '!.env'
+    - '!.git/**'
+    - '!.idea/**'
+    - '!.pytest_cache/**'
     - '!.serverless/**'
     - '!.serverless_plugins/**'
+    - '!.terraform/**'
+    - '!.terraform.lock.hcl'
     - '!.venv/**'
+    - '!coverage.xml'
+    - '!htmlcov/**'
+    - '!node_modules/**'
 provider:
   name: aws
   memorySize: 512
@@ -64,14 +71,38 @@ resources:
       Properties:
         TableName: ${self:provider.stage}-posts
         AttributeDefinitions:
+          - AttributeName: post_path
+            AttributeType: S
           - AttributeName: id
             AttributeType: S
-          - AttributeName: title
+          - AttributeName: created_at
             AttributeType: S
         KeySchema:
-          - AttributeName: id
+          - AttributeName: post_path
             KeyType: HASH
-          - AttributeName: title
+          - AttributeName: id
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: CreatedAtIndex
+            KeySchema:
+              - AttributeName: created_at
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+    metaTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.stage}-meta
+        AttributeDefinitions:
+          - AttributeName: key
+            AttributeType: S
+          - AttributeName: value
+            AttributeType: S
+        KeySchema:
+          - AttributeName: key
+            KeyType: HASH
+          - AttributeName: value
             KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
 useDotenv: true

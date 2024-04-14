@@ -164,7 +164,7 @@ class TestPostsApi:
         date = pendulum.now().format("YYYY-MM")
         assert result[date] == len(posts)
 
-    async def test_successfully_get_post_by_date_and_slug(
+    async def test_successfully_get_post_by_post_path(
         self, posts: List[Post], test_client: TestClient
     ):
         now = pendulum.now()

@@ -187,7 +187,7 @@ class TestPostService:
         result = await post_service.get_archive()
         assert 0 == len(result)
 
-    async def test_successfully_get_post_by_date_and_slug(
+    async def test_successfully_get_post_by_post_path(
         self,
         mocker: MockerFixture,
         posts: List[Post],
@@ -198,14 +198,14 @@ class TestPostService:
             PostRepository, "get_post", return_value=posts[0].model_dump()
         )
         dt = pendulum.parse(posts[0].published_at)
-        result = await post_service.get_post_by_date_and_slug(
-            dt.year, dt.month, dt.day, posts[0].slug
+        result = await post_service.get_by_post_path(
+            f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}"
         )
         assert posts[0].slug == result.slug
         assert posts[0].published_at == result.published_at
         post_repository.get_post.assert_called_once()
 
-    async def test_fail_to_get_post_by_date_and_slug_due_post_not_found_exception(
+    async def test_fail_to_get_post_by_post_path_due_post_not_found_exception(
         self,
         mocker: MockerFixture,
         posts: List[Post],
@@ -215,8 +215,8 @@ class TestPostService:
         mocker.patch.object(PostRepository, "get_post", return_value=None)
         dt = pendulum.parse(posts[0].published_at)
         with pytest.raises(PostNotFoundException) as excinfo:
-            await post_service.get_post_by_date_and_slug(
-                dt.year, dt.month, dt.day, posts[0].slug
+            await post_service.get_by_post_path(
+                f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}"
             )
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
