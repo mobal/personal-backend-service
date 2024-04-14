@@ -86,11 +86,9 @@ class PostService:
             (await self._get_post_by_uuid(post_uuid)).model_dump(), to_markdown=True
         )
 
-    async def get_by_post_path(
-        self, post_path: str
-    ) -> PostResponse:
-        filter_expression = (
-            FilterExpressions.NOT_DELETED & Attr("post_path").eq(post_path)
+    async def get_by_post_path(self, post_path: str) -> PostResponse:
+        filter_expression = FilterExpressions.NOT_DELETED & Attr("post_path").eq(
+            post_path
         )
         item = await self._repository.get_post(filter_expression)
         if item is None:
