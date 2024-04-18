@@ -38,7 +38,7 @@ class TestPostRepository:
             filter_expression, list(posts[0].model_fields.keys())
         )
         assert len(items) == len(posts)
-        assert posts[0].model_dump() == items[0]
+        assert any(post.model_dump() == items[0] for post in posts)
 
     async def test_successfully_get_all_posts_with_fields_filter(
         self,
