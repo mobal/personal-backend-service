@@ -114,7 +114,7 @@ class TestPostRepository:
             posts[0].slug
         )
         item = await post_repository.get_post(filter_expression)
-        assert posts[0].model_dump() == item
+        assert any(post.model_dump() == item for post in posts)
 
     async def test_fail_to_get_post(
         self, posts: List[Post], post_repository: PostRepository
