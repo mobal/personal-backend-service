@@ -67,14 +67,17 @@ def initialize_posts_table(dynamodb_resource, posts: List[Post], posts_table):
 @pytest.fixture
 def make_post(faker):
     def make() -> Post:
+        now = pendulum.now()
+        slug = faker.slug()
         return Post(
             id=str(uuid.uuid4()),
             author=faker.name(),
             content=faker.text(),
             created_at=pendulum.now().to_iso8601_string(),
+            post_path=f"{now.year}/{now.month}/{now.day}/{slug}",
             deleted_at=None,
             published_at=pendulum.now().to_iso8601_string(),
-            slug=faker.slug(),
+            slug=slug,
             tags=faker.words(randint(1, 6)),
             title=faker.sentence(),
             updated_at=None,

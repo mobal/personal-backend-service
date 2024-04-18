@@ -3,8 +3,8 @@ all: black flake pycodestyle sort test
 black:
 	pipenv run black ./
 
-deploy:
-	pipenv run npx sls deploy
+deploy-dev:
+	pipenv run npx sls deploy --stage dev
 
 flake:
 	pipenv run autoflake --in-place --recursive --remove-all-unused-imports --remove-unused-variables app/*.py tests/*.py
