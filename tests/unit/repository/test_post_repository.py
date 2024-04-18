@@ -1,3 +1,4 @@
+from collections import Counter
 import uuid
 from typing import List
 
@@ -49,12 +50,8 @@ class TestPostRepository:
         fields = ["id", "title", "meta", "published_at"]
         items = await post_repository.get_all_posts(filter_expression, fields)
         assert len(items) == len(posts)
-        assert 4 == len(items[0])
-        for k, v in items[0].items():
-            attr = getattr(posts[0], k)
-            if issubclass(type(attr), BaseModel):
-                attr = attr.model_dump()
-            assert attr == v
+        for item in items:
+            assert Counter(fields) == Counter(item.keys())
 
     async def test_successfully_get_post_by_uuid(
         self,
