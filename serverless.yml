@@ -11,7 +11,7 @@ custom:
     layer: true
     zip: true
 functions:
-  app:
+  fastapi:
     environment:
       APP_NAME: ${env:APP_NAME}
       APP_TIMEZONE: ${env:APP_TIMEZONE}
@@ -27,23 +27,30 @@ functions:
       - httpApi: '*'
     handler: app.main.handler
     layers:
-      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:61
+      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:68
       - Ref: PythonRequirementsLambdaLayer
 package:
   patterns:
-    - '!.git/**'
-    - '!.gitignore'
     - '!.DS_Store'
-    - '!npm-debug.log'
+    - '!.coverage'
+    - '!.env'
+    - '!.git/**'
+    - '!.idea/**'
+    - '!.pytest_cache/**'
     - '!.serverless/**'
     - '!.serverless_plugins/**'
+    - '!.terraform/**'
+    - '!.terraform.lock.hcl'
     - '!.venv/**'
+    - '!coverage.xml'
+    - '!htmlcov/**'
+    - '!node_modules/**'
 provider:
   name: aws
   memorySize: 512
   region: ${env:AWS_REGION, 'eu-central-1'}
   runtime: python3.12
-  stage: dev
+  stage: ${opt:stage, 'dev'}
   iam:
     role:
       statements:
@@ -53,5 +60,49 @@ provider:
             - dynamodb:Query
             - dynamodb:Scan
             - dynamodb:UpdateItem
-          Resource: ${env:AWS_ARN_DYNAMODB}
+          Resource:
+            Fn::GetAtt:
+              - postsTable
+              - Arn
+resources:
+  Resources:
+    postsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.stage}-posts
+        AttributeDefinitions:
+          - AttributeName: post_path
+            AttributeType: S
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: created_at
+            AttributeType: S
+        KeySchema:
+          - AttributeName: post_path
+            KeyType: HASH
+          - AttributeName: id
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: CreatedAtIndex
+            KeySchema:
+              - AttributeName: created_at
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+    metaTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.stage}-meta
+        AttributeDefinitions:
+          - AttributeName: key
+            AttributeType: S
+          - AttributeName: value
+            AttributeType: S
+        KeySchema:
+          - AttributeName: key
+            KeyType: HASH
+          - AttributeName: value
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
 useDotenv: true

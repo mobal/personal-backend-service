@@ -53,10 +53,12 @@ class PostService:
                 PostService.ERROR_MESSAGE_POST_ALREADY_EXISTS
             )
         data = create_post.model_dump()
+        slug = slugify(data["title"])
         data["id"] = str(uuid.uuid4())
+        data["post_path"] = f"{now.year}/{now.month}/{now.day}/{slug}"
         data["created_at"] = now.to_iso8601_string()
         data["deleted_at"] = None
-        data["slug"] = slugify(data["title"])
+        data["slug"] = slug
         data["updated_at"] = None
         await self._repository.create_post(data)
         return Post(**data)
@@ -84,16 +86,9 @@ class PostService:
             (await self._get_post_by_uuid(post_uuid)).model_dump(), to_markdown=True
         )
 
-    async def get_post_by_date_and_slug(
-        self, year: int, month: int, day: int, slug: str
-    ) -> PostResponse:
-        start = pendulum.datetime(year, month, day)
-        end = start.end_of("day")
-        start.to_datetime_string()
-        filter_expression = (
-            FilterExpressions.NOT_DELETED
-            & Attr("published_at").between(start.isoformat("T"), end.isoformat("T"))
-            & Attr("slug").eq(slug)
+    async def get_by_post_path(self, post_path: str) -> PostResponse:
+        filter_expression = FilterExpressions.NOT_DELETED & Attr("post_path").eq(
+            post_path
         )
         item = await self._repository.get_post(filter_expression)
         if item is None:

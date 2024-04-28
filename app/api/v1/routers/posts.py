@@ -64,13 +64,13 @@ async def get_archive() -> dict[str, Any]:
 
 
 @router.get("/{year}/{month}/{day}/{slug}", status_code=status.HTTP_200_OK)
-async def get_post_by_date_and_slug(
+async def get_by_post_path(
     slug: str,
     year: int = Path(ge=1970),
     month: int = Path(ge=1, le=12),
     day: int = Path(ge=1, le=31),
 ) -> PostResponse:
-    return await post_service.get_post_by_date_and_slug(year, month, day, slug)
+    return await post_service.get_by_post_path(f"{year}/{month}/{day}/{slug}")
 
 
 @router.get("/{uuid}", status_code=status.HTTP_200_OK)
@@ -84,7 +84,7 @@ async def get_post_by_uuid(uuid: str) -> PostResponse:
     response_model_exclude_none=True,
     status_code=status.HTTP_200_OK,
 )
-async def get_posts(exclusive_start_key: (str | None) = None) -> Page:
+async def get_posts(exclusive_start_key: str | None = None) -> Page:
     return (
         await post_service.get_posts(exclusive_start_key)
         if exclusive_start_key
