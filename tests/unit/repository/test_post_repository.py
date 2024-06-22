@@ -1,4 +1,3 @@
-from collections import Counter
 import uuid
 from collections import Counter
 from typing import List
