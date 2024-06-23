@@ -71,30 +71,20 @@ resources:
       Properties:
         TableName: ${self:provider.stage}-posts
         AttributeDefinitions:
-          - AttributeName: post_path
-            AttributeType: S
           - AttributeName: id
             AttributeType: S
-          - AttributeName: created_at
+          - AttributeName: post_path
             AttributeType: S
         KeySchema:
-          - AttributeName: post_path
-            KeyType: HASH
           - AttributeName: id
-            KeyType: RANGE
+            KeyType: HASH
         GlobalSecondaryIndexes:
-          - IndexName: IdIndex
+          - IndexName: PostPathIndex
             KeySchema:
-              - AttributeName: id
-                KeyType: HASH
+            - AttributeName: post_path
+              KeyType: HASH
             Projection:
-              ProjectionType: ALL
-          - IndexName: CreatedAtIndex
-            KeySchema:
-              - AttributeName: created_at
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL
+              ProjectionType: 'ALL'
         BillingMode: PAY_PER_REQUEST
     metaTable:
       Type: AWS::DynamoDB::Table

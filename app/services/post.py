@@ -69,7 +69,9 @@ class PostService:
         post = await self._get_post_by_uuid(post_uuid)
         post.deleted_at = pendulum.now().to_iso8601_string()
         await self._post_repository.update_post(
-            post_uuid, post.model_dump(exclude={"id"}), FilterExpressions.NOT_DELETED
+            post_uuid,
+            post.model_dump(exclude={"id"}),
+            FilterExpressions.NOT_DELETED,
         )
         self._logger.info(f"Post successfully deleted {post_uuid=}")
 
@@ -120,7 +122,9 @@ class PostService:
         post = Post(**item)
         post.updated_at = pendulum.now().to_iso8601_string()
         await self._post_repository.update_post(
-            post_uuid, post.model_dump(exclude={"id"}), FilterExpressions.NOT_DELETED
+            post_uuid,
+            post.model_dump(exclude={"id"}),
+            FilterExpressions.NOT_DELETED,
         )
         self._logger.info(f"Post successfully updated {post_uuid=}")
 

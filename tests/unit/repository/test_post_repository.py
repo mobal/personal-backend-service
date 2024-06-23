@@ -21,7 +21,9 @@ class TestPostRepository:
     ):
         post_dict = posts[0].model_dump()
         post_dict["id"] = str(uuid.uuid4())
+
         await post_repository.create_post(post_dict)
+
         response = posts_table.query(
             KeyConditionExpression=Key("id").eq(post_dict["id"])
         )

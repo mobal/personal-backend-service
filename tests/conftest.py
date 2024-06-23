@@ -55,9 +55,34 @@ def dynamodb_resource(settings):
 @pytest.fixture
 def initialize_posts_table(dynamodb_resource, posts: List[Post], posts_table):
     dynamodb_resource.create_table(
+        AttributeDefinitions=[
+            {
+                "AttributeName": "id",
+                "AttributeType": "S",
+            },
+            {
+                "AttributeName": "post_path",
+                "AttributeType": "S",
+            },
+        ],
         TableName="test-posts",
-        KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
-        AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
+        KeySchema=[
+            {"AttributeName": "id", "KeyType": "HASH"},
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "PostPathIndex",
+                "KeySchema": [
+                    {
+                        "AttributeName": "post_path",
+                        "KeyType": "HASH",
+                    },
+                ],
+                "Projection": {
+                    "ProjectionType": "ALL",
+                },
+            },
+        ],
         ProvisionedThroughput={"ReadCapacityUnits": 10, "WriteCapacityUnits": 10},
     )
     for post in posts:
@@ -73,10 +98,10 @@ def make_post(faker):
             id=str(uuid.uuid4()),
             author=faker.name(),
             content=faker.text(),
-            created_at=pendulum.now().to_iso8601_string(),
             post_path=f"{now.year}/{now.month}/{now.day}/{slug}",
+            created_at=now.to_iso8601_string(),
             deleted_at=None,
-            published_at=pendulum.now().to_iso8601_string(),
+            published_at=now.to_iso8601_string(),
             slug=slug,
             tags=faker.words(randint(1, 6)),
             title=faker.sentence(),
@@ -94,7 +119,7 @@ def make_post(faker):
 
 
 @pytest.fixture
-def posts(faker, make_post) -> List[Post]:
+def posts(make_post) -> List[Post]:
     posts = []
     for _ in range(5):
         posts.append(make_post())
