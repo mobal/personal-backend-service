@@ -7,7 +7,7 @@ custom:
   pythonRequirements:
     dockerImage: public.ecr.aws/sam/build-python3.12
     dockerizePip: 'non-linux'
-    dockerRunCmdExtraArgs: ['--platform', 'linux/amd64']
+    dockerRunCmdExtraArgs: ['--platform', 'linux/arm64']
     layer: true
     slim: true
 functions:
@@ -27,7 +27,7 @@ functions:
       - httpApi: '*'
     handler: app.main.handler
     layers:
-      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:68
+      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:73
       - Ref: PythonRequirementsLambdaLayer
 package:
   patterns:
@@ -47,6 +47,7 @@ package:
     - '!node_modules/**'
 provider:
   name: aws
+  architecture: arm64
   memorySize: 512
   region: ${env:AWS_REGION, 'eu-central-1'}
   runtime: python3.12
@@ -61,9 +62,10 @@ provider:
             - dynamodb:Scan
             - dynamodb:UpdateItem
           Resource:
-            Fn::GetAtt:
-              - postsTable
-              - Arn
+            - !GetAtt postsTable.Arn
+            - !Sub ${postsTable.Arn}/index/PostPathIndex
+            - !Sub ${postsTable.Arn}/index/TitleIndex
+            - !Sub ${postsTable.Arn}/index/CreatedAtIndex
 resources:
   Resources:
     postsTable:
