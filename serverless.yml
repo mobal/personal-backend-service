@@ -9,7 +9,7 @@ custom:
     dockerizePip: 'non-linux'
     dockerRunCmdExtraArgs: ['--platform', 'linux/amd64']
     layer: true
-    zip: true
+    slim: true
 functions:
   fastapi:
     environment:
@@ -83,6 +83,12 @@ resources:
           - AttributeName: id
             KeyType: RANGE
         GlobalSecondaryIndexes:
+          - IndexName: IdIndex
+            KeySchema:
+              - AttributeName: id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
           - IndexName: CreatedAtIndex
             KeySchema:
               - AttributeName: created_at
