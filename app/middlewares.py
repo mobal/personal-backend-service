@@ -3,8 +3,7 @@ from contextvars import ContextVar
 from typing import Optional
 
 from aws_lambda_powertools import Logger
-from starlette.middleware.base import (BaseHTTPMiddleware,
-                                       RequestResponseEndpoint)
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp
