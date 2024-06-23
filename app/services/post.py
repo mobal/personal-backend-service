@@ -47,10 +47,12 @@ class PostService:
 
     async def create_post(self, create_post: CreatePost) -> Post:
         now = pendulum.now()
-        filter_expression = Attr("title").eq(create_post.title) & Attr(
-            "created_at"
-        ).between(now.start_of("day").isoformat("T"), now.end_of("day").isoformat("T"))
-        if await self._post_repository.get_post(filter_expression):
+        if await self._post_repository.get_post_by_title(
+            create_post.title,
+            Attr("created_at").between(
+                now.start_of("day").isoformat("T"), now.end_of("day").isoformat("T")
+            ),
+        ):
             raise PostAlreadyExistsException(
                 PostService.ERROR_MESSAGE_POST_ALREADY_EXISTS
             )
@@ -69,7 +71,9 @@ class PostService:
         post = await self._get_post_by_uuid(post_uuid)
         post.deleted_at = pendulum.now().to_iso8601_string()
         await self._post_repository.update_post(
-            post_uuid, post.model_dump(exclude={"id"}), FilterExpressions.NOT_DELETED
+            post_uuid,
+            post.model_dump(exclude={"id"}),
+            FilterExpressions.NOT_DELETED,
         )
         self._logger.info(f"Post successfully deleted {post_uuid=}")
 
@@ -89,12 +93,11 @@ class PostService:
         )
 
     async def get_by_post_path(self, post_path: str) -> PostResponse:
-        filter_expression = FilterExpressions.NOT_DELETED & Attr("post_path").eq(
-            post_path
+        item = await self._post_repository.get_post_by_post_path(
+            post_path, FilterExpressions.NOT_DELETED
         )
-        item = await self._post_repository.get_post(filter_expression)
         if item is None:
-            self._logger.warning(f"Failed to get post {filter_expression=}")
+            self._logger.warning(f"Failed to get post {FilterExpressions.NOT_DELETED}")
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return await _item_to_response(item, to_markdown=True)
 
@@ -120,7 +123,9 @@ class PostService:
         post = Post(**item)
         post.updated_at = pendulum.now().to_iso8601_string()
         await self._post_repository.update_post(
-            post_uuid, post.model_dump(exclude={"id"}), FilterExpressions.NOT_DELETED
+            post_uuid,
+            post.model_dump(exclude={"id"}),
+            FilterExpressions.NOT_DELETED,
         )
         self._logger.info(f"Post successfully updated {post_uuid=}")
 

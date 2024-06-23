@@ -1,4 +1,3 @@
-from collections import Counter
 import uuid
 from collections import Counter
 from typing import List
@@ -22,7 +21,9 @@ class TestPostRepository:
     ):
         post_dict = posts[0].model_dump()
         post_dict["id"] = str(uuid.uuid4())
+
         await post_repository.create_post(post_dict)
+
         response = posts_table.query(
             KeyConditionExpression=Key("id").eq(post_dict["id"])
         )
@@ -100,35 +101,6 @@ class TestPostRepository:
         assert posts[0].published_at == item["published_at"]
         assert "Updated content" == item["content"]
         assert now.to_iso8601_string() == item["updated_at"]
-
-    async def test_successfully_get_post(
-        self, posts: List[Post], post_repository: PostRepository
-    ):
-        dt = pendulum.parse(posts[0].published_at)
-        filter_expression = Attr("deleted_at").eq(None) | Attr(
-            "deleted_at"
-        ).not_exists() & Attr("published_at").between(
-            dt.start_of("day").isoformat("T"), dt.end_of("day").isoformat("T")
-        ) & Attr(
-            "slug"
-        ).eq(
-            posts[0].slug
-        )
-        item = await post_repository.get_post(filter_expression)
-        assert any(post.model_dump() == item for post in posts)
-
-    async def test_fail_to_get_post(
-        self, posts: List[Post], post_repository: PostRepository
-    ):
-        dt = pendulum.parse(posts[0].published_at).add(days=1)
-        filter_expression = (
-            (Attr("deleted_at").eq(None) | Attr("deleted_at").not_exists())
-            & Attr("published_at").between(
-                dt.start_of("day").isoformat("T"), dt.end_of("day").isoformat("T")
-            )
-            & Attr("slug").eq(posts[0].slug)
-        )
-        assert await post_repository.get_post(filter_expression) is None
 
     async def test_successfully_get_item_count(
         self, posts: List[Post], post_repository: PostRepository

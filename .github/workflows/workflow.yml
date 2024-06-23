@@ -5,7 +5,7 @@ on: [push]
 jobs:
   pycodestyle-and-pytest:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       Coverage_File: coverage.xml
     steps:
@@ -35,11 +35,11 @@ jobs:
         pipenv run python -m pytest --cov-report=term --cov-report=xml:$Coverage_File --cov=app
       env:
         AWS_DEFAULT_REGION: eu-central-1
-        app_name: ${{ github.event.repository.name }}
-        app_stage: test
-        app_timezone: Europe/Budapest
-        jwt_secret: x4mfd4KMaY5Mc6vIcTVJxAouH4CnfPsz
-        cache_service_base_url: https://localhost
+        APP_NAME: ${{ github.event.repository.name }}
+        APP_STAGE: test
+        APP_TIMEZONE: Europe/Budapest
+        JWT_SECRET: x4mfd4KMaY5Mc6vIcTVJxAouH4CnfPsz
+        CACHE_SERVICE_BASE_URL: https://localhost
 
     - name: Fix source path(s) in coverage.xml
       run: |

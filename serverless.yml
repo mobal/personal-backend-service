@@ -7,9 +7,9 @@ custom:
   pythonRequirements:
     dockerImage: public.ecr.aws/sam/build-python3.12
     dockerizePip: 'non-linux'
-    dockerRunCmdExtraArgs: ['--platform', 'linux/amd64']
+    dockerRunCmdExtraArgs: ['--platform', 'linux/arm64']
     layer: true
-    zip: true
+    slim: true
 functions:
   fastapi:
     environment:
@@ -27,7 +27,7 @@ functions:
       - httpApi: '*'
     handler: app.main.handler
     layers:
-      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:68
+      - arn:aws:lambda:${aws:region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:73
       - Ref: PythonRequirementsLambdaLayer
 package:
   patterns:
@@ -47,6 +47,7 @@ package:
     - '!node_modules/**'
 provider:
   name: aws
+  architecture: arm64
   memorySize: 512
   region: ${env:AWS_REGION, 'eu-central-1'}
   runtime: python3.12
@@ -61,9 +62,10 @@ provider:
             - dynamodb:Scan
             - dynamodb:UpdateItem
           Resource:
-            Fn::GetAtt:
-              - postsTable
-              - Arn
+            - !GetAtt postsTable.Arn
+            - !Sub ${postsTable.Arn}/index/PostPathIndex
+            - !Sub ${postsTable.Arn}/index/TitleIndex
+            - !Sub ${postsTable.Arn}/index/CreatedAtIndex
 resources:
   Resources:
     postsTable:
@@ -71,24 +73,36 @@ resources:
       Properties:
         TableName: ${self:provider.stage}-posts
         AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
           - AttributeName: post_path
             AttributeType: S
-          - AttributeName: id
+          - AttributeName: title
             AttributeType: S
           - AttributeName: created_at
             AttributeType: S
         KeySchema:
-          - AttributeName: post_path
-            KeyType: HASH
           - AttributeName: id
-            KeyType: RANGE
+            KeyType: HASH
         GlobalSecondaryIndexes:
+          - IndexName: PostPathIndex
+            KeySchema:
+            - AttributeName: post_path
+              KeyType: HASH
+            Projection:
+              ProjectionType: 'ALL'
+          - IndexName: TitleIndex
+            KeySchema:
+            - AttributeName: title
+              KeyType: HASH
+            Projection:
+              ProjectionType: 'ALL'
           - IndexName: CreatedAtIndex
             KeySchema:
-              - AttributeName: created_at
-                KeyType: HASH
+            - AttributeName: created_at
+              KeyType: HASH
             Projection:
-              ProjectionType: ALL
+              ProjectionType: 'ALL'
         BillingMode: PAY_PER_REQUEST
     metaTable:
       Type: AWS::DynamoDB::Table

@@ -48,11 +48,25 @@ class PostRepository:
     async def item_count(self) -> int:
         return self._table.item_count
 
-    async def get_post(self, filter_expression: AttributeBase) -> Optional[dict]:
-        response = self._table.scan(FilterExpression=filter_expression)
-        if response["Items"]:
-            return response["Items"][0]
-        return None
+    async def get_post_by_post_path(
+        self, post_path: str, filter_expression: AttributeBase
+    ) -> dict | None:
+        response = self._table.query(
+            IndexName="PostPathIndex",
+            KeyConditionExpression=Key("post_path").eq(post_path),
+            FilterExpression=filter_expression,
+        )
+        return response["Items"][0] if response["Items"] else None
+
+    async def get_post_by_title(
+        self, title: str, filter_expression: AttributeBase
+    ) -> dict | None:
+        response = self._table.query(
+            IndexName="TitleIndex",
+            KeyConditionExpression=Key("title").eq(title),
+            FilterExpression=filter_expression,
+        )
+        return response["Items"][0] if response["Items"] else None
 
     async def get_post_by_uuid(
         self,

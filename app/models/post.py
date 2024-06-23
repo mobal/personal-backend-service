@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, conlist, constr
 
 from app.models.camel_model import CamelModel
@@ -20,9 +18,9 @@ class Post(CamelModel):
     content: constr(strip_whitespace=True, min_length=3)
     post_path: str
     created_at: str
-    deleted_at: Optional[str] = None
-    published_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    deleted_at: str | None = None
+    published_at: str | None = None
+    updated_at: str | None = None
     slug: str
     tags: conlist(item_type=str, min_length=1)
     meta: Meta
