@@ -1,6 +1,6 @@
 # personal-backend-service
 
-> Simple blog application made with FastAPI. My goal with this app was to get familiar with FastAPI.
+> Simple blog application made with FastAPI. My goal with this app was to get familiar with AWS, Python and FastAPI.
 
 ### Getting started
 
@@ -20,7 +20,7 @@ python3 -m pipenv run sls deploy
 3. or run locally
 
 
-Copyright 2023 mobal
+Copyright 2023 - 2024 mobal
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
