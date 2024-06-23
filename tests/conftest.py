@@ -64,6 +64,14 @@ def initialize_posts_table(dynamodb_resource, posts: List[Post], posts_table):
                 "AttributeName": "post_path",
                 "AttributeType": "S",
             },
+            {
+                "AttributeName": "title",
+                "AttributeType": "S",
+            },
+            {
+                "AttributeName": "created_at",
+                "AttributeType": "S",
+            },
         ],
         TableName="test-posts",
         KeySchema=[
@@ -75,6 +83,30 @@ def initialize_posts_table(dynamodb_resource, posts: List[Post], posts_table):
                 "KeySchema": [
                     {
                         "AttributeName": "post_path",
+                        "KeyType": "HASH",
+                    },
+                ],
+                "Projection": {
+                    "ProjectionType": "ALL",
+                },
+            },
+            {
+                "IndexName": "TitleIndex",
+                "KeySchema": [
+                    {
+                        "AttributeName": "title",
+                        "KeyType": "HASH",
+                    },
+                ],
+                "Projection": {
+                    "ProjectionType": "ALL",
+                },
+            },
+            {
+                "IndexName": "CreatedAtIndex",
+                "KeySchema": [
+                    {
+                        "AttributeName": "created_at",
                         "KeyType": "HASH",
                     },
                 ],
