@@ -28,7 +28,9 @@ class TestCacheService:
         ).mock(
             return_value=Response(status_code=status.HTTP_200_OK, json=self.key_value)
         )
+
         result = await cache_service.get(self.key_value["key"])
+
         assert bool(result) is True
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
@@ -49,7 +51,9 @@ class TestCacheService:
                 },
             ),
         )
+
         result = await cache_service.get(self.key_value["key"])
+
         assert result is False
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
@@ -70,8 +74,10 @@ class TestCacheService:
                 },
             ),
         )
+
         with pytest.raises(CacheServiceException) as excinfo:
             await cache_service.get(self.key_value["key"])
+
         assert excinfo.type.__name__ == CacheServiceException.__name__
         assert status.HTTP_500_INTERNAL_SERVER_ERROR == excinfo.value.status_code
         assert message == excinfo.value.detail

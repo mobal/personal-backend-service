@@ -37,8 +37,10 @@ class TestJWTAuth:
         self, empty_request: Mock, jwt_bearer: JWTBearer
     ):
         empty_request.headers = {"Authorization": ""}
+
         with pytest.raises(HTTPException) as excinfo:
             await jwt_bearer(empty_request)
+
         assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
@@ -47,6 +49,7 @@ class TestJWTAuth:
     ):
         with pytest.raises(HTTPException) as excinfo:
             await jwt_bearer(empty_request)
+
         assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
@@ -54,8 +57,10 @@ class TestJWTAuth:
         self, empty_request: Mock, jwt_bearer: JWTBearer
     ):
         empty_request.headers = {"Authorization": "Bearer asdf"}
+
         with pytest.raises(HTTPException) as excinfo:
             await jwt_bearer(empty_request)
+
         assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
@@ -63,7 +68,9 @@ class TestJWTAuth:
         self, empty_request: Mock
     ):
         empty_request.headers = {"Authorization": "Bearer asdf"}
+
         jwt_bearer = JWTBearer(auto_error=False)
+
         result = await jwt_bearer(empty_request)
         assert result is None
 
@@ -71,8 +78,10 @@ class TestJWTAuth:
         self, empty_request: Mock, jwt_bearer: JWTBearer
     ):
         empty_request.headers = {"Authorization": "Bearer "}
+
         with pytest.raises(HTTPException) as excinfo:
             await jwt_bearer(empty_request)
+
         assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
@@ -85,8 +94,10 @@ class TestJWTAuth:
         valid_request: Request,
     ):
         mocker.patch.object(CacheService, "get", return_value=jwt_token.jti)
+
         with pytest.raises(HTTPException) as excinfo:
             await jwt_bearer(valid_request)
+
         assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
         cache_service.get.assert_called_once_with(f"jti_{jwt_token.jti}")
@@ -95,8 +106,10 @@ class TestJWTAuth:
         self, empty_request: Mock
     ):
         jwt_bearer = JWTBearer()
+
         with pytest.raises(HTTPException) as excinfo:
             await jwt_bearer(empty_request)
+
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
         assert NOT_AUTHENTICATED == excinfo.value.detail
 
@@ -104,7 +117,9 @@ class TestJWTAuth:
         self, empty_request: Mock
     ):
         jwt_bearer = JWTBearer(auto_error=False)
+
         result = await jwt_bearer(empty_request)
+
         assert result is None
 
     async def test_fail_to_authorize_request_due_to_invalid_authentication_credentials(
@@ -114,8 +129,10 @@ class TestJWTAuth:
         request.headers = {
             "Authorization": f"Basic {jwt.encode(jwt_token.model_dump(), settings.jwt_secret)}"
         }
+
         with pytest.raises(HTTPException) as excinfo:
             await jwt_bearer(request)
+
         assert excinfo.value.status_code == status.HTTP_403_FORBIDDEN
         assert excinfo.value.detail == "Invalid authentication credentials"
 
@@ -128,7 +145,9 @@ class TestJWTAuth:
         valid_request: Request,
     ):
         mocker.patch.object(CacheService, "get", return_value=False)
+
         result = await jwt_bearer(valid_request)
+
         assert jwt_token.model_dump() == result.model_dump()
         cache_service.get.assert_called_once_with(f"jti_{jwt_token.jti}")
 
@@ -141,11 +160,13 @@ class TestJWTAuth:
         settings: Settings,
     ):
         mocker.patch.object(CacheService, "get", return_value=False)
+
         request = Mock()
         request.headers = {}
         request.query_params = {
             "token": jwt.encode(jwt_token.model_dump(), settings.jwt_secret)
         }
         result = await jwt_bearer(request)
+
         assert jwt_token.model_dump() == result.model_dump()
         cache_service.get.assert_called_once_with(f"jti_{jwt_token.jti}")
