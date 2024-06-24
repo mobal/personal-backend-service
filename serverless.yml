@@ -9,7 +9,7 @@ custom:
     dockerizePip: 'non-linux'
     dockerRunCmdExtraArgs: ['--platform', 'linux/arm64']
     layer: true
-    slim: true
+    slim: false
 functions:
   fastapi:
     environment:

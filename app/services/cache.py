@@ -1,7 +1,3 @@
-import json
-from typing import Optional
-
-import boto3
 import httpx
 from aws_lambda_powertools import Logger
 from starlette import status
@@ -16,7 +12,7 @@ class CacheService:
         self._logger = Logger(utc=True)
         self._settings = Settings()
 
-    async def get(self, key: str) -> Optional[bool]:
+    async def get(self, key: str) -> bool | None:
         async with httpx.AsyncClient() as client:
             url = f"{self._settings.cache_service_base_url}/api/cache/{key}"
             self._logger.debug(f"Get cache for {key=} {url=}")

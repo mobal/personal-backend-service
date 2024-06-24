@@ -1,4 +1,3 @@
-from typing import List
 from unittest.mock import ANY
 
 import pendulum
@@ -49,7 +48,7 @@ class TestPostService:
     async def test_fail_to_create_post_due_to_already_exists_by_title(
         self,
         mocker: MockerFixture,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
@@ -67,7 +66,7 @@ class TestPostService:
     async def test_successfully_delete_post(
         self,
         mocker: MockerFixture,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
@@ -84,7 +83,7 @@ class TestPostService:
     async def test_fail_to_delete_post_by_uuid_due_post_not_found_exception(
         self,
         mocker: MockerFixture,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
@@ -101,7 +100,7 @@ class TestPostService:
     async def test_successfully_get_all_posts(
         self,
         mocker: MockerFixture,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
@@ -119,7 +118,7 @@ class TestPostService:
     async def test_successfully_get_post_by_uuid(
         self,
         mocker: MockerFixture,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
@@ -135,7 +134,7 @@ class TestPostService:
     async def test_fail_to_get_post_by_uuid_due_post_not_found_exception(
         self,
         mocker: MockerFixture,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
@@ -152,7 +151,7 @@ class TestPostService:
     async def test_successfully_update_post(
         self,
         mocker: MockerFixture,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ) -> None:
@@ -169,7 +168,7 @@ class TestPostService:
     async def test_fail_to_update_post_due_post_not_found_exception(
         self,
         mocker: MockerFixture,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
@@ -188,7 +187,7 @@ class TestPostService:
     async def test_successfully_get_archive(
         self,
         mocker: MockerFixture,
-        posts: List[Post],
+        posts: list[Post],
         post_service: PostService,
     ):
         mocker.patch.object(
@@ -213,7 +212,7 @@ class TestPostService:
     async def test_successfully_get_post_by_post_path(
         self,
         mocker: MockerFixture,
-        posts: List[Post],
+        posts: list[Post],
         post_service: PostService,
         post_repository: PostRepository,
     ):
@@ -232,7 +231,7 @@ class TestPostService:
     async def test_fail_to_get_post_by_post_path_due_post_not_found_exception(
         self,
         mocker: MockerFixture,
-        posts: List[Post],
+        posts: list[Post],
         post_service: PostService,
         post_repository: PostRepository,
     ):

@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Any
 
 import boto3
 from aws_lambda_powertools import Logger
@@ -21,8 +21,8 @@ class PostRepository:
         self._table.put_item(Item=data)
 
     async def get_all_posts(
-        self, filter_expression: AttributeBase, fields: List[str] = None
-    ) -> List[dict]:
+        self, filter_expression: AttributeBase, fields: list[str] = None
+    ) -> list[dict[str, Any]]:
         projection_expression = ",".join(fields)
         response = self._table.scan(
             FilterExpression=filter_expression,
@@ -72,7 +72,7 @@ class PostRepository:
         self,
         post_uuid: str,
         filter_expression: AttributeBase,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         response = self._table.query(
             KeyConditionExpression=Key("id").eq(post_uuid),
             FilterExpression=filter_expression,
@@ -84,9 +84,9 @@ class PostRepository:
     async def get_posts(
         self,
         filter_expression: AttributeBase,
-        exclusive_start_key: Optional[str],
-        fields: List[str] = None,
-    ) -> Tuple[Optional[str], List[dict]]:
+        exclusive_start_key: str | None,
+        fields: list[str] = None,
+    ) -> tuple[str | None, list[dict[str, Any]]]:
         kwargs = {
             "FilterExpression": filter_expression,
             "ProjectionExpression": ",".join(fields),

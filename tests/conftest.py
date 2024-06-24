@@ -1,7 +1,6 @@
 import os
 import uuid
 from random import randint
-from typing import List
 
 import boto3
 import pendulum
@@ -53,7 +52,7 @@ def dynamodb_resource(settings):
 
 
 @pytest.fixture
-def initialize_posts_table(dynamodb_resource, posts: List[Post], posts_table):
+def initialize_posts_table(dynamodb_resource, posts: list[Post], posts_table):
     dynamodb_resource.create_table(
         AttributeDefinitions=[
             {
@@ -151,7 +150,7 @@ def make_post(faker):
 
 
 @pytest.fixture
-def posts(make_post) -> List[Post]:
+def posts(make_post) -> list[Post]:
     posts = []
     for _ in range(5):
         posts.append(make_post())

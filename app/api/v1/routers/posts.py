@@ -1,5 +1,5 @@
 import functools
-from typing import Any, List
+from typing import Any
 
 from aws_lambda_powertools import Logger
 from fastapi import APIRouter, Depends, HTTPException, Path, status
@@ -19,7 +19,7 @@ post_service = PostService()
 router = APIRouter()
 
 
-def authorize(roles: List[str]):
+def authorize(roles: list[str]):
     def decorator_wrapper(func):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):

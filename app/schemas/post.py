@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import ConfigDict, conlist, constr
 
 from app.models.camel_model import CamelModel
@@ -12,15 +10,15 @@ class CreatePost(CamelModel):
     content: constr(strip_whitespace=True, min_length=3)
     tags: conlist(str, min_length=1)
     meta: Meta
-    published_at: Optional[str]
+    published_at: str | None
 
     model_config = ConfigDict(extra="ignore")
 
 
 class UpdatePost(CreatePost):
-    author: Optional[constr(strip_whitespace=True, min_length=3)] = None
-    title: Optional[constr(strip_whitespace=True, min_length=3)] = None
-    content: Optional[constr(strip_whitespace=True, min_length=3)] = None
-    tags: Optional[conlist(str, min_length=1)] = None
-    meta: Optional[Meta] = None
-    published_at: Optional[str] = None
+    author: constr(strip_whitespace=True, min_length=3) | None = None
+    title: constr(strip_whitespace=True, min_length=3) | None = None
+    content: constr(strip_whitespace=True, min_length=3) | None = None
+    tags: conlist(str, min_length=1) | None = None
+    meta: Meta | None = None
+    published_at: str | None = None

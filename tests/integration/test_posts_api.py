@@ -1,6 +1,5 @@
 import random
 import uuid
-from typing import Dict, List, Optional
 
 import jwt
 import pendulum
@@ -61,7 +60,7 @@ class TestPostsApi:
         response: Response,
         respx_mock: MockRouter,
         url: str,
-        headers: Optional[Dict[str, str]] = None,
+        headers: dict[str, str] | None = None,
     ) -> Route:
         return respx_mock.route(
             headers=headers, method=method, url__startswith=url
@@ -130,7 +129,7 @@ class TestPostsApi:
         return TestClient(app, raise_server_exceptions=False)
 
     async def test_successfully_get_posts(
-        self, posts: List[Post], test_client: TestClient
+        self, posts: list[Post], test_client: TestClient
     ):
         response = test_client.get(BASE_URL)
         assert response.status_code == status.HTTP_200_OK
@@ -138,7 +137,7 @@ class TestPostsApi:
         assert len(result) == len(posts)
 
     async def test_fail_to_get_post_by_uuid_due_to_not_found(
-        self, posts: List[Post], test_client: TestClient
+        self, posts: list[Post], test_client: TestClient
     ):
         response = test_client.get(f"{BASE_URL}/653000ce-4b15-4242-a07d-fd8eed656d36")
         assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -148,7 +147,7 @@ class TestPostsApi:
         assert result["message"] == ERROR_MESSAGE_NOT_FOUND
 
     async def test_successfully_get_post_by_uuid(
-        self, posts: List[Post], test_client: TestClient
+        self, posts: list[Post], test_client: TestClient
     ):
         response = test_client.get(f"{BASE_URL}/{posts[0].id}")
         assert response.status_code == status.HTTP_200_OK
@@ -156,7 +155,7 @@ class TestPostsApi:
         assert result["id"] == posts[0].id
 
     async def test_successfully_get_archive(
-        self, posts: List[Post], test_client: TestClient
+        self, posts: list[Post], test_client: TestClient
     ):
         response = test_client.get(f"{BASE_URL}/archive")
         assert response.status_code == status.HTTP_200_OK
@@ -165,7 +164,7 @@ class TestPostsApi:
         assert result[date] == len(posts)
 
     async def test_successfully_get_post_by_post_path(
-        self, posts: List[Post], test_client: TestClient
+        self, posts: list[Post], test_client: TestClient
     ):
         now = pendulum.now()
         response = test_client.get(
@@ -299,7 +298,7 @@ class TestPostsApi:
     async def test_successfully_delete_post(
         self,
         cache_service_response_404: Response,
-        posts: List[Post],
+        posts: list[Post],
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -464,7 +463,7 @@ class TestPostsApi:
     async def test_fail_to_create_post_due_to_already_exists_by_title(
         self,
         cache_service_response_404: Response,
-        posts: List[Post],
+        posts: list[Post],
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -513,7 +512,7 @@ class TestPostsApi:
     async def test_fail_to_update_post_due_to_bad_request(
         self,
         cache_service_response_404,
-        posts: List[Post],
+        posts: list[Post],
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
@@ -641,7 +640,7 @@ class TestPostsApi:
     async def test_successfully_update_post(
         self,
         cache_service_response_404: Response,
-        posts: List[Post],
+        posts: list[Post],
         respx_mock: MockRouter,
         test_client: TestClient,
     ):

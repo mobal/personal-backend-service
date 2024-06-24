@@ -1,5 +1,4 @@
 import uuid
-from typing import Optional
 
 import markdown
 import pendulum
@@ -101,7 +100,7 @@ class PostService:
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return await _item_to_response(item, to_markdown=True)
 
-    async def get_posts(self, exclusive_start_key: Optional[str] = None) -> Page:
+    async def get_posts(self, exclusive_start_key: str | None = None) -> Page:
         response = await self._post_repository.get_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
             exclusive_start_key,

@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import Any
 
 import uvicorn
 from aws_lambda_powertools import Logger
@@ -42,7 +42,7 @@ class ErrorResponse(CamelModel):
 
 
 class ValidationErrorResponse(ErrorResponse):
-    errors: List[dict]
+    errors: list[dict[str, Any]]
 
 
 @app.exception_handler(BotoCoreError)
