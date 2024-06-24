@@ -40,6 +40,7 @@ class TestPostRepository:
         items = await post_repository.get_all_posts(
             filter_expression, list(posts[0].model_fields.keys())
         )
+
         assert len(items) == len(posts)
         assert any(post.model_dump() == items[0] for post in posts)
 
@@ -51,6 +52,7 @@ class TestPostRepository:
     ):
         fields = ["id", "title", "meta", "published_at"]
         items = await post_repository.get_all_posts(filter_expression, fields)
+
         assert len(items) == len(posts)
         for item in items:
             assert Counter(fields) == Counter(item.keys())
@@ -62,6 +64,7 @@ class TestPostRepository:
         post_repository: PostRepository,
     ):
         item = await post_repository.get_post_by_uuid(posts[0].id, filter_expression)
+
         assert posts[0].model_dump() == item
 
     async def test_fail_to_get_post_by_uuid(
@@ -70,6 +73,7 @@ class TestPostRepository:
         post_repository: PostRepository,
     ):
         post_uuid = str(uuid.uuid4())
+
         assert (
             await post_repository.get_post_by_uuid(post_uuid, filter_expression) is None
         )
@@ -83,12 +87,15 @@ class TestPostRepository:
     ):
         now = pendulum.now()
         data = {"content": "Updated content", "updated_at": now.to_iso8601_string()}
+
         await post_repository.update_post(posts[0].id, data, filter_expression)
+
         response = posts_table.query(
             KeyConditionExpression=Key("id").eq(posts[0].id),
             FilterExpression=Attr("deleted_at").eq(None),
         )
         assert response["Count"] == 1
+
         item = response["Items"][0]
         assert posts[0].id == item["id"]
         assert posts[0].author == item["author"]
