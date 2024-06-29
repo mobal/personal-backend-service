@@ -7,9 +7,9 @@ custom:
   pythonRequirements:
     dockerImage: public.ecr.aws/sam/build-python3.12
     dockerizePip: 'non-linux'
-    dockerRunCmdExtraArgs: ['--platform', 'linux/arm64']
+    dockerRunCmdExtraArgs: ['--platform', 'linux/amd64']
     layer: true
-    slim: true
+    slim: false
 functions:
   fastapi:
     environment:
@@ -36,6 +36,7 @@ package:
     - '!.env'
     - '!.git/**'
     - '!.idea/**'
+    - '!.mypy_cache/**'
     - '!.pytest_cache/**'
     - '!.serverless/**'
     - '!.serverless_plugins/**'
@@ -47,7 +48,7 @@ package:
     - '!node_modules/**'
 provider:
   name: aws
-  architecture: arm64
+  architecture: x86_64
   memorySize: 512
   region: ${env:AWS_REGION, 'eu-central-1'}
   runtime: python3.12

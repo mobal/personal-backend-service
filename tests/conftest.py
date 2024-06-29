@@ -1,7 +1,5 @@
-import os
 import uuid
 from random import randint
-from typing import List
 
 import boto3
 import pendulum
@@ -15,25 +13,6 @@ from app.settings import Settings
 def pytest_configure():
     pytest.cache_service_base_url = "https://localhost"
     pytest.jwt_secret = "6fl3AkTFmG2rVveLglUW8DOmp8J4Bvi3"
-
-
-def pytest_sessionstart():
-    os.environ["DEBUG"] = "true"
-    os.environ["LOG_LEVEL"] = "DEBUG"
-    os.environ["STAGE"] = "test"
-
-    os.environ["APP_NAME"] = "personal-backend-service"
-    os.environ["APP_TIMEZONE"] = "Europe/Budapest"
-
-    os.environ["CACHE_SERVICE_BASE_URL"] = pytest.cache_service_base_url
-    os.environ["JWT_SECRET"] = pytest.jwt_secret
-
-    os.environ["AWS_REGION"] = "eu-central-1"
-    os.environ["AWS_ACCESS_KEY_ID"] = "aws_access_key_id"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "aws_secret_access_key"
-
-    os.environ["POWERTOOLS_LOGGER_LOG_EVENT"] = "true"
-    os.environ["POWERTOOLS_SERVICE_NAME"] = "personal-backend-service"
 
 
 @pytest.fixture
@@ -53,7 +32,7 @@ def dynamodb_resource(settings):
 
 
 @pytest.fixture
-def initialize_posts_table(dynamodb_resource, posts: List[Post], posts_table):
+def initialize_posts_table(dynamodb_resource, posts: list[Post], posts_table):
     dynamodb_resource.create_table(
         AttributeDefinitions=[
             {
@@ -151,7 +130,7 @@ def make_post(faker):
 
 
 @pytest.fixture
-def posts(make_post) -> List[Post]:
+def posts(make_post) -> list[Post]:
     posts = []
     for _ in range(5):
         posts.append(make_post())

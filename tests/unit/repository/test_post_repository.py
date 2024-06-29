@@ -1,6 +1,5 @@
 import uuid
 from collections import Counter
-from typing import List
 
 import pendulum
 import pytest
@@ -8,14 +7,14 @@ from boto3.dynamodb.conditions import Attr, AttributeBase, Key
 from pydantic import BaseModel
 
 from app.models.post import Post
-from app.repositories.post import PostRepository
+from app.repositories.post_repository import PostRepository
 
 
 @pytest.mark.asyncio
 class TestPostRepository:
     async def test_successfully_create_post(
         self,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
         posts_table,
     ):
@@ -34,7 +33,7 @@ class TestPostRepository:
     async def test_successfully_get_all_posts(
         self,
         filter_expression: AttributeBase,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
     ):
         items = await post_repository.get_all_posts(
@@ -47,7 +46,7 @@ class TestPostRepository:
     async def test_successfully_get_all_posts_with_fields_filter(
         self,
         filter_expression: AttributeBase,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
     ):
         fields = ["id", "title", "meta", "published_at"]
@@ -60,7 +59,7 @@ class TestPostRepository:
     async def test_successfully_get_post_by_uuid(
         self,
         filter_expression: AttributeBase,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
     ):
         item = await post_repository.get_post_by_uuid(posts[0].id, filter_expression)
@@ -81,7 +80,7 @@ class TestPostRepository:
     async def test_successfully_update_post(
         self,
         filter_expression: AttributeBase,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
         posts_table,
     ):
@@ -110,14 +109,14 @@ class TestPostRepository:
         assert now.to_iso8601_string() == item["updated_at"]
 
     async def test_successfully_get_item_count(
-        self, posts: List[Post], post_repository: PostRepository
+        self, posts: list[Post], post_repository: PostRepository
     ):
         assert len(posts) == await post_repository.item_count()
 
     async def test_successfully_count_all_posts(
         self,
         filter_expression: AttributeBase,
-        posts: List[Post],
+        posts: list[Post],
         post_repository: PostRepository,
     ):
         assert len(posts) == await post_repository.count_all_posts(filter_expression)

@@ -7,9 +7,9 @@ from pytest_mock import MockerFixture
 from starlette import status
 from starlette.requests import Request
 
-from app.auth import JWTBearer
+from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken
-from app.services.cache import CacheService
+from app.services.cache_service import CacheService
 from app.settings import Settings
 
 NOT_AUTHENTICATED = "Not authenticated"
