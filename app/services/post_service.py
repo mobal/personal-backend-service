@@ -10,9 +10,9 @@ from app.exceptions import PostAlreadyExistsException, PostNotFoundException
 from app.models.post import Post
 from app.models.response import Page
 from app.models.response import Post as PostResponse
-from app.repositories.meta import MetaRepository
-from app.repositories.post import PostRepository
-from app.schemas.post import CreatePost, UpdatePost
+from app.repositories.meta_repository import MetaRepository
+from app.repositories.post_repository import PostRepository
+from app.schemas.post_schema import CreatePost, UpdatePost
 
 
 class FilterExpressions:
@@ -135,7 +135,7 @@ class PostService:
         )
         archive = {}
         if items:
-            dates = [pendulum.parse(item["published_at"]) for item in items]
+            dates: list = [pendulum.parse(item["published_at"]) for item in items]
             for dt in pendulum.interval(
                 min(dates).start_of("month"), max(dates).end_of("month")
             ).range("months"):

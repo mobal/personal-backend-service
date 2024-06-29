@@ -7,7 +7,7 @@ from respx import MockRouter
 from starlette import status
 
 from app.exceptions import CacheServiceException
-from app.services.cache import CacheService
+from app.services.cache_service import CacheService
 from app.settings import Settings
 
 

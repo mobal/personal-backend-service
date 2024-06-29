@@ -4,11 +4,11 @@ import pendulum
 import pytest
 from boto3.dynamodb.conditions import Attr, AttributeBase
 
-from app.auth import JWTBearer
+from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken, Role
 from app.models.post import Post
-from app.repositories.post import PostRepository
-from app.services.cache import CacheService
+from app.repositories.post_repository import PostRepository
+from app.services.cache_service import CacheService
 
 
 @pytest.fixture

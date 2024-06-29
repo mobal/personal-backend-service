@@ -7,7 +7,7 @@ from boto3.dynamodb.conditions import Attr, AttributeBase, Key
 from pydantic import BaseModel
 
 from app.models.post import Post
-from app.repositories.post import PostRepository
+from app.repositories.post_repository import PostRepository
 
 
 @pytest.mark.asyncio

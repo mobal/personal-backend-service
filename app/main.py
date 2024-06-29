@@ -1,5 +1,5 @@
 import uuid
-from typing import Any
+from typing import Any, Sequence
 
 import uvicorn
 from aws_lambda_powertools import Logger
@@ -13,12 +13,10 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 from starlette import status
 
+from app import settings
 from app.api.v1.api import router as api_v1_router
 from app.middlewares import CorrelationIdMiddleware
 from app.models.camel_model import CamelModel
-from app.settings import Settings
-
-settings = Settings()
 
 if settings.debug:
     set_package_logger()
@@ -31,7 +29,6 @@ app.add_middleware(GZipMiddleware)
 app.include_router(api_v1_router)
 
 handler = Mangum(app)
-handler.__name__ = "handler"
 handler = logger.inject_lambda_context(handler, clear_state=True, log_event=True)
 
 
@@ -42,7 +39,7 @@ class ErrorResponse(CamelModel):
 
 
 class ValidationErrorResponse(ErrorResponse):
-    errors: list[dict[str, Any]]
+    errors: Sequence[Any]
 
 
 @app.exception_handler(BotoCoreError)

@@ -1,20 +1,21 @@
+from typing import Optional
+
 import httpx
 from aws_lambda_powertools import Logger
 from starlette import status
 
+from app import settings
 from app.exceptions import CacheServiceException
 from app.middlewares import correlation_id
-from app.settings import Settings
 
 
 class CacheService:
     def __init__(self):
         self._logger = Logger(utc=True)
-        self._settings = Settings()
 
     async def get(self, key: str) -> bool | None:
         async with httpx.AsyncClient() as client:
-            url = f"{self._settings.cache_service_base_url}/api/cache/{key}"
+            url = f"{settings.cache_service_base_url}/api/cache/{key}"
             self._logger.debug(f"Get cache for {key=} {url=}")
             response = await client.get(
                 url, headers={"X-Correlation-ID": correlation_id.get()}

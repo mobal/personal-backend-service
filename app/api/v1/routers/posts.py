@@ -5,12 +5,12 @@ from aws_lambda_powertools import Logger
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from starlette.responses import Response
 
-from app.auth import JWTBearer
+from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken, Role, User
 from app.models.response import Page
 from app.models.response import Post as PostResponse
-from app.schemas.post import CreatePost, UpdatePost
-from app.services.post import PostService
+from app.schemas.post_schema import CreatePost, UpdatePost
+from app.services.post_service import PostService
 
 logger = Logger(utc=True)
 

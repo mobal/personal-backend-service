@@ -8,9 +8,9 @@ from starlette import status
 from app.exceptions import PostAlreadyExistsException, PostNotFoundException
 from app.models.post import Post
 from app.models.response import Post as PostResponse
-from app.repositories.post import PostRepository
-from app.schemas.post import CreatePost, UpdatePost
-from app.services.post import PostService
+from app.repositories.post_repository import PostRepository
+from app.schemas.post_schema import CreatePost, UpdatePost
+from app.services.post_service import PostService
 
 ERROR_MESSAGE_POST_WAS_NOT_FOUND = "The requested post was not found"
 ERROR_MESSAGE_POST_ALREADY_EXISTS = "There is already a post with this title"

@@ -1,10 +1,10 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel
 
 
-class Role(str, Enum):
+class Role(StrEnum):
     POST_CREATE = "post:create"
     POST_DELETE = "post:delete"
     POST_UPDATE = "post:edit"

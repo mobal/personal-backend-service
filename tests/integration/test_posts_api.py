@@ -10,7 +10,7 @@ from starlette import status
 from starlette.testclient import TestClient
 
 from app.models.post import Post
-from app.schemas.post import CreatePost
+from app.schemas.post_schema import CreatePost
 
 BASE_URL = "/api/v1/posts"
 CACHE_SERVICE_URL = f"{pytest.cache_service_base_url}/api/cache"

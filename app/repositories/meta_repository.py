@@ -1,13 +1,12 @@
 import boto3
 from aws_lambda_powertools import Logger
 
-from app.settings import Settings
+from app import settings
 
 
 class MetaRepository:
     def __init__(self):
         self._logger = Logger()
-        settings = Settings()
         self._table = (
             boto3.Session().resource("dynamodb").Table(f"{settings.stage}-meta")
         )

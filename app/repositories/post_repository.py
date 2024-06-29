@@ -4,7 +4,7 @@ import boto3
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import AttributeBase, Key
 
-from app.settings import Settings
+from app import settings
 
 
 class PostRepository:
@@ -12,7 +12,6 @@ class PostRepository:
 
     def __init__(self):
         self._logger = Logger(utc=True)
-        settings = Settings()
         self._table = (
             boto3.Session().resource("dynamodb").Table(f"{settings.stage}-posts")
         )

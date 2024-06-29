@@ -17,6 +17,9 @@ install-node:
 install-python:
 	pipenv install --dev --python 3.12
 
+mypy:
+	pipenv run python -m  mypy app/ --explicit-package-bases
+
 pycodestyle:
 	pipenv run python -m pycodestyle --ignore=E501,W503 app/ tests/
 

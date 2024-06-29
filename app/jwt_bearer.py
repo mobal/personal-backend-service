@@ -7,9 +7,9 @@ from fastapi.security.utils import get_authorization_scheme_param
 from jwt import DecodeError, ExpiredSignatureError
 from starlette import status
 
+from app import settings
 from app.models.auth import JWTToken
-from app.services.cache import CacheService
-from app.settings import Settings
+from app.services.cache_service import CacheService
 
 logger = Logger(utc=True)
 
@@ -76,7 +76,6 @@ class JWTBearer(HTTPBearer):
         super().__init__(auto_error=auto_error)
         self.auto_error = auto_error
         self.cache_service = CacheService()
-        self.settings = Settings()
 
     async def __call__(self, request: Request) -> JWTToken | None:
         credentials = await super(JWTBearer, self).__call__(request)
@@ -97,7 +96,7 @@ class JWTBearer(HTTPBearer):
     async def _validate_token(self, token: str) -> bool:
         try:
             decoded_token = JWTToken(
-                **jwt.decode(token, self.settings.jwt_secret, algorithms="HS256")
+                **jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
             )
             if await self.cache_service.get(f"jti_{decoded_token.jti}") is False:
                 logger.debug(f"Token is not blacklisted {decoded_token=}")
