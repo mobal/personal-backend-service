@@ -81,7 +81,6 @@ async def get_post_by_uuid(uuid: str) -> PostResponse:
 @router.get(
     "",
     response_model=Page,
-    response_model_exclude_none=True,
     status_code=status.HTTP_200_OK,
 )
 async def get_posts(exclusive_start_key: str | None = None) -> Page:

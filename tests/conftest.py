@@ -132,7 +132,7 @@ def make_post(faker):
 @pytest.fixture
 def posts(make_post) -> list[Post]:
     posts = []
-    for _ in range(5):
+    for _ in range(10):
         posts.append(make_post())
     return posts
 
