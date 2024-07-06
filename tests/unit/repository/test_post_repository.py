@@ -1,10 +1,10 @@
 import uuid
 from collections import Counter
+from random import randint
 
 import pendulum
 import pytest
-from boto3.dynamodb.conditions import Attr, AttributeBase, Key
-from pydantic import BaseModel
+from boto3.dynamodb.conditions import AttributeBase
 
 from app.models.post import Post
 from app.repositories.post_repository import PostRepository
@@ -23,12 +23,9 @@ class TestPostRepository:
 
         await post_repository.create_post(post_dict)
 
-        response = posts_table.query(
-            KeyConditionExpression=Key("id").eq(post_dict["id"])
-        )
-        assert 1 == response["Count"]
-        item = response["Items"][0]
-        assert item == post_dict
+        response = posts_table.get_item(Key={"id": post_dict["id"]})
+
+        assert response["Item"] == post_dict
 
     async def test_successfully_get_all_posts(
         self,
@@ -55,6 +52,27 @@ class TestPostRepository:
         assert len(items) == len(posts)
         for item in items:
             assert Counter(fields) == Counter(item.keys())
+
+    async def test_successfully_get_all_posts_with_using_last_evaluated_key(
+        self,
+        faker,
+        filter_expression: AttributeBase,
+        make_post,
+        post_repository: PostRepository,
+        posts: list[Post],
+        posts_table,
+    ):
+        with posts_table.batch_writer() as batch:
+            for _ in range(100):
+                long_sized_post = make_post()
+                long_sized_post.content = faker.text(randint(10_000, 25_000))
+                batch.put_item(Item=long_sized_post.model_dump())
+
+        items = await post_repository.get_all_posts(
+            filter_expression, list(long_sized_post.model_fields.keys())
+        )
+
+        assert len(posts) + 100 == len(items)
 
     async def test_successfully_get_post_by_uuid(
         self,
@@ -89,24 +107,12 @@ class TestPostRepository:
 
         await post_repository.update_post(posts[0].id, data, filter_expression)
 
-        response = posts_table.query(
-            KeyConditionExpression=Key("id").eq(posts[0].id),
-            FilterExpression=Attr("deleted_at").eq(None),
+        response = posts_table.get_item(Key={"id": posts[0].id})
+        assert response["Item"]["updated_at"] is not None
+        assert (
+            posts[0].model_dump(exclude={"content", "updated_at"}).items()
+            <= response["Item"].items()
         )
-        assert response["Count"] == 1
-
-        item = response["Items"][0]
-        assert posts[0].id == item["id"]
-        assert posts[0].author == item["author"]
-        assert posts[0].meta.model_dump() == item["meta"]
-        assert posts[0].slug == item["slug"]
-        assert posts[0].tags == item["tags"]
-        assert posts[0].title == item["title"]
-        assert posts[0].created_at == item["created_at"]
-        assert posts[0].deleted_at == item["deleted_at"]
-        assert posts[0].published_at == item["published_at"]
-        assert "Updated content" == item["content"]
-        assert now.to_iso8601_string() == item["updated_at"]
 
     async def test_successfully_get_item_count(
         self, posts: list[Post], post_repository: PostRepository
@@ -120,3 +126,22 @@ class TestPostRepository:
         post_repository: PostRepository,
     ):
         assert len(posts) == await post_repository.count_all_posts(filter_expression)
+
+    async def test_successfully_count_all_posts_with_using_last_evaluated_key(
+        self,
+        faker,
+        filter_expression: AttributeBase,
+        make_post,
+        posts: list[Post],
+        post_repository: PostRepository,
+        posts_table,
+    ):
+        with posts_table.batch_writer() as batch:
+            for _ in range(100):
+                long_sized_post = make_post()
+                long_sized_post.content = faker.text(randint(10_000, 25_000))
+                batch.put_item(Item=long_sized_post.model_dump())
+
+        assert len(posts) + 100 == await post_repository.count_all_posts(
+            filter_expression
+        )
