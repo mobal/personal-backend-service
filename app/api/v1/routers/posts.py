@@ -82,13 +82,10 @@ async def get_post_by_uuid(uuid: str) -> PostResponse:
     "",
     response_model=Page,
     status_code=status.HTTP_200_OK,
+    response_model_exclude_none=True,
 )
 async def get_posts(exclusive_start_key: str | None = None) -> Page:
-    return (
-        await post_service.get_posts(exclusive_start_key)
-        if exclusive_start_key
-        else await post_service.get_posts()
-    )
+    return await post_service.get_posts(exclusive_start_key)
 
 
 @router.put(
