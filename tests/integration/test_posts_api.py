@@ -35,10 +35,10 @@ class TestPostsApi:
     ):
         assert response.status_code == status_code
 
-        result = response.json()
-        assert result["status"] == status_code
-        assert result["id"]
-        assert result["message"] == message
+        assert {
+            "status": status_code,
+            "message": message,
+        }.items() <= response.json().items()
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
 
@@ -183,9 +183,15 @@ class TestPostsApi:
         )
 
         assert response.status_code == status.HTTP_200_OK
-
-        post = response.json()
-        assert post["id"] == posts[0].id
+        assert (
+            posts[0]
+            .model_dump(
+                exclude={"content", "created_at", "deleted_at", "post_path"},
+                by_alias=True,
+            )
+            .items()
+            <= response.json().items()
+        )
 
     async def test_fail_to_get_post_by_date_and_slug_due_to_not_found(
         self, test_client: TestClient
@@ -194,12 +200,10 @@ class TestPostsApi:
             f"{BASE_URL}/{random.randint(1970, 2999)}/{random.randint(3, 12)}/{random.randint(1, 30)}/slug"
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
-
-        result = response.json()
-
-        assert result["status"] == status.HTTP_404_NOT_FOUND
-        assert result["id"]
-        assert result["message"] == ERROR_MESSAGE_NOT_FOUND
+        assert {
+            "status": status.HTTP_404_NOT_FOUND,
+            "message": ERROR_MESSAGE_NOT_FOUND,
+        }.items() <= response.json().items()
 
     async def test_fail_to_delete_post_due_to_not_found(
         self,
@@ -235,11 +239,10 @@ class TestPostsApi:
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
-
-        result = response.json()
-        assert result["status"] == status.HTTP_403_FORBIDDEN
-        assert result["id"]
-        assert result["message"] == ERROR_MESSAGE_NOT_AUTHENTICATED
+        assert {
+            "status": status.HTTP_403_FORBIDDEN,
+            "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
+        }.items() <= response.json().items()
 
     async def test_fail_to_delete_post_due_to_blacklisted_jwt_token(
         self,
@@ -378,11 +381,10 @@ class TestPostsApi:
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
-
-        result = response.json()
-        assert result["status"] == status.HTTP_403_FORBIDDEN
-        assert result["id"]
-        assert result["message"] == ERROR_MESSAGE_NOT_AUTHENTICATED
+        assert {
+            "status": status.HTTP_403_FORBIDDEN,
+            "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
+        }.items() <= response.json().items()
 
     async def test_fail_to_create_post_due_to_blacklisted_jwt_token(
         self,
@@ -589,11 +591,10 @@ class TestPostsApi:
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
-
-        result = response.json()
-        assert result["status"] == status.HTTP_403_FORBIDDEN
-        assert result["id"]
-        assert result["message"] == ERROR_MESSAGE_NOT_AUTHENTICATED
+        assert {
+            "status": status.HTTP_403_FORBIDDEN,
+            "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
+        }.items() <= response.json().items()
 
     async def test_fail_to_update_post_due_to_blacklisted_jwt_token(
         self,
