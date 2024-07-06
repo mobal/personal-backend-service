@@ -96,8 +96,9 @@ def initialize_posts_table(dynamodb_resource, posts: list[Post], posts_table):
         ],
         ProvisionedThroughput={"ReadCapacityUnits": 10, "WriteCapacityUnits": 10},
     )
-    for post in posts:
-        posts_table.put_item(Item=post.model_dump())
+    with posts_table.batch_writer() as batch:
+        for post in posts:
+            batch.put_item(Item=post.model_dump())
 
 
 @pytest.fixture
