@@ -135,7 +135,9 @@ class TestPostsApi:
         response = test_client.get(BASE_URL)
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.json().get("data")
+        for post_response in response.json()["data"]:
+            post = next(post for post in posts if post.id == post_response["id"])
+            assert post_response.items() <= post.model_dump(by_alias=True).items()
 
     async def test_fail_to_get_post_by_uuid_due_to_not_found(
         self, posts: list[Post], test_client: TestClient
@@ -143,11 +145,10 @@ class TestPostsApi:
         response = test_client.get(f"{BASE_URL}/653000ce-4b15-4242-a07d-fd8eed656d36")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
-
-        result = response.json()
-        assert result["status"] == status.HTTP_404_NOT_FOUND
-        assert result["id"]
-        assert result["message"] == ERROR_MESSAGE_NOT_FOUND
+        assert {
+            "status": status.HTTP_404_NOT_FOUND,
+            "message": ERROR_MESSAGE_NOT_FOUND,
+        }.items() <= response.json().items()
 
     async def test_successfully_get_post_by_uuid(
         self, posts: list[Post], test_client: TestClient
@@ -155,9 +156,15 @@ class TestPostsApi:
         response = test_client.get(f"{BASE_URL}/{posts[0].id}")
 
         assert response.status_code == status.HTTP_200_OK
-
-        result = response.json()
-        assert result["id"] == posts[0].id
+        assert (
+            posts[0]
+            .model_dump(
+                exclude={"content", "created_at", "deleted_at", "post_path"},
+                by_alias=True,
+            )
+            .items()
+            <= response.json().items()
+        )
 
     async def test_successfully_get_archive(
         self, posts: list[Post], test_client: TestClient
@@ -165,10 +172,7 @@ class TestPostsApi:
         response = test_client.get(f"{BASE_URL}/archive")
 
         assert response.status_code == status.HTTP_200_OK
-
-        result = response.json()
-        date = pendulum.now().format("YYYY-MM")
-        assert result[date] == len(posts)
+        assert response.json()[pendulum.now().format("YYYY-MM")] == len(posts)
 
     async def test_successfully_get_post_by_post_path(
         self, posts: list[Post], test_client: TestClient
