@@ -105,19 +105,4 @@ resources:
             Projection:
               ProjectionType: 'ALL'
         BillingMode: PAY_PER_REQUEST
-    metaTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:provider.stage}-meta
-        AttributeDefinitions:
-          - AttributeName: key
-            AttributeType: S
-          - AttributeName: value
-            AttributeType: S
-        KeySchema:
-          - AttributeName: key
-            KeyType: HASH
-          - AttributeName: value
-            KeyType: RANGE
-        BillingMode: PAY_PER_REQUEST
 useDotenv: true

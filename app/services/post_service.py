@@ -10,7 +10,6 @@ from app.exceptions import PostAlreadyExistsException, PostNotFoundException
 from app.models.post import Post
 from app.models.response import Page
 from app.models.response import Post as PostResponse
-from app.repositories.meta_repository import MetaRepository
 from app.repositories.post_repository import PostRepository
 from app.schemas.post_schema import CreatePost, UpdatePost
 
@@ -32,7 +31,6 @@ class PostService:
 
     def __init__(self):
         self._logger = Logger(utc=True)
-        self._meta_repository = MetaRepository()
         self._post_repository = PostRepository()
 
     async def _get_post_by_uuid(self, post_uuid: str) -> Post:

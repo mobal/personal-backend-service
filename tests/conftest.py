@@ -96,8 +96,9 @@ def initialize_posts_table(dynamodb_resource, posts: list[Post], posts_table):
         ],
         ProvisionedThroughput={"ReadCapacityUnits": 10, "WriteCapacityUnits": 10},
     )
-    for post in posts:
-        posts_table.put_item(Item=post.model_dump())
+    with posts_table.batch_writer() as batch:
+        for post in posts:
+            batch.put_item(Item=post.model_dump())
 
 
 @pytest.fixture
@@ -132,7 +133,7 @@ def make_post(faker):
 @pytest.fixture
 def posts(make_post) -> list[Post]:
     posts = []
-    for _ in range(5):
+    for _ in range(10):
         posts.append(make_post())
     return posts
 

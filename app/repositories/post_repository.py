@@ -38,11 +38,20 @@ class PostRepository:
         return items
 
     async def count_all_posts(self, filter_expression: AttributeBase) -> int:
+        count = 0
         response = self._table.scan(
             Select=PostRepository.SELECT_COUNT,
             FilterExpression=filter_expression,
         )
-        return response["Count"]
+        count += response["Count"]
+        while response.get("LastEvaluatedKey"):
+            response = self._table.scan(
+                Select=PostRepository.SELECT_COUNT,
+                ExclusiveStartKey=response["LastEvaluatedKey"],
+                FilterExpression=filter_expression,
+            )
+            count += response["Count"]
+        return count
 
     async def item_count(self) -> int:
         return self._table.item_count
@@ -93,7 +102,11 @@ class PostRepository:
         if exclusive_start_key:
             kwargs["ExclusiveStartKey"] = exclusive_start_key
         response = self._table.scan(**kwargs)
-        return response.get("LastEvaluatedKey"), response["Items"]
+        return (
+            response["LastEvaluatedKey"]["id"]
+            if response.get("LastEvaluatedKey", None)
+            else None
+        ), response["Items"]
 
     async def update_post(
         self, post_uuid: str, data: dict, condition_expression: AttributeBase
