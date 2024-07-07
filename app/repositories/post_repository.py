@@ -46,7 +46,7 @@ class PostRepository:
             FilterExpression=filter_expression,
         )
         count += response["Count"]
-        while response.get("LastEvaluatedKey"):
+        while "LastEvaluatedKey" in response:
             response = self._table.scan(
                 Select=PostRepository.SELECT_COUNT,
                 ExclusiveStartKey=response["LastEvaluatedKey"],
