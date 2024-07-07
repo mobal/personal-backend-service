@@ -73,16 +73,6 @@ class PostService:
         )
         self._logger.info(f"Post successfully deleted {post_uuid=}")
 
-    async def get_all_posts(self, descending: bool = True) -> Page:
-        items = await self._post_repository.get_all_posts(
-            FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
-            ["id", "title", "meta", "published_at", "updated_at"],
-        )
-        posts = []
-        for item in sorted(items, key=lambda i: i["published_at"], reverse=descending):
-            posts.append(PostResponse(**item))
-        return Page(data=posts)
-
     async def get_post(self, post_uuid: str) -> PostResponse:
         return await _item_to_response(
             (await self._get_post_by_uuid(post_uuid)).model_dump()

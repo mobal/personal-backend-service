@@ -97,24 +97,6 @@ class TestPostService:
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
         post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
 
-    async def test_successfully_get_all_posts(
-        self,
-        mocker: MockerFixture,
-        posts: list[Post],
-        post_repository: PostRepository,
-        post_service: PostService,
-    ):
-        mocker.patch.object(
-            PostRepository, "get_all_posts", return_value=[posts[0].model_dump()]
-        )
-
-        result = await post_service.get_all_posts()
-
-        assert result.exclusive_start_key is None
-        assert len(result.data) == 1
-        assert PostResponse(**posts[0].model_dump()) == result.data[0]
-        post_repository.get_all_posts.assert_called_once()
-
     async def test_successfully_get_post_by_uuid(
         self,
         mocker: MockerFixture,
