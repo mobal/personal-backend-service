@@ -1,5 +1,3 @@
-from typing import Optional
-
 import httpx
 from aws_lambda_powertools import Logger
 from starlette import status
