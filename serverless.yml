@@ -22,6 +22,8 @@ functions:
       POWERTOOLS_LOGGER_LOG_EVENT: true
       POWERTOOLS_SERVICE_NAME: personal-backend-service
       POWERTOOLS_DEBUG: false
+      RATE_LIMIT_DURATION: ${env:RATE_LIMIT_DURATION}
+      RATE_LIMIT_REQUESTS: ${env:RATE_LIMIT_REQUESTS}
       STAGE: ${env:STAGE}
     events:
       - httpApi: '*'
@@ -50,7 +52,7 @@ provider:
   name: aws
   architecture: x86_64
   memorySize: 512
-  region: ${env:AWS_REGION, 'eu-central-1'}
+  region: ${env:AWS_REGION, "eu-central-1"}
   runtime: python3.12
   stage: ${opt:stage, 'dev'}
   iam:
