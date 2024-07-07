@@ -250,6 +250,7 @@ class TestPostService:
     async def test_successfully_get_posts(
         self,
         mocker: MockerFixture,
+        post_repository: PostRepository,
         post_service: PostService,
         posts: list[Post],
     ):
@@ -264,3 +265,4 @@ class TestPostService:
         assert len(result.data) == len(posts)
         for idx, post in enumerate(result.data, start=0):
             assert post.model_dump().items() <= posts[idx].model_dump().items()
+        post_repository.get_posts.assert_called_once_with(ANY, None, ANY)
