@@ -19,9 +19,8 @@ class FilterExpressions:
     PUBLISHED = Attr("published_at").ne(None)
 
 
-async def _item_to_response(item: dict, to_markdown: bool = False) -> PostResponse:
-    if item.get("content") and to_markdown:
-        item["content"] = markdown.markdown(item["content"])
+async def _item_to_response(item: dict) -> PostResponse:
+    item["content"] = markdown.markdown(item["content"])
     return PostResponse(**item)
 
 
@@ -86,7 +85,7 @@ class PostService:
 
     async def get_post(self, post_uuid: str) -> PostResponse:
         return await _item_to_response(
-            (await self._get_post_by_uuid(post_uuid)).model_dump(), to_markdown=True
+            (await self._get_post_by_uuid(post_uuid)).model_dump()
         )
 
     async def get_by_post_path(self, post_path: str) -> PostResponse:
@@ -96,7 +95,7 @@ class PostService:
         if item is None:
             self._logger.warning(f"Failed to get post {FilterExpressions.NOT_DELETED}")
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
-        return await _item_to_response(item, to_markdown=True)
+        return await _item_to_response(item)
 
     async def get_posts(self, exclusive_start_key: str | None = None) -> Page:
         response = await self._post_repository.get_posts(
