@@ -92,13 +92,14 @@ class PostRepository:
     async def get_posts(
         self,
         filter_expression: AttributeBase,
-        exclusive_start_key: str | None,
+        exclusive_start_key: dict[str, str] | None,
         fields: list[str] = None,
     ) -> tuple[str | None, list[dict[str, Any]]]:
         kwargs = {
             "FilterExpression": filter_expression,
-            "ProjectionExpression": ",".join(fields),
         }
+        if fields:
+            kwargs["ProjectionExpression"] = ",".join(fields)
         if exclusive_start_key:
             kwargs["ExclusiveStartKey"] = exclusive_start_key
         response = self._table.scan(**kwargs)
