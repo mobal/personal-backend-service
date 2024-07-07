@@ -246,3 +246,21 @@ class TestPostService:
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
         post_repository.get_post_by_post_path.assert_called_once_with(post_path, ANY)
+
+    async def test_successfully_get_posts(
+        self,
+        mocker: MockerFixture,
+        post_service: PostService,
+        posts: list[Post],
+    ):
+        mocker.patch.object(
+            PostRepository,
+            "get_posts",
+            return_value=[None, [post.model_dump() for post in posts]],
+        )
+
+        result = await post_service.get_posts()
+
+        assert len(result.data) == len(posts)
+        for idx, post in enumerate(result.data, start=0):
+            assert post.model_dump().items() <= posts[idx].model_dump().items()
