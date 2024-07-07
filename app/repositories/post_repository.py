@@ -20,7 +20,9 @@ class PostRepository:
         self._table.put_item(Item=data)
 
     async def get_all_posts(
-        self, filter_expression: AttributeBase, fields: list[str] = None
+        self,
+        filter_expression: AttributeBase,
+        fields: list[str],
     ) -> list[dict[str, Any]]:
         projection_expression = ",".join(fields)
         response = self._table.scan(
@@ -93,7 +95,7 @@ class PostRepository:
         self,
         filter_expression: AttributeBase,
         exclusive_start_key: dict[str, str] | None,
-        fields: list[str] = None,
+        fields: list[str] | None = None,
     ) -> tuple[str | None, list[dict[str, Any]]]:
         kwargs = {
             "FilterExpression": filter_expression,
