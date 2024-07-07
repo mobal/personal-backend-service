@@ -9,6 +9,10 @@ from boto3.dynamodb.conditions import AttributeBase
 from app.models.post import Post
 from app.repositories.post_repository import PostRepository
 
+LARGE_SIZED_POST_MAX_LENGTH = 25_000
+LARGE_SIZED_POST_MIN_LENGTH = 10_000
+MAX_NUMBER_OF_LARGE_SIZED_POSTS = 100
+
 
 @pytest.mark.asyncio
 class TestPostRepository:
@@ -63,16 +67,18 @@ class TestPostRepository:
         posts_table,
     ):
         with posts_table.batch_writer() as batch:
-            for _ in range(100):
+            for _ in range(MAX_NUMBER_OF_LARGE_SIZED_POSTS):
                 long_sized_post = make_post()
-                long_sized_post.content = faker.text(randint(10_000, 25_000))
+                long_sized_post.content = faker.text(
+                    randint(LARGE_SIZED_POST_MIN_LENGTH, LARGE_SIZED_POST_MAX_LENGTH)
+                )
                 batch.put_item(Item=long_sized_post.model_dump())
 
         items = await post_repository.get_all_posts(
             filter_expression, list(long_sized_post.model_fields.keys())
         )
 
-        assert len(posts) + 100 == len(items)
+        assert len(posts) + MAX_NUMBER_OF_LARGE_SIZED_POSTS == len(items)
 
     async def test_successfully_get_post_by_uuid(
         self,
@@ -137,11 +143,15 @@ class TestPostRepository:
         posts_table,
     ):
         with posts_table.batch_writer() as batch:
-            for _ in range(100):
+            for _ in range(MAX_NUMBER_OF_LARGE_SIZED_POSTS):
                 long_sized_post = make_post()
-                long_sized_post.content = faker.text(randint(10_000, 25_000))
+                long_sized_post.content = faker.text(
+                    randint(LARGE_SIZED_POST_MIN_LENGTH, LARGE_SIZED_POST_MAX_LENGTH)
+                )
                 batch.put_item(Item=long_sized_post.model_dump())
 
-        assert len(posts) + 100 == await post_repository.count_all_posts(
+        assert len(
+            posts
+        ) + MAX_NUMBER_OF_LARGE_SIZED_POSTS == await post_repository.count_all_posts(
             filter_expression
         )
