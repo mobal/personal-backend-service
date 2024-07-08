@@ -7,6 +7,7 @@ from respx import MockRouter
 from starlette import status
 
 from app.exceptions import CacheServiceException
+from app.middlewares import correlation_id
 from app.services.cache_service import CacheService
 from app.settings import Settings
 
@@ -19,6 +20,10 @@ class TestCacheService:
         "created_at": pendulum.now().to_iso8601_string(),
         "ttl": pendulum.now().int_timestamp,
     }
+
+    @pytest.fixture(autouse=True)
+    def setup_function(self):
+        correlation_id.set(str(uuid.uuid4()))
 
     async def test_successfully_get_key_value(
         self, cache_service: CacheService, settings: Settings, respx_mock: MockRouter
