@@ -11,4 +11,5 @@ class Settings(BaseSettings):
     cache_service_base_url: str
     rate_limit_duration_in_seconds: int
     rate_limit_requests: int
+    rate_limiting: bool
     stage: str

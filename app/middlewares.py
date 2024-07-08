@@ -48,14 +48,12 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        client = None
-        if settings.debug is False:
+        if settings.rate_limiting:
             client_ip = request.client.host
             client = self.clients.get(
                 client_ip, {"request_count": 0, "last_request": datetime.min}
             )
-            elapsed_time = datetime.now() - client["last_request"]
-            if elapsed_time > self.RATE_LIMIT_DURATION:
+            if (datetime.now() - client["last_request"]) > self.RATE_LIMIT_DURATION:
                 client["request_count"] = 1
             else:
                 if client["request_count"] >= settings.rate_limit_requests:
@@ -73,11 +71,12 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
                 client["request_count"] += 1
             client["last_request"] = datetime.now()
             self.clients[client_ip] = client
+            response = await call_next(request)
+            response.headers.update(self.__get_rate_limit_headers(client))
+            return response
         else:
-            logger.info("Debug mode is enabled, therefore rate limiting is turned off")
-        response = await call_next(request)
-        response.headers.update(self.__get_rate_limit_headers(client))
-        return response
+            logger.info("Rate limiting is turned off")
+        return await call_next(request)
 
     def __get_rate_limit_headers(self, client: dict[str, Any]) -> dict[str, Any]:
         return {

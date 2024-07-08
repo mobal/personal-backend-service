@@ -24,6 +24,7 @@ functions:
       POWERTOOLS_DEBUG: false
       RATE_LIMIT_DURATION_IN_SECONDS: ${env:RATE_LIMIT_DURATION_IN_SECONDS}
       RATE_LIMIT_REQUESTS: ${env:RATE_LIMIT_REQUESTS}
+      RATE_LIMITING: ${env:RATE_LIMITING}
       STAGE: ${env:STAGE}
     events:
       - httpApi: '*'
