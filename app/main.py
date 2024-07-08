@@ -24,8 +24,8 @@ if settings.debug:
 logger = Logger(utc=True)
 
 app = FastAPI(debug=settings.debug, title="PersonalBackendApplication", version="1.0.0")
-app.add_middleware(RateLimitingMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(RateLimitingMiddleware)
 app.add_middleware(GZipMiddleware)
 app.include_router(api_v1_router)
 

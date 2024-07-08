@@ -1,6 +1,7 @@
 import uuid
 from contextvars import ContextVar
 from datetime import datetime, timedelta
+from typing import Any
 
 from aws_lambda_powertools import Logger
 from starlette import status
@@ -14,54 +15,82 @@ from app import Settings
 
 X_CORRELATION_ID = "X-Correlation-ID"
 
-correlation_id: ContextVar[str | None] = ContextVar(
-    X_CORRELATION_ID, default=str(uuid.uuid4())
-)
+correlation_id = ContextVar(X_CORRELATION_ID)
+logger = Logger(utc=True)
 settings = Settings()
 
 
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp):
         super().__init__(app)
-        self._logger = Logger(utc=True)
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        if request.headers.get(X_CORRELATION_ID):
-            correlation_id.set(request.headers[X_CORRELATION_ID])
-        self._logger.set_correlation_id(correlation_id.get())
+        correlation_id.set(
+            request.headers[X_CORRELATION_ID]
+            if request.headers.get(X_CORRELATION_ID)
+            else str(uuid.uuid4())
+        )
+        logger.set_correlation_id(correlation_id.get())
         response = await call_next(request)
         response.headers[X_CORRELATION_ID] = correlation_id.get()
         return response
 
 
 class RateLimitingMiddleware(BaseHTTPMiddleware):
-    RATE_LIMIT_DURATION = timedelta(seconds=settings.rate_limit_duration)
+    RATE_LIMIT_DURATION = timedelta(seconds=settings.rate_limit_duration_in_seconds)
 
     def __init__(self, app):
         super().__init__(app)
-        self.requests = {}
+        self.clients = {}
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        if settings.debug is False:
+        client = None
+        if settings.debug is not False:
             client_ip = request.client.host
-            request_count, last_request = self.requests.get(
-                client_ip, (0, datetime.min)
+            client = self.clients.get(
+                client_ip, {"request_count": 0, "last_request": datetime.min}
             )
-            elapsed_time = datetime.now() - last_request
+            elapsed_time = datetime.now() - client["last_request"]
             if elapsed_time > self.RATE_LIMIT_DURATION:
-                request_count = 1
+                client["request_count"] = 1
             else:
-                if request_count >= settings.rate_limit_requests:
+                if client["request_count"] >= settings.rate_limit_requests:
+                    logger.warning(
+                        "The client has exceeded the rate limit and has been rate limited",
+                        host=request.client.host,
+                    )
                     return JSONResponse(
-                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                         content={
                             "message": "Rate limit exceeded. Please try again later"
                         },
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        headers=self.__get_rate_limit_headers(client),
                     )
-                request_count += 1
-            self.requests[client_ip] = (request_count, datetime.now())
-        return await call_next(request)
+                client["request_count"] += 1
+            client["last_request"] = datetime.now()
+            self.clients[client_ip] = client
+        else:
+            logger.info("Debug mode is enabled, therefore rate limiting is turned off")
+        response = await call_next(request)
+        response.headers.update(self.__get_rate_limit_headers(client))
+        return response
+
+    def __get_rate_limit_headers(self, client: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "X-RateLimit-Limit": str(settings.rate_limit_requests),
+            "X-RateLimit-Remaining": str(
+                settings.rate_limit_requests - client["request_count"]
+            ),
+            "X-RateLimit-Reset": str(
+                int(
+                    (
+                        client["last_request"].replace(second=0, microsecond=0)
+                        + timedelta(minutes=1)
+                    ).timestamp()
+                )
+            ),
+        }
