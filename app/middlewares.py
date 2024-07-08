@@ -49,7 +49,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         client = None
-        if settings.debug is not False:
+        if settings.debug is False:
             client_ip = request.client.host
             client = self.clients.get(
                 client_ip, {"request_count": 0, "last_request": datetime.min}
