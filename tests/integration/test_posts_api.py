@@ -9,6 +9,7 @@ from respx import MockRouter, Route
 from starlette import status
 from starlette.testclient import TestClient
 
+from app.middlewares import MYIPS_API_URL
 from app.models.post import Post
 from app.schemas.post_schema import CreatePost
 
@@ -26,7 +27,7 @@ ROLE_POST_EDIT = "post:edit"
 
 @pytest.mark.asyncio
 class TestPostsApi:
-    async def _assert_response(
+    async def __assert_response(
         self,
         cache_service_mock: Route,
         message: str,
@@ -42,20 +43,24 @@ class TestPostsApi:
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1
 
-    async def _generate_jwt_token(self, role: str, exp: int = 1) -> str:
+    async def __generate_jwt_token(self, roles: list[str], exp: int = 1) -> (str, str):
         iat = pendulum.now()
         exp = iat.add(hours=exp)
-        return jwt.encode(
-            {
-                "exp": exp.int_timestamp,
-                "iat": iat.int_timestamp,
-                "jti": str(uuid.uuid4()),
-                "sub": {"id": str(uuid.uuid4()), "roles": [role]},
-            },
-            pytest.jwt_secret,
+        token_id = str(uuid.uuid4())
+        return (
+            jwt.encode(
+                {
+                    "exp": exp.int_timestamp,
+                    "iat": iat.int_timestamp,
+                    "jti": token_id,
+                    "sub": {"id": str(uuid.uuid4()), "roles": roles},
+                },
+                pytest.jwt_secret,
+            ),
+            token_id,
         )
 
-    async def _generate_respx_mock(
+    async def __generate_respx_mock(
         self,
         method: str,
         response: Response,
@@ -68,18 +73,21 @@ class TestPostsApi:
         ).mock(response)
 
     @pytest.fixture
-    def cache_service_response_200(self) -> Response:
+    async def cache_service_response_200(self) -> Response:
+        jwt_token, token_id = await self.__generate_jwt_token(
+            [ROLE_POST_CREATE, ROLE_POST_DELETE, ROLE_POST_EDIT]
+        )
         return Response(
             status_code=status.HTTP_200_OK,
             json={
-                "key": "jti_",
-                "value": "asd",
+                "key": f"jti_{token_id}",
+                "value": jwt_token,
                 "createdAt": pendulum.now().to_iso8601_string(),
             },
         )
 
     @pytest.fixture
-    def cache_service_response_403(self) -> Response:
+    async def cache_service_response_403(self) -> Response:
         return Response(
             status_code=status.HTTP_403_FORBIDDEN,
             json={
@@ -90,7 +98,7 @@ class TestPostsApi:
         )
 
     @pytest.fixture
-    def cache_service_response_404(self) -> Response:
+    async def cache_service_response_404(self) -> Response:
         return Response(
             status_code=status.HTTP_404_NOT_FOUND,
             json={
@@ -101,7 +109,7 @@ class TestPostsApi:
         )
 
     @pytest.fixture
-    def cache_service_response_500(self) -> Response:
+    async def cache_service_response_500(self) -> Response:
         return Response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             json={
@@ -112,7 +120,7 @@ class TestPostsApi:
         )
 
     @pytest.fixture
-    def create_post(self, make_post) -> CreatePost:
+    async def create_post(self, make_post) -> CreatePost:
         post = make_post()
         return CreatePost(
             author=post.author,
@@ -121,6 +129,31 @@ class TestPostsApi:
             tags=post.tags,
             meta=post.meta.model_dump(),
             published_at=post.published_at,
+        )
+
+    @pytest.fixture(autouse=True)
+    async def setup_function(self, respx_mock: MockRouter):
+        await self.__generate_respx_mock(
+            "GET",
+            Response(
+                status_code=status.HTTP_200_OK,
+                json={
+                    "organization": "Google",
+                    "longitude": -97.822,
+                    "timezone": "America/Chicago",
+                    "isp": "Google",
+                    "offset": -21600,
+                    "asn": 15169,
+                    "asn_organization": "GOOGLE",
+                    "country": "United States",
+                    "ip": "8.8.8.8",
+                    "latitude": 37.751,
+                    "continent_code": "NA",
+                    "country_code": "US",
+                },
+            ),
+            respx_mock,
+            MYIPS_API_URL,
         )
 
     @pytest.fixture
@@ -211,8 +244,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_DELETE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
@@ -223,7 +256,7 @@ class TestPostsApi:
             headers={"Authorization": f"Bearer {jwt_token}"},
         )
 
-        await self._assert_response(
+        await self.__assert_response(
             cache_service_mock,
             ERROR_MESSAGE_NOT_FOUND,
             status.HTTP_404_NOT_FOUND,
@@ -250,8 +283,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_DELETE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_200,
             respx_mock,
@@ -262,7 +295,7 @@ class TestPostsApi:
             headers={"Authorization": f"Bearer {jwt_token}"},
         )
 
-        await self._assert_response(
+        await self.__assert_response(
             cache_service_mock,
             ERROR_MESSAGE_NOT_AUTHENTICATED,
             status.HTTP_403_FORBIDDEN,
@@ -275,8 +308,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_CREATE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_CREATE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
@@ -287,7 +320,7 @@ class TestPostsApi:
             headers={"Authorization": f"Bearer {jwt_token}"},
         )
 
-        await self._assert_response(
+        await self.__assert_response(
             cache_service_mock,
             ERROR_MESSAGE_NOT_AUTHORIZED,
             status.HTTP_401_UNAUTHORIZED,
@@ -300,8 +333,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_CREATE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_CREATE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_500,
             respx_mock,
@@ -312,7 +345,7 @@ class TestPostsApi:
             headers={"Authorization": f"Bearer {jwt_token}"},
         )
 
-        await self._assert_response(
+        await self.__assert_response(
             cache_service_mock,
             ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
             status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -326,8 +359,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_DELETE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
@@ -348,8 +381,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_CREATE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_CREATE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
@@ -393,8 +426,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_CREATE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_CREATE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_200,
             respx_mock,
@@ -406,7 +439,7 @@ class TestPostsApi:
             json=create_post.model_dump(by_alias=True),
         )
 
-        await self._assert_response(
+        await self.__assert_response(
             cache_service_mock,
             ERROR_MESSAGE_NOT_AUTHENTICATED,
             status.HTTP_403_FORBIDDEN,
@@ -420,8 +453,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_DELETE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
@@ -433,7 +466,7 @@ class TestPostsApi:
             json=create_post.model_dump(by_alias=True),
         )
 
-        await self._assert_response(
+        await self.__assert_response(
             cache_service_mock,
             ERROR_MESSAGE_NOT_AUTHORIZED,
             status.HTTP_401_UNAUTHORIZED,
@@ -447,8 +480,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_DELETE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_500,
             respx_mock,
@@ -460,7 +493,7 @@ class TestPostsApi:
             json=create_post.model_dump(by_alias=True),
         )
 
-        await self._assert_response(
+        await self.__assert_response(
             cache_service_mock,
             ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
             status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -474,8 +507,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_CREATE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_CREATE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
@@ -499,8 +532,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_CREATE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_CREATE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
@@ -523,8 +556,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_EDIT)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_EDIT])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
@@ -536,7 +569,7 @@ class TestPostsApi:
             json=create_post.model_dump(by_alias=True),
         )
 
-        await self._assert_response(
+        await self.__assert_response(
             cache_service_mock,
             ERROR_MESSAGE_NOT_FOUND,
             status.HTTP_404_NOT_FOUND,
@@ -550,8 +583,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_EDIT)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_EDIT])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
@@ -603,8 +636,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_DELETE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_200,
             respx_mock,
@@ -616,7 +649,7 @@ class TestPostsApi:
             json=create_post.model_dump(by_alias=True),
         )
 
-        await self._assert_response(
+        await self.__assert_response(
             cache_service_mock,
             ERROR_MESSAGE_NOT_AUTHENTICATED,
             status.HTTP_403_FORBIDDEN,
@@ -630,8 +663,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_DELETE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
@@ -643,7 +676,7 @@ class TestPostsApi:
             json=create_post.model_dump(by_alias=True),
         )
 
-        await self._assert_response(
+        await self.__assert_response(
             cache_service_mock,
             ERROR_MESSAGE_NOT_AUTHORIZED,
             status.HTTP_401_UNAUTHORIZED,
@@ -657,8 +690,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_DELETE)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_DELETE])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_500,
             respx_mock,
@@ -670,7 +703,7 @@ class TestPostsApi:
             json=create_post.model_dump(by_alias=True),
         )
 
-        await self._assert_response(
+        await self.__assert_response(
             cache_service_mock,
             ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
             status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -684,8 +717,8 @@ class TestPostsApi:
         respx_mock: MockRouter,
         test_client: TestClient,
     ):
-        jwt_token = await self._generate_jwt_token(ROLE_POST_EDIT)
-        cache_service_mock = await self._generate_respx_mock(
+        jwt_token, _ = await self.__generate_jwt_token([ROLE_POST_EDIT])
+        cache_service_mock = await self.__generate_respx_mock(
             "GET",
             cache_service_response_404,
             respx_mock,
