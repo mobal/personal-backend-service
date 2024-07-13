@@ -166,7 +166,7 @@ class TestPostsApi:
     async def test_fail_to_get_post_by_uuid_due_to_not_found(
         self, posts: list[Post], test_client: TestClient
     ):
-        response = test_client.get(f"{BASE_URL}/653000ce-4b15-4242-a07d-fd8eed656d36")
+        response = test_client.get(f"{BASE_URL}/{str(uuid.uuid4())}")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert {
