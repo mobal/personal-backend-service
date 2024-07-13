@@ -5,21 +5,24 @@ from typing import Any
 
 import httpx
 from aws_lambda_powertools import Logger
+from httpx import HTTPError
 from starlette import status
-from starlette.middleware.base import (BaseHTTPMiddleware,
-                                       RequestResponseEndpoint)
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
 
 from app import Settings
 
-MYIPS_API_URL = "https://api.ip.sb/geoip"
+COUNTRY_IS_API_BASE_URL = "https://api.country.is"
 X_CORRELATION_ID = "X-Correlation-ID"
 
 correlation_id = ContextVar(X_CORRELATION_ID)
 logger = Logger(utc=True)
 settings = Settings()
+
+banned_hosts = []
+clients = {}
 
 
 class ClientValidationMiddleware(BaseHTTPMiddleware):
@@ -33,11 +36,13 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         client_ip = request.client.host
-        client = self.clients.get(client_ip, None)
-        if client is None:
-            client = {"is_banned": await self.__validate_host(client_ip)}
-            self.clients[client_ip] = client
-        if client["is_banned"]:
+        if client_ip in banned_hosts:
+            is_banned = True
+        else:
+            is_banned = await self.__validate_host(client_ip)
+            if is_banned:
+                banned_hosts.append(client_ip)
+        if is_banned:
             return JSONResponse(
                 content={"message": "Forbidden"},
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -46,14 +51,17 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
 
     async def __validate_host(self, client_ip: str) -> bool:
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{MYIPS_API_URL}/{client_ip}")
-            if response.is_success:
+            try:
+                response = await client.get(f"{COUNTRY_IS_API_BASE_URL}/{client_ip}")
+                response.raise_for_status()
                 json_body = response.json()
-                if json_body["country_code"] in self.RESTRICTED_COUNTRY_CODES:
+                if json_body["country"] in self.RESTRICTED_COUNTRY_CODES:
                     logger.info(
-                        f"Client has restricted country_code={json_body['country_code']} with {client_ip=}"
+                        f"Client has restricted country_code={json_body['country']} with {client_ip=}"
                     )
                     return True
+            except HTTPError as exc:
+                logger.warning(f"HTTP exception for {exc.request.url}", exception=exc)
         return False
 
 
@@ -80,14 +88,13 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app: ASGIApp):
         super().__init__(app)
-        self.clients = {}
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         if settings.rate_limiting:
             client_ip = request.client.host
-            client = self.clients.get(
+            client = clients.get(
                 client_ip, {"request_count": 0, "last_request": datetime.min}
             )
             if (datetime.now() - client["last_request"]) > self.RATE_LIMIT_DURATION:
@@ -107,7 +114,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
                     )
                 client["request_count"] += 1
             client["last_request"] = datetime.now()
-            self.clients[client_ip] = client
+            clients[client_ip] = client
             response = await call_next(request)
             response.headers.update(await self.__get_rate_limit_headers(client))
             return response
