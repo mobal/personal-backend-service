@@ -10,7 +10,7 @@ from respx import MockRouter, Route
 from starlette import status
 
 from app.main import app
-from app.middlewares import banned_hosts, COUNTRY_IS_API_BASE_URL
+from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
 from app.models.post import Post
 from app.schemas.post_schema import CreatePost
 
