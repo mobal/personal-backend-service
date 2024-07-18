@@ -2,7 +2,7 @@ import uuid
 
 import pendulum
 import pytest
-from httpx import Response
+from httpx import ConnectError, Response
 from respx import MockRouter
 from starlette import status
 
@@ -86,5 +86,24 @@ class TestCacheService:
         assert exc_info.type == CacheServiceException
         assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert exc_info.value.detail == message
+        assert cache_service_mock.called
+        assert cache_service_mock.call_count == 1
+
+    async def test_fail_to_get_key_value_due_to_connection_error(
+        self, cache_service: CacheService, settings: Settings, respx_mock: MockRouter
+    ):
+        cache_service_mock = respx_mock.get(
+            f'{settings.cache_service_base_url}/api/cache/{self.key_value["key"]}'
+        )
+        cache_service_mock.side_effect = ConnectError(
+            "[Errno 16] Device or resource busy"
+        )
+
+        with pytest.raises(Exception) as exc_info:
+            await cache_service.get(self.key_value["key"])
+
+        assert exc_info.type == CacheServiceException
+        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert exc_info.value.detail
         assert cache_service_mock.called
         assert cache_service_mock.call_count == 1

@@ -17,7 +17,7 @@ from app.schemas.post_schema import CreatePost
 BASE_URL = "/api/v1/posts"
 CACHE_SERVICE_URL = f"{pytest.cache_service_base_url}/api/cache"
 ERROR_MESSAGE_FORBIDDEN = "Forbidden"
-ERROR_MESSAGE_INTERNAL_SERVER_ERROR = "Internal server error"
+ERROR_MESSAGE_INTERNAL_SERVER_ERROR = "Internal Server Error"
 ERROR_MESSAGE_NOT_AUTHENTICATED = "Not authenticated"
 ERROR_MESSAGE_NOT_AUTHORIZED = "Not authorized"
 ERROR_MESSAGE_NOT_FOUND = "The requested post was not found"
@@ -117,7 +117,7 @@ class TestPostsApi:
             json={
                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "id": str(uuid.uuid4()),
-                "message": "Internal server error",
+                "message": ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
             },
         )
 

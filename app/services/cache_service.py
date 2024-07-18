@@ -1,6 +1,6 @@
 import httpx
 from aws_lambda_powertools import Logger
-from httpx import HTTPError
+from httpx import HTTPError, codes
 from starlette import status
 
 from app import settings
@@ -28,7 +28,10 @@ class CacheService:
                     self._logger.debug(f"Cache was not found for {key=}")
                     return False
                 case _:
-                    raise CacheServiceException(response.json()["message"])
+                    self._logger.error("Unexpected status code", response=response)
+                    raise CacheServiceException(
+                        codes.get_reason_phrase(response.status_code)
+                    )
         except HTTPError as exc:
             self._logger.exception("Unexpected error occurred", exc_info=exc)
-            raise CacheServiceException(exc)
+            raise CacheServiceException("Internal Server Error")
