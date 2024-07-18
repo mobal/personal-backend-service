@@ -3,13 +3,13 @@ locals {
 }
 
 resource "aws_lambda_function" "fastapi" {
-  filename        = "lambda.zip"
-  function_name   = "${local.app_name}-fastapi"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "app.main.handler"
-  runtime         = "python3.12"
-  timeout         = 15
-  memory_size     = 512
+  filename      = "lambda.zip"
+  function_name = "${local.app_name}-fastapi"
+  role          = aws_iam_role.lambda_role.arn
+  handler       = "app.main.handler"
+  runtime       = "python3.12"
+  timeout       = 15
+  memory_size   = 512
 
   layers = [
     aws_lambda_layer_version.requirements_lambda_layer.arn,
@@ -18,19 +18,19 @@ resource "aws_lambda_function" "fastapi" {
 
   environment {
     variables = {
-      APP_NAME                      = var.app_name
-      APP_TIMEZONE                  = var.app_timezone
-      CACHE_SERVICE_BASE_URL        = var.cache_service_base_url
-      DEBUG                         = var.debug
-      JWT_SECRET                    = var.jwt_secret
-      LOG_LEVEL                     = var.log_level
-      POWERTOOLS_LOGGER_LOG_EVENT   = "true"
-      POWERTOOLS_SERVICE_NAME       = var.power_tools_service_name
-      POWERTOOLS_DEBUG              = "false"
-      RATE_LIMIT_DURATION_IN_SECONDS= var.rate_limit_duration_in_seconds
-      RATE_LIMIT_REQUESTS           = var.rate_limit_requests
-      RATE_LIMITING                 = var.rate_limiting
-      STAGE                         = var.stage
+      APP_NAME                       = var.app_name
+      APP_TIMEZONE                   = var.app_timezone
+      CACHE_SERVICE_BASE_URL         = var.cache_service_base_url
+      DEBUG                          = var.debug
+      JWT_SECRET                     = var.jwt_secret
+      LOG_LEVEL                      = var.log_level
+      POWERTOOLS_LOGGER_LOG_EVENT    = "true"
+      POWERTOOLS_SERVICE_NAME        = var.power_tools_service_name
+      POWERTOOLS_DEBUG               = "false"
+      RATE_LIMIT_DURATION_IN_SECONDS = var.rate_limit_duration_in_seconds
+      RATE_LIMIT_REQUESTS            = var.rate_limit_requests
+      RATE_LIMITING                  = var.rate_limiting
+      STAGE                          = var.stage
     }
   }
 
@@ -69,11 +69,11 @@ resource "aws_s3_object" "requirements_lambda_layer" {
 }
 
 resource "aws_lambda_layer_version" "requirements_lambda_layer" {
-  s3_bucket                = aws_s3_bucket.requirements_lambda_layer.id
-  s3_key                   = aws_s3_object.requirements_lambda_layer.key
-  layer_name               = "${local.app_name}-requirements"
   compatible_architectures = ["x86_64"]
   compatible_runtimes      = ["python3.12"]
-  skip_destroy             = true
   depends_on               = [aws_s3_object.requirements_lambda_layer]
+  layer_name               = "${local.app_name}-requirements"
+  s3_bucket                = aws_s3_bucket.requirements_lambda_layer.id
+  s3_key                   = aws_s3_object.requirements_lambda_layer.key
+  skip_destroy             = true
 }

@@ -24,9 +24,9 @@ resource "aws_apigatewayv2_stage" "default" {
 }
 
 resource "aws_lambda_permission" "apigw" {
-  statement_id  = "AllowExecutionFromAPIGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.fastapi.arn
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*"
+  action             = "lambda:InvokeFunction"
+  function_name      = aws_lambda_function.fastapi.arn
+  principal          = "apigateway.amazonaws.com"
+  source_arn         = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*"
+  statement_id       = "AllowExecutionFromAPIGateway"
 }

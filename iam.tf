@@ -16,7 +16,7 @@ resource "aws_iam_role" "lambda_role" {
 }
 
 resource "aws_iam_policy" "lambda_policy" {
-  name        = "lambda_policy"
+  name = "lambda_policy"
 
   policy = jsonencode({
     Version = "2012-10-17"
