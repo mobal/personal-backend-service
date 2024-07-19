@@ -35,9 +35,20 @@ resource "aws_lambda_function" "fastapi" {
   }
 
   depends_on = [
+    terraform_data.archive_lambda,
     aws_iam_role_policy_attachment.lambda_policy_attachment,
     aws_lambda_layer_version.requirements_lambda_layer
   ]
+}
+
+resource "terraform_data" "archive_lambda" {
+  triggers_replace = {
+    timestamp = timestamp()
+  }
+
+  provisioner "local-exec" {
+    command = "zsh create_lambda.zsh"
+  }
 }
 
 resource "terraform_data" "requirements_lambda_layer" {
