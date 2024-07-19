@@ -1,39 +1,57 @@
-variable "app_name" {
-  type    = string
-  default = "personal-bakcend-service"
-}
-
-variable "app_timezone" {
-  type    = string
-  default = "Europe/Budapest"
-}
-
 variable "aws_region" {
-  type    = string
   default = "eu-central-1"
-}
-
-variable "cache_service_base_url" {
-    type    = string
-    default = ""
-}
-
-variable "debug" {
-    type    = bool
-    default = true
-}
-
-variable "jwt_secret" {
-    type    = string
-    default = ""
-}
-
-variable "log_level" {
-    type    = string
-    default = "DEBUG"
+  type    = string
 }
 
 variable "stage" {
-    type    = string
-    default = "dev"
+  default = "dev"
+  type    = string
+}
+
+variable "app_name" {
+  default = "personal-backend-service"
+  type    = string
+}
+
+variable "app_timezone" {
+  default = "UTC"
+  type    = string
+}
+
+variable "cache_service_base_url" {
+  type = string
+}
+
+variable "debug" {
+  default = false
+  type    = bool
+}
+
+variable "jwt_secret" {
+  type = string
+}
+
+variable "log_level" {
+  default = "INFO"
+  type    = string
+}
+
+variable "rate_limit_duration_in_seconds" {
+  default = 60
+  type    = number
+}
+
+variable "rate_limit_requests" {
+  default = 60
+  type    = number
+}
+
+variable "rate_limiting" {
+  default = true
+  type    = bool
+}
+
+variable "power_tools_service_name" {
+  default = "personal-backend-service"
+  type    = string
 }

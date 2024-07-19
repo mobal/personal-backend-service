@@ -1,5 +1,5 @@
-# Created by https://www.toptal.com/developers/gitignore/api/node,macos,dotenv,python,sonarqube,serverless,pycharm+all,visualstudiocode,terraform
-# Edit at https://www.toptal.com/developers/gitignore?templates=node,macos,dotenv,python,sonarqube,serverless,pycharm+all,visualstudiocode,terraform
+# Created by https://www.toptal.com/developers/gitignore/api/node,macos,dotenv,python,sonarqube,terraform,pycharm+all,visualstudiocode
+# Edit at https://www.toptal.com/developers/gitignore?templates=node,macos,dotenv,python,sonarqube,terraform,pycharm+all,visualstudiocode
 
 ### dotenv ###
 .env
@@ -433,10 +433,6 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
-### Serverless ###
-# Ignore build directory
-.serverless
-
 ### SonarQube ###
 # SonarQube ignore files.
 #
@@ -505,4 +501,4 @@ terraform.rc
 .history
 .ionide
 
-# End of https://www.toptal.com/developers/gitignore/api/node,macos,dotenv,python,sonarqube,serverless,pycharm+all,visualstudiocode,terraform
+# End of https://www.toptal.com/developers/gitignore/api/node,macos,dotenv,python,sonarqube,terraform,pycharm+all,visualstudiocode

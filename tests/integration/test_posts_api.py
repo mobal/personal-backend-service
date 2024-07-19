@@ -10,14 +10,14 @@ from respx import MockRouter, Route
 from starlette import status
 
 from app.main import app
-from app.middlewares import banned_hosts, COUNTRY_IS_API_BASE_URL
+from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
 from app.models.post import Post
 from app.schemas.post_schema import CreatePost
 
 BASE_URL = "/api/v1/posts"
 CACHE_SERVICE_URL = f"{pytest.cache_service_base_url}/api/cache"
 ERROR_MESSAGE_FORBIDDEN = "Forbidden"
-ERROR_MESSAGE_INTERNAL_SERVER_ERROR = "Internal server error"
+ERROR_MESSAGE_INTERNAL_SERVER_ERROR = "Internal Server Error"
 ERROR_MESSAGE_NOT_AUTHENTICATED = "Not authenticated"
 ERROR_MESSAGE_NOT_AUTHORIZED = "Not authorized"
 ERROR_MESSAGE_NOT_FOUND = "The requested post was not found"
@@ -117,7 +117,7 @@ class TestPostsApi:
             json={
                 "status": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "id": str(uuid.uuid4()),
-                "message": "Internal server error",
+                "message": ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
             },
         )
 
@@ -166,7 +166,7 @@ class TestPostsApi:
     async def test_fail_to_get_post_by_uuid_due_to_not_found(
         self, posts: list[Post], test_client: TestClient
     ):
-        response = test_client.get(f"{BASE_URL}/653000ce-4b15-4242-a07d-fd8eed656d36")
+        response = test_client.get(f"{BASE_URL}/{str(uuid.uuid4())}")
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert {

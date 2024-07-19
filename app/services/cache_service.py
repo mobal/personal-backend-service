@@ -1,5 +1,6 @@
 import httpx
 from aws_lambda_powertools import Logger
+from httpx import HTTPError, codes
 from starlette import status
 
 from app import settings
@@ -12,17 +13,25 @@ class CacheService:
         self._logger = Logger(utc=True)
 
     async def get(self, key: str) -> bool | None:
-        async with httpx.AsyncClient() as client:
-            url = f"{settings.cache_service_base_url}/api/cache/{key}"
-            self._logger.debug(f"Get cache for {key=} {url=}")
-            response = await client.get(
-                url, headers={"X-Correlation-ID": correlation_id.get()}
-            )
-        if response.is_success:
-            self._logger.info(f"{response.json()=}")
-            return True
-        elif response.status_code == status.HTTP_404_NOT_FOUND:
-            self._logger.debug(f"Cache was not found for {key=}")
-            return False
-        self._logger.exception(f"Unexpected error {response=}")
-        raise CacheServiceException(response.json()["message"])
+        try:
+            async with httpx.AsyncClient() as client:
+                url = f"{settings.cache_service_base_url}/api/cache/{key}"
+                self._logger.debug(f"Get cache for {key=} {url=}")
+                response = await client.get(
+                    url, headers={"X-Correlation-ID": correlation_id.get()}
+                )
+            match response.status_code:
+                case status.HTTP_200_OK:
+                    self._logger.info(f"{response.json()=}")
+                    return True
+                case status.HTTP_404_NOT_FOUND:
+                    self._logger.debug(f"Cache was not found for {key=}")
+                    return False
+                case _:
+                    self._logger.error("Unexpected status code", response=response)
+                    raise CacheServiceException(
+                        codes.get_reason_phrase(response.status_code)
+                    )
+        except HTTPError as exc:
+            self._logger.exception("Unexpected error occurred", exc_info=exc)
+            raise CacheServiceException("Internal Server Error")
