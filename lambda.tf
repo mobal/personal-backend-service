@@ -3,7 +3,7 @@ locals {
 }
 
 resource "aws_lambda_function" "fastapi" {
-  filename      = "lambda.zip"
+  filename      = "${path.module}/lambda.zip"
   function_name = "${local.app_name}-fastapi"
   role          = aws_iam_role.lambda_role.arn
   handler       = "app.main.handler"
@@ -47,13 +47,13 @@ resource "terraform_data" "archive_lambda" {
   }
 
   provisioner "local-exec" {
-    command = "zsh create_lambda.zsh"
+    command = "zsh ${path.module}/create_lambda.zsh"
   }
 }
 
 resource "terraform_data" "requirements_lambda_layer" {
   triggers_replace = {
-    requirements = filebase64sha256("Pipfile.lock")
+    requirements = filebase64sha256("${path.module}/Pipfile.lock")
   }
 
   provisioner "local-exec" {
@@ -75,7 +75,7 @@ resource "aws_s3_bucket" "requirements_lambda_layer" {
 resource "aws_s3_object" "requirements_lambda_layer" {
   bucket     = aws_s3_bucket.requirements_lambda_layer.id
   key        = "lambda_layers/${local.app_name}-requirements/requirements.zip"
-  source     = "requirements.zip"
+  source     = "${path.module}/requirements.zip"
   depends_on = [terraform_data.requirements_lambda_layer]
 }
 
