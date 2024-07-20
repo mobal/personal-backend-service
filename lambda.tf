@@ -1,5 +1,5 @@
 locals {
-  app_name = "${var.stage}-${var.app_name}"
+  app_name    = "${var.stage}-${var.app_name}"
 }
 
 resource "aws_lambda_function" "fastapi" {
@@ -58,7 +58,7 @@ resource "terraform_data" "requirements_lambda_layer" {
 
   provisioner "local-exec" {
     command = <<EOT
-      DOCKER_DEFAULT_PLATFORM=linux/amd64 docker run --rm -v $(pwd):/workspace -w /workspace public.ecr.aws/sam/build-python3.12 bash -c "
+      DOCKER_DEFAULT_PLATFORM=linux/amd64 docker run --rm -v ${abspath(path.module)}:/workspace -w /workspace public.ecr.aws/sam/build-python3.12 bash -c "
       pip install pipenv && \
       pipenv requirements > requirements.txt && \
       pip install -r requirements.txt -t python/lib/python3.12/site-packages --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all: && \
