@@ -2,9 +2,9 @@ import uuid
 
 import pendulum
 import pytest
+from fastapi import status
 from httpx import ConnectError, Response
 from respx import MockRouter
-from starlette import status
 
 from app.exceptions import CacheServiceException
 from app.middlewares import correlation_id

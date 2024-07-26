@@ -5,13 +5,12 @@ import uvicorn
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.logging.logger import set_package_logger
 from botocore.exceptions import BotoCoreError, ClientError
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-from starlette import status
 
 from app import settings
 from app.api.v1.api import router as api_v1_router

@@ -2,9 +2,8 @@ from unittest.mock import Mock
 
 import jwt
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from pytest_mock import MockerFixture
-from starlette import status
 from starlette.requests import Request
 
 from app.jwt_bearer import JWTBearer

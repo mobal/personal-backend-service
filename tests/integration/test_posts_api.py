@@ -4,10 +4,10 @@ import uuid
 import jwt
 import pendulum
 import pytest
+from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import ConnectTimeout, Response
 from respx import MockRouter, Route
-from starlette import status
 
 from app.main import app
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts

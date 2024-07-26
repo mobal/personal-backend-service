@@ -5,8 +5,8 @@ from typing import Any
 
 import httpx
 from aws_lambda_powertools import Logger
+from fastapi import status
 from httpx import HTTPError
-from starlette import status
 from starlette.middleware.base import (BaseHTTPMiddleware,
                                        RequestResponseEndpoint)
 from starlette.requests import Request

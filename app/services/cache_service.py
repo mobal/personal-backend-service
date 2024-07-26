@@ -1,7 +1,7 @@
 import httpx
 from aws_lambda_powertools import Logger
+from fastapi import status
 from httpx import HTTPError, codes
-from starlette import status
 
 from app import settings
 from app.exceptions import CacheServiceException

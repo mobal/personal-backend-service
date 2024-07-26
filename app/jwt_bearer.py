@@ -1,11 +1,10 @@
 import jwt
 from aws_lambda_powertools import Logger
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, status
 from fastapi.security.http import HTTPAuthorizationCredentials
 from fastapi.security.http import HTTPBearer as FastAPIHTTPBearer
 from fastapi.security.utils import get_authorization_scheme_param
 from jwt import DecodeError, ExpiredSignatureError
-from starlette import status
 
 from app import settings
 from app.models.auth import JWTToken

@@ -2,8 +2,8 @@ from unittest.mock import ANY
 
 import pendulum
 import pytest
+from fastapi import status
 from pytest_mock import MockerFixture
-from starlette import status
 
 from app.exceptions import PostAlreadyExistsException, PostNotFoundException
 from app.models.post import Post
