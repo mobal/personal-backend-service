@@ -1,6 +1,8 @@
 import boto3
 from aws_lambda_powertools import Logger
 
+from app import settings
+
 
 class StorageService:
     def __init__(self):
@@ -12,6 +14,9 @@ class StorageService:
         self.__s3_client.create_bucket(
             ACL=acl,
             Bucket=bucket,
+            CreateBucketConfiguration={
+                "LocationConstraint": settings.aws_region,
+            },
         )
 
     async def get_object(self, bucket: str, key: str):
