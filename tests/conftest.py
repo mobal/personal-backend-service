@@ -11,6 +11,7 @@ from app.settings import Settings
 
 
 def pytest_configure():
+    pytest.aws_default_region = "eu-central-1"
     pytest.cache_service_base_url = "https://localhost"
     pytest.jwt_secret = "6fl3AkTFmG2rVveLglUW8DOmp8J4Bvi3"
 
@@ -21,7 +22,7 @@ def settings() -> Settings:
 
 
 @pytest.fixture
-def dynamodb_resource(settings):
+def dynamodb_resource(settings: Settings):
     with mock_aws():
         yield boto3.Session().resource(
             "dynamodb",
@@ -141,3 +142,14 @@ def posts(make_post) -> list[Post]:
 @pytest.fixture
 def posts_table(dynamodb_resource):
     return dynamodb_resource.Table("test-posts")
+
+
+@pytest.fixture
+def s3_resource(settings: Settings):
+    with mock_aws():
+        yield boto3.Session().resource(
+            "s3",
+            region_name="eu-central-1",
+            aws_access_key_id=settings.aws_access_key_id,
+            aws_secret_access_key=settings.aws_secret_access_key,
+        )
