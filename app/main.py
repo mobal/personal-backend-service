@@ -50,7 +50,7 @@ class ValidationErrorResponse(ErrorResponse):
 async def botocore_error_handler(
     request: Request, error: BotoCoreError
 ) -> JSONResponse:
-    error_id = str(uuid.uuid4())
+    error_id = uuid.uuid4()
     error_message = str(error) if settings.debug else "Internal Server Error"
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     logger.exception(f"Received botocore error {error_id=}")
@@ -66,7 +66,7 @@ async def botocore_error_handler(
 async def http_exception_handler(
     request: Request, error: HTTPException
 ) -> JSONResponse:
-    error_id = str(uuid.uuid4())
+    error_id = uuid.uuid4()
     logger.exception(f"Received http exception {error_id=}")
     return JSONResponse(
         content=jsonable_encoder(
@@ -80,7 +80,7 @@ async def http_exception_handler(
 async def request_validation_error_handler(
     request: Request, error: RequestValidationError
 ) -> JSONResponse:
-    error_id = str(uuid.uuid4())
+    error_id = uuid.uuid4()
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     logger.exception(f"Received request validation error {error_id=}")
     return JSONResponse(

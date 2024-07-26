@@ -15,10 +15,12 @@ class CreatePost(CamelModel):
     model_config = ConfigDict(extra="ignore")
 
 
-class UpdatePost(CreatePost):
+class UpdatePost(CamelModel):
     author: constr(strip_whitespace=True, min_length=3) | None = None
     title: constr(strip_whitespace=True, min_length=3) | None = None
     content: constr(strip_whitespace=True, min_length=3) | None = None
     tags: conlist(str, min_length=1) | None = None
     meta: Meta | None = None
     published_at: str | None = None
+
+    model_config = ConfigDict(extra="ignore")
