@@ -1,12 +1,12 @@
-import functools
 from typing import Any
 
 from aws_lambda_powertools import Logger
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, Path, status
 from starlette.responses import Response
 
+from app.api.decorators import authorize
 from app.jwt_bearer import JWTBearer
-from app.models.auth import JWTToken, Role, User
+from app.models.auth import JWTToken, Role
 from app.models.response import Page
 from app.models.response import Post as PostResponse
 from app.schemas.post_schema import CreatePost, UpdatePost
@@ -17,24 +17,6 @@ logger = Logger(utc=True)
 jwt_bearer = JWTBearer()
 post_service = PostService()
 router = APIRouter()
-
-
-def authorize(roles: list[str]):
-    def decorator_wrapper(func):
-        @functools.wraps(func)
-        async def wrapper(*args, **kwargs):
-            user = User(**kwargs["token"].sub)
-            if all(role in user.roles for role in roles):
-                return await func(*args, **kwargs)
-            else:
-                logger.warning(f"The {user=} does not have the appropriate {roles=}")
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authorized"
-                )
-
-        return wrapper
-
-    return decorator_wrapper
 
 
 @router.post("")
