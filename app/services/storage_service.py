@@ -19,31 +19,17 @@ class StorageService:
             },
         )
 
+    async def delete_object(self, bucket: str, key: str):
+        self.__logger.info(f"Delete object {key=} from {bucket=}")
+        return self.__s3_resource.Object(bucket_name=bucket, key=key).delete()
+
     async def get_object(self, bucket: str, key: str):
         self.__logger.info(f"Get object {key=} from {bucket=}")
-        response = self.__s3_resource.get_object(
-            Bucket=bucket,
-            Key=key,
-        )
-        return response["Body"]
-
-    async def get_object_attributes(self, bucket: str, key: str) -> dict:
-        self.__logger.info(f"Get object attributes {key=} from {bucket=}")
-        response = self.__s3_resource.get_object_attributes(
-            Bucket=bucket,
-            Key=key,
-        )
-        return {
-            "parts": response["ObjectParts"]["Parts"],
-            "size": response["ObjectSize"],
-        }
+        return self.__s3_resource.Object(bucket_name=bucket, key=key).get()
 
     async def list_objects(self, bucket: str) -> list:
-        self.__logger.info(f"List {bucket=}")
-        response = self.__s3_resource.list_objects_v2(
-            Bucket=bucket,
-        )
-        return response["Contents"]
+        self.__logger.info(f"Listing {bucket=}")
+        return self.__s3_resource.Bucket(name=bucket).objects.all()
 
     async def put_object(
         self,
