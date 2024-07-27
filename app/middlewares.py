@@ -18,7 +18,7 @@ from app import Settings
 COUNTRY_IS_API_BASE_URL = "https://api.country.is"
 X_CORRELATION_ID = "X-Correlation-ID"
 
-correlation_id = ContextVar(X_CORRELATION_ID)
+correlation_id: ContextVar[str] = ContextVar(X_CORRELATION_ID)
 logger = Logger(utc=True)
 settings = Settings()
 

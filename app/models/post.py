@@ -1,4 +1,4 @@
-from pydantic import BaseModel, conlist, constr
+from pydantic import BaseModel, Field, computed_field, conlist, constr
 
 from app.models.camel_model import CamelModel
 
@@ -8,6 +8,11 @@ class Attachment(CamelModel):
     content_length: int
     content_type: str
     name: str
+
+    @computed_field
+    @property
+    def url(self) -> str:
+        return f"https://{self.bucket}.s3.amazonaws.com/{self.name}"
 
 
 class Meta(BaseModel):

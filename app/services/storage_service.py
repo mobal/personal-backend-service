@@ -31,9 +31,9 @@ class StorageService:
         self.__logger.info(f"Delete object {key=} from {bucket=}")
         return self.__s3_resource.Object(bucket_name=bucket, key=key).delete()
 
-    async def get_bucket(self, bucket: str) -> Bucket:
-        self.__logger.info(f"Get bucket {bucket=}")
-        bucket = self.__s3_resource.Bucket(name=bucket)
+    async def get_bucket(self, name: str) -> Bucket:
+        self.__logger.info(f"Get bucket {name=}")
+        bucket = self.__s3_resource.Bucket(name=name)
         if bucket.creation_date is None:
             error_message = f"The requested {bucket=} was not found"
             self.__logger.error(error_message)
@@ -59,7 +59,7 @@ class StorageService:
         self,
         bucket: str,
         key: str,
-        body: bytes,
+        data: bytes,
         acl: str = "public-read",
         metadata: dict[str, str] | None = None,
     ) -> dict[str, Any]:
@@ -69,5 +69,5 @@ class StorageService:
             f"Put object with {key=} and {acl=} into {bucket=}", metadata=metadata
         )
         return self.__s3_resource.Object(bucket_name=bucket, key=key).put(
-            Body=body, Metadata=metadata
+            Body=data, Metadata=metadata
         )
