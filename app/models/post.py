@@ -3,6 +3,13 @@ from pydantic import BaseModel, conlist, constr
 from app.models.camel_model import CamelModel
 
 
+class Attachment(CamelModel):
+    bucket: str
+    content_length: int
+    content_type: str
+    name: str
+
+
 class Meta(BaseModel):
     category: str
     description: str
@@ -24,6 +31,7 @@ class Post(CamelModel):
     slug: str
     tags: conlist(item_type=str, min_length=1)
     meta: Meta
+    attachments: list[Attachment] | None = None
 
     @property
     def is_deleted(self) -> bool:

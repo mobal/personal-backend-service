@@ -2,10 +2,12 @@ from typing import Any
 
 import boto3
 from aws_lambda_powertools import Logger
+from botocore.exceptions import ClientError
 from mypy_boto3_s3.literals import BucketCannedACLType
 from mypy_boto3_s3.service_resource import Bucket, BucketObjectsCollection
 
 from app import settings
+from app.exceptions import BucketNotFoundException, ObjectNotFoundException
 
 
 class StorageService:
@@ -31,11 +33,23 @@ class StorageService:
 
     async def get_bucket(self, bucket: str) -> Bucket:
         self.__logger.info(f"Get bucket {bucket=}")
-        return self.__s3_resource.Bucket(name=bucket)
+        bucket = self.__s3_resource.Bucket(name=bucket)
+        if bucket.creation_date is None:
+            error_message = f"The requested {bucket=} was not found"
+            self.__logger.error(error_message)
+            raise BucketNotFoundException(error_message)
+        return bucket
 
     async def get_object(self, bucket: str, key: str) -> dict[str, Any]:
         self.__logger.info(f"Get object {key=} from {bucket=}")
-        return self.__s3_resource.Object(bucket_name=bucket, key=key).get()
+        obj = self.__s3_resource.Object(bucket_name=bucket, key=key)
+        try:
+            obj.load()
+        except ClientError:
+            error_message = f"Failed to load object from {bucket=} with {key=}"
+            self.__logger.exception(error_message)
+            raise ObjectNotFoundException(error_message)
+        return obj.get()
 
     async def list_objects(self, bucket: str) -> BucketObjectsCollection:
         self.__logger.info(f"Listing {bucket=}")

@@ -1,24 +1,17 @@
-from io import BytesIO
-
 from aws_lambda_powertools import Logger
 from fastapi import APIRouter, status
-from fastapi.responses import StreamingResponse
 
 from app.jwt_bearer import JWTBearer
-from app.services.storage_service import StorageService
+from app.models.post import Attachment
+from app.services.attachment_service import AttachmentService
 
 logger = Logger(utc=True)
 
+attachment_service = AttachmentService()
 jwt_bearer = JWTBearer()
-storage_service = StorageService()
 router = APIRouter()
 
 
-@router.get("/{bucket}/{key}", status_code=status.HTTP_200_OK)
-async def get_attachment(bucket: str, key: str) -> StreamingResponse:
-    response = StreamingResponse(
-        BytesIO(await storage_service.get_object(bucket, key)),
-        media_type="application/octet-stream",
-    )
-    response.headers["Content-Disposition"] = "attachment;"
-    return response
+@router.get("/{attachment_name}", status_code=status.HTTP_200_OK)
+async def get_attachment(post_uuid: str, attachment_name: str) -> Attachment:
+    return await attachment_service.get_attachment(post_uuid, attachment_name)

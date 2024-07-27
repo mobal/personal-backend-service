@@ -32,6 +32,6 @@ class CacheService:
                     raise CacheServiceException(
                         codes.get_reason_phrase(response.status_code)
                     )
-        except HTTPError as exc:
-            self._logger.exception("Unexpected error occurred", exc_info=exc)
+        except HTTPError:
+            self._logger.exception("Unexpected error occurred")
             raise CacheServiceException("Internal Server Error")

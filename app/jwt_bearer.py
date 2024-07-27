@@ -101,8 +101,8 @@ class JWTBearer:
                 self.decoded_token = decoded_token
                 return True
             logger.debug(f"Token blacklisted {decoded_token=}")
-        except DecodeError as err:
-            logger.exception(f"Error occurred during token decoding {err=}")
-        except ExpiredSignatureError as err:
-            logger.exception(f"Expired signature {err=}")
+        except DecodeError:
+            logger.exception("Error occurred during token decoding")
+        except ExpiredSignatureError:
+            logger.exception("Expired signature")
         return False

@@ -62,7 +62,7 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
                     )
                     return True
             except HTTPError as exc:
-                logger.warning(f"HTTP exception for {exc.request.url}", exception=exc)
+                logger.warning(f"HTTP exception for {exc.request.url}")
         return False
 
 

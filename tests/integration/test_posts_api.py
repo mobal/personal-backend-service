@@ -183,7 +183,14 @@ class TestPostsApi:
         assert (
             posts[0]
             .model_dump(
-                exclude={"content", "created_at", "deleted_at", "post_path"},
+                exclude={
+                    "attachments",
+                    "content",
+                    "created_at",
+                    "deleted_at",
+                    "post_path",
+                    "updated_at",
+                },
                 by_alias=True,
             )
             .items()
@@ -231,7 +238,14 @@ class TestPostsApi:
         assert (
             posts[0]
             .model_dump(
-                exclude={"content", "created_at", "deleted_at", "post_path"},
+                exclude={
+                    "attachments",
+                    "content",
+                    "created_at",
+                    "deleted_at",
+                    "post_path",
+                    "updated_at",
+                },
                 by_alias=True,
             )
             .items()
@@ -260,7 +274,13 @@ class TestPostsApi:
         assert (
             posts[0]
             .model_dump(
-                exclude={"content", "created_at", "deleted_at", "post_path"},
+                exclude={
+                    "attachments",
+                    "content",
+                    "created_at",
+                    "deleted_at",
+                    "post_path",
+                },
                 by_alias=True,
             )
             .items()

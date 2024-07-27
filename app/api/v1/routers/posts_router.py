@@ -55,7 +55,11 @@ async def get_by_post_path(
     return await post_service.get_by_post_path(f"{year}/{month}/{day}/{slug}")
 
 
-@router.get("/{uuid}", status_code=status.HTTP_200_OK)
+@router.get(
+    "/{uuid}",
+    status_code=status.HTTP_200_OK,
+    response_model_exclude_none=True,
+)
 async def get_post_by_uuid(uuid: str) -> PostResponse:
     return await post_service.get_post(uuid)
 
