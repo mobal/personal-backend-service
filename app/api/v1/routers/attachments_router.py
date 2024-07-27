@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request, status
 
 from app.jwt_bearer import JWTBearer
 from app.models.post import Attachment
+from app.schemas.attachment_schema import CreateAttachment
 from app.services.attachment_service import AttachmentService
 
 logger = Logger(utc=True)
@@ -18,8 +19,10 @@ async def get_attachments(post_uuid: str):
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def add_attachment(post_uuid: str):
-    return await attachment_service.add_attachment(post_uuid, "asd", "asd")
+async def add_attachment(create_attachment: CreateAttachment, post_uuid: str):
+    return await attachment_service.add_attachment(
+        post_uuid, create_attachment.name, create_attachment.data
+    )
 
 
 @router.get("/{attachment_name}", status_code=status.HTTP_200_OK)

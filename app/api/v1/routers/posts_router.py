@@ -22,9 +22,9 @@ router = APIRouter()
 @router.post("")
 @authorize(roles=[Role.POST_CREATE])
 async def create_post(
-    model: CreatePost, token: JWTToken = Depends(jwt_bearer)
+    create_model: CreatePost, token: JWTToken = Depends(jwt_bearer)
 ) -> Response:
-    post = await post_service.create_post(model)
+    post = await post_service.create_post(create_model.model_dump())
     return Response(
         status_code=status.HTTP_201_CREATED,
         headers={"Location": f"/api/v1/posts/{post.id}"},
@@ -80,6 +80,6 @@ async def get_posts(exclusive_start_key: str | None = None) -> Page:
 )
 @authorize(roles=[Role.POST_UPDATE])
 async def update_post(
-    model: UpdatePost, uuid: str, token: JWTToken = Depends(jwt_bearer)
+    update_model: UpdatePost, uuid: str, token: JWTToken = Depends(jwt_bearer)
 ):
-    await post_service.update_post(uuid, model)
+    await post_service.update_post(uuid, update_model.model_dump(exclude_none=True))

@@ -3,7 +3,7 @@ import base64
 from aws_lambda_powertools import Logger
 
 from app.exceptions import AttachmentNotFoundException
-from app.models.post import Attachment, Post
+from app.models.post import Attachment
 from app.services.post_service import PostService
 from app.services.storage_service import StorageService
 
@@ -20,16 +20,21 @@ class AttachmentService:
         self.__logger.info(f"Add attachment {attachment_name=} to {post_uuid=}")
         post = await self.__post_service.get_post(post_uuid)
         object_key = f"{post.post_path}/{attachment_name}"
-        await self.__storage_service.put_object(
+        response = await self.__storage_service.put_object(
             "attachments", object_key, base64.b64decode(base64_data)
         )
-        attachment = Attachment(
-            bucket="attachments", content_length=0, content_type="", name=object_key
-        )
+        attachments = []
         if post.attachments:
-            post.attachments.append(attachment)
-        else:
-            post.attachments = [attachment]
+            attachments.extend(post.attachments)
+        attachments.append(
+            Attachment(
+                bucket="attachments",
+                content_length=response["ContentLength"],
+                content_type=response["ContentType"],
+                name=object_key,
+            )
+        )
+        self.__post_service.update_post({"attachments": post.attachments})
 
     async def get_attachments(self, post_uuid: str) -> list[Attachment]:
         self.__logger.info(f"Get attachments for {post_uuid=}")
