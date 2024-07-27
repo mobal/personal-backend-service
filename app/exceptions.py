@@ -10,7 +10,7 @@ class AttachmentNotFoundException(HTTPException):
 
 class BucketNotFoundException(HTTPException):
     def __init__(self, detail: Any = None) -> None:
-        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR.detail)
+        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, detail)
 
 
 class CacheServiceException(HTTPException):
@@ -20,7 +20,7 @@ class CacheServiceException(HTTPException):
 
 class ObjectNotFoundException(HTTPException):
     def __init__(self, detail: Any = None) -> None:
-        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR.detail)
+        super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, detail)
 
 
 class PostAlreadyExistsException(HTTPException):
