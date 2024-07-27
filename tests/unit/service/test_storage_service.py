@@ -59,6 +59,12 @@ class TestStorageService:
             == "An error occurred (NoSuchKey) when calling the GetObject operation: The specified key does not exist."
         )
 
+    async def test_successfully_get_bucket(self, storage_service: StorageService):
+        response = await storage_service.get_bucket(BUCKET_NAME)
+
+        assert response.creation_date
+        assert response.name == BUCKET_NAME
+
     async def test_successfully_get_object(
         self,
         storage_service: StorageService,

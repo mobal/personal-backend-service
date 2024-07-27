@@ -2,7 +2,7 @@ import uuid
 
 import pendulum
 import pytest
-from boto3.dynamodb.conditions import Attr, AttributeBase
+from boto3.dynamodb.conditions import Attr, ConditionBase
 
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken, Role
@@ -27,7 +27,7 @@ def post_fields() -> str:
 
 
 @pytest.fixture
-def filter_expression() -> AttributeBase:
+def filter_expression() -> ConditionBase:
     return Attr("deleted_at").eq(None) & Attr("published_at").ne(None)
 
 

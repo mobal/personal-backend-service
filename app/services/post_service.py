@@ -3,7 +3,7 @@ import uuid
 import markdown
 import pendulum
 from aws_lambda_powertools import Logger
-from boto3.dynamodb.conditions import Attr
+from boto3.dynamodb.conditions import Attr, ConditionBase
 from slugify import slugify
 
 from app.exceptions import PostAlreadyExistsException, PostNotFoundException
@@ -90,7 +90,7 @@ class PostService:
     async def get_posts(self, exclusive_start_key: str | None = None) -> Page:
         response = await self._post_repository.get_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
-            exclusive_start_key,
+            {"id": exclusive_start_key} if exclusive_start_key else None,
             ["id", "title", "meta", "published_at", "updated_at"],
         )
         posts = []

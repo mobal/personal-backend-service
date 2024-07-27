@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 argon2-cffi = "~=23.1.0"
 boto3 = "~=1.34.77"
+boto3-stubs = {extras = ["essential"], version = "~=1.34.149"}
 fastapi = "~=0.110.1"
 httpx = "~=0.27.0"
 mangum = "~=0.17.0"

@@ -99,7 +99,7 @@ class TestCacheService:
             "[Errno 16] Device or resource busy"
         )
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(CacheServiceException) as exc_info:
             await cache_service.get(self.key_value["key"])
 
         assert exc_info.type == CacheServiceException
