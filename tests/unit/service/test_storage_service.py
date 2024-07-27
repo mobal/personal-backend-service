@@ -66,7 +66,9 @@ class TestStorageService:
         assert response.creation_date
         assert response.name == BUCKET_NAME
 
-    async def test_fail_to_get_bucket_due_to_not_found(self, storage_service: StorageService):
+    async def test_fail_to_get_bucket_due_to_not_found(
+        self, storage_service: StorageService
+    ):
         with pytest.raises(BucketNotFoundException) as exc_info:
             await storage_service.get_bucket("invalid")
 
@@ -81,12 +83,17 @@ class TestStorageService:
 
         assert response["Body"].read().decode("utf-8") == OBJECT_BODY
 
-    async def test_fail_to_get_object_due_to_not_found(self, storage_service: StorageService):
+    async def test_fail_to_get_object_due_to_not_found(
+        self, storage_service: StorageService
+    ):
         with pytest.raises(ObjectNotFoundException) as exc_info:
             await storage_service.get_object(BUCKET_NAME, "invalid")
 
         assert exc_info.type == ObjectNotFoundException
-        assert exc_info.value.detail == f"Failed to load object from bucket='{BUCKET_NAME}' with key='invalid'"
+        assert (
+            exc_info.value.detail
+            == f"Failed to load object from bucket='{BUCKET_NAME}' with key='invalid'"
+        )
 
     async def test_successfully_list_objects(
         self,
