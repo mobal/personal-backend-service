@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 import markdown
 import pendulum
@@ -41,10 +42,10 @@ class PostService:
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return Post(**item)
 
-    async def create_post(self, create_post: CreatePost) -> Post:
+    async def create_post(self, create_data: dict[str, Any]) -> Post:
         now = pendulum.now()
         if await self.__post_repository.get_post_by_title(
-            create_post.title,
+            create_data["title"],
             Attr("created_at").between(
                 now.start_of("day").isoformat("T"), now.end_of("day").isoformat("T")
             ),
@@ -52,16 +53,15 @@ class PostService:
             raise PostAlreadyExistsException(
                 PostService.ERROR_MESSAGE_POST_ALREADY_EXISTS
             )
-        data = create_post.model_dump()
-        slug = slugify(data["title"])
-        data["id"] = str(uuid.uuid4())
-        data["post_path"] = f"{now.year}/{now.month}/{now.day}/{slug}"
-        data["created_at"] = now.to_iso8601_string()
-        data["deleted_at"] = None
-        data["slug"] = slug
-        data["updated_at"] = None
-        await self.__post_repository.create_post(data)
-        return Post(**data)
+        slug = slugify(create_data["title"])
+        create_data["id"] = str(uuid.uuid4())
+        create_data["post_path"] = f"{now.year}/{now.month}/{now.day}/{slug}"
+        create_data["created_at"] = now.to_iso8601_string()
+        create_data["deleted_at"] = None
+        create_data["slug"] = slug
+        create_data["updated_at"] = None
+        await self.__post_repository.create_post(create_data)
+        return Post(**create_data)
 
     async def delete_post(self, post_uuid: str):
         post = await self._get_post_by_uuid(post_uuid)
@@ -98,19 +98,19 @@ class PostService:
             post_responses.append(PostResponse(**post))
         return Page(exclusive_start_key=last_evaluated_key, data=post_responses)
 
-    async def update_post(self, post_uuid: str, update_post: UpdatePost):
+    async def update_post(self, post_uuid: str, update_data: dict[str, Any]):
         post = await self.__post_repository.get_post_by_uuid(
             post_uuid, FilterExpressions.NOT_DELETED
         )
         if post is None:
             self.__logger.warning(f"Post was not found by UUID {post_uuid=}")
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
-        post.update(update_post.model_dump(exclude_unset=True))
-        post = Post(**post)
-        post.updated_at = pendulum.now().to_iso8601_string()
+        post.update(update_data)
+        post["updated_at"] = pendulum.now().to_iso8601_string()
+        post.pop("id")
         await self.__post_repository.update_post(
             post_uuid,
-            post.model_dump(exclude={"id"}),
+            post,
             FilterExpressions.NOT_DELETED,
         )
         self.__logger.info(f"Post successfully updated {post_uuid=}")
