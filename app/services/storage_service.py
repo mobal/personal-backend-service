@@ -35,7 +35,7 @@ class StorageService:
         self.__logger.info(f"Get bucket {name=}")
         bucket = self.__s3_resource.Bucket(name=name)
         if bucket.creation_date is None:
-            error_message = f"The requested {bucket=} was not found"
+            error_message = f"The requested bucket='{name}' was not found"
             self.__logger.error(error_message)
             raise BucketNotFoundException(error_message)
         return bucket
