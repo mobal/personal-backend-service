@@ -26,10 +26,6 @@ class TestStorageService:
             Body=OBJECT_BODY.encode("utf-8")
         )
 
-    @pytest.fixture
-    def storage_service(self) -> StorageService:
-        return StorageService()
-
     async def test_successfully_create_bucket(
         self,
         s3_resource,

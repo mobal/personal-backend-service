@@ -18,10 +18,6 @@ ERROR_MESSAGE_POST_ALREADY_EXISTS = "There is already a post with this title"
 
 @pytest.mark.asyncio
 class TestPostService:
-    @pytest.fixture
-    def post_service(self) -> PostService:
-        return PostService()
-
     async def test_successfully_create_post(
         self,
         mocker: MockerFixture,

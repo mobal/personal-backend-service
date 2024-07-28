@@ -6,9 +6,16 @@ from boto3.dynamodb.conditions import Attr, ConditionBase
 
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken, Role
-from app.models.post import Post
 from app.repositories.post_repository import PostRepository
+from app.services.attachment_service import AttachmentService
 from app.services.cache_service import CacheService
+from app.services.post_service import PostService
+from app.services.storage_service import StorageService
+
+
+@pytest.fixture
+def attachment_service() -> AttachmentService:
+    return AttachmentService()
 
 
 @pytest.fixture
@@ -19,11 +26,6 @@ def cache_service() -> CacheService:
 @pytest.fixture
 def jwt_bearer() -> JWTBearer:
     return JWTBearer()
-
-
-@pytest.fixture
-def post_fields() -> str:
-    return ",".join(Post.model_fields)
 
 
 @pytest.fixture
@@ -60,3 +62,13 @@ def jwt_token_without_roles(jwt_token: JWTToken) -> JWTToken:
 @pytest.fixture
 def post_repository(initialize_posts_table) -> PostRepository:
     return PostRepository()
+
+
+@pytest.fixture
+def post_service() -> PostService:
+    return PostService()
+
+
+@pytest.fixture
+def storage_service() -> StorageService:
+    return StorageService()

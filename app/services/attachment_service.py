@@ -34,7 +34,9 @@ class AttachmentService:
                 name=object_key,
             )
         )
-        self.__post_service.update_post({"attachments": post.attachments})
+        await self.__post_service.update_post(
+            post_uuid, {"attachments": post.attachments}
+        )
 
     async def get_attachments(self, post_uuid: str) -> list[Attachment]:
         self.__logger.info(f"Get attachments for {post_uuid=}")
