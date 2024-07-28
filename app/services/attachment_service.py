@@ -1,6 +1,7 @@
 import base64
 
 from aws_lambda_powertools import Logger
+from unidecode import unidecode
 
 from app.exceptions import AttachmentNotFoundException
 from app.models.post import Attachment
@@ -17,6 +18,7 @@ class AttachmentService:
     async def add_attachment(
         self, post_uuid: str, attachment_name: str, base64_data: str
     ):
+        attachment_name = unidecode(attachment_name)
         self.__logger.info(f"Add attachment {attachment_name=} to {post_uuid=}")
         post = await self.__post_service.get_post(post_uuid)
         object_key = f"{post.post_path}/{attachment_name}"
