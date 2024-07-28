@@ -1,3 +1,4 @@
+import base64
 import uuid
 from random import randint
 
@@ -6,7 +7,7 @@ import pendulum
 import pytest
 from moto import mock_aws
 
-from app.models.post import Post
+from app.models.post import Attachment, Post
 from app.settings import Settings
 
 
@@ -19,6 +20,13 @@ def pytest_configure():
 @pytest.fixture
 def settings() -> Settings:
     return Settings()
+
+
+@pytest.fixture
+def attachment_data() -> bytes:
+    return base64.b64encode(
+        "Lorem ipsum odor amet, consectetuer adipiscing elit.".encode("utf-8")
+    )
 
 
 @pytest.fixture
@@ -129,6 +137,20 @@ def make_post(faker):
         )
 
     return make
+
+
+@pytest.fixture
+def post_with_attachment(attachment_data: bytes, make_post) -> Post:
+    post = make_post()
+    post.attachments = [
+        Attachment(
+            bucket="attachments",
+            content_length=len(attachment_data),
+            content_type="plain/text",
+            name=f"{post.post_path}/lorem.txt",
+        )
+    ]
+    return post
 
 
 @pytest.fixture

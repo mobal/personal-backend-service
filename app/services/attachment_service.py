@@ -51,7 +51,7 @@ class AttachmentService:
             (
                 attachment
                 for attachment in post.attachments
-                if attachment.name == attachment_name
+                if attachment.name == f"{post.post_path}/{attachment_name}"
             ),
             None,
         )
