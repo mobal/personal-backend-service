@@ -4,6 +4,7 @@ from app.models.camel_model import CamelModel
 
 
 class Attachment(CamelModel):
+    id: str
     bucket: str
     content_length: int
     content_type: str

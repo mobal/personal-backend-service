@@ -23,9 +23,13 @@ def settings() -> Settings:
 
 
 @pytest.fixture
-def attachment_data() -> bytes:
-    return base64.b64encode(
-        "Lorem ipsum odor amet, consectetuer adipiscing elit.".encode("utf-8")
+def attachment(test_data: bytes) -> Attachment:
+    return Attachment(
+        id=str(uuid.uuid4()),
+        bucket="attachments",
+        content_length=len(test_data),
+        content_type="plain/text",
+        name="lorem.txt",
     )
 
 
@@ -41,7 +45,9 @@ def dynamodb_resource(settings: Settings):
 
 
 @pytest.fixture
-def initialize_posts_table(dynamodb_resource, posts: list[Post], posts_table):
+def initialize_posts_table(
+    dynamodb_resource, posts: list[Post], post_with_attachment: Post, posts_table
+):
     dynamodb_resource.create_table(
         AttributeDefinitions=[
             {
@@ -105,6 +111,7 @@ def initialize_posts_table(dynamodb_resource, posts: list[Post], posts_table):
         ],
         ProvisionedThroughput={"ReadCapacityUnits": 10, "WriteCapacityUnits": 10},
     )
+    posts.append(post_with_attachment)
     with posts_table.batch_writer() as batch:
         for post in posts:
             batch.put_item(Item=post.model_dump())
@@ -140,16 +147,9 @@ def make_post(faker):
 
 
 @pytest.fixture
-def post_with_attachment(attachment_data: bytes, make_post) -> Post:
+def post_with_attachment(attachment: Attachment, make_post) -> Post:
     post = make_post()
-    post.attachments = [
-        Attachment(
-            bucket="attachments",
-            content_length=len(attachment_data),
-            content_type="plain/text",
-            name=f"{post.post_path}/lorem.txt",
-        )
-    ]
+    post.attachments = [attachment]
     return post
 
 
@@ -175,3 +175,10 @@ def s3_resource(settings: Settings):
             aws_access_key_id=settings.aws_access_key_id,
             aws_secret_access_key=settings.aws_secret_access_key,
         )
+
+
+@pytest.fixture
+def test_data() -> bytes:
+    return base64.b64encode(
+        "Lorem ipsum odor amet, consectetuer adipiscing elit.".encode("utf-8")
+    )

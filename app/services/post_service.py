@@ -12,7 +12,6 @@ from app.models.post import Post
 from app.models.response import Page
 from app.models.response import Post as PostResponse
 from app.repositories.post_repository import PostRepository
-from app.schemas.post_schema import CreatePost, UpdatePost
 
 
 class FilterExpressions:

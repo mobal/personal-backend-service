@@ -1,4 +1,5 @@
 import base64
+import uuid
 
 from aws_lambda_powertools import Logger
 from unidecode import unidecode
@@ -30,6 +31,7 @@ class AttachmentService:
             attachments.extend(post.attachments)
         attachments.append(
             Attachment(
+                id=str(uuid.uuid4()),
                 bucket="attachments",
                 content_length=response["ContentLength"],
                 content_type=response["ContentType"],
@@ -44,20 +46,20 @@ class AttachmentService:
         self.__logger.info(f"Get attachments for {post_uuid=}")
         return (await self.__post_service.get_post(post_uuid)).attachments
 
-    async def get_attachment_by_name(self, post_uuid: str, attachment_name: str):
-        self.__logger.info(f"Get attachment {attachment_name=} from {post_uuid=}")
+    async def get_attachment_by_id(self, post_uuid: str, attachment_uuid: str):
+        self.__logger.info(f"Get attachment {attachment_uuid=} from {post_uuid=}")
         post = await self.__post_service.get_post(post_uuid)
         attachment = next(
             (
                 attachment
                 for attachment in post.attachments
-                if attachment.name == f"{post.post_path}/{attachment_name}"
+                if attachment.id == attachment_uuid
             ),
             None,
         )
         if attachment is None:
             error_message = (
-                f"The requested {attachment_name=} was not found for {post_uuid=}"
+                f"The requested {attachment_uuid=} was not found for {post_uuid=}"
             )
             self.__logger.exception(error_message)
             raise AttachmentNotFoundException(error_message)
