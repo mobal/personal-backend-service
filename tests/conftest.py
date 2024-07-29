@@ -24,12 +24,13 @@ def settings() -> Settings:
 
 @pytest.fixture
 def attachment(test_data: bytes) -> Attachment:
+    now = pendulum.now()
     return Attachment(
         id=str(uuid.uuid4()),
         bucket="attachments",
         content_length=len(test_data),
         content_type="plain/text",
-        name="lorem.txt",
+        name=f"/{now.year}/{now.month}/{now.day}/post_with_attachment/lorem.txt",
     )
 
 
