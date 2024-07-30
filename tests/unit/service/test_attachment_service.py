@@ -1,6 +1,8 @@
+import copy
 import uuid
 from unittest.mock import ANY
 
+import pendulum
 import pytest
 from pytest_mock import MockerFixture
 
@@ -10,12 +12,13 @@ from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.storage_service import StorageService
 
+ATTACHMENT_NAME = "lorem.txt"
+
 
 class TestAttachmentService:
     async def test_successfully_add_attachment(
         self,
         mocker: MockerFixture,
-        attachment: Attachment,
         attachment_service: AttachmentService,
         post_service: PostService,
         posts: list[Post],
@@ -33,8 +36,50 @@ class TestAttachmentService:
         )
         mocker.patch.object(PostService, "update_post")
 
-        await attachment_service.add_attachment(posts[0].id, attachment.name, test_data)
+        result = await attachment_service.add_attachment(
+            posts[0].id, ATTACHMENT_NAME, test_data.decode(), ATTACHMENT_NAME
+        )
 
+        assert result.bucket == "attachments"
+        assert result.content_length == len(test_data)
+        assert result.display_name == ATTACHMENT_NAME
+        assert result.name
+        assert result.url
+        post_service.get_post.assert_called_once_with(posts[0].id)
+        storage_service.put_object.assert_called_once()
+        post_service.update_post.assert_called_once_with(
+            posts[0].id, {"attachments": [result.model_dump(exclude_none=True)]}
+        )
+
+    async def test_successfully_add_attachment_with_custom_display_name(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+        posts: list[Post],
+        storage_service: StorageService,
+        test_data: bytes,
+    ):
+        mocker.patch.object(PostService, "get_post", return_value=posts[0])
+        mocker.patch.object(
+            StorageService,
+            "put_object",
+            return_value={
+                "ContentLength": len(test_data.decode()),
+                "ContentType": "plain/text",
+            },
+        )
+        mocker.patch.object(PostService, "update_post")
+
+        result = await attachment_service.add_attachment(
+            posts[0].id, ATTACHMENT_NAME, test_data.decode(), ATTACHMENT_NAME
+        )
+
+        assert result.bucket == "attachments"
+        assert result.content_length == len(test_data)
+        assert result.display_name == ATTACHMENT_NAME
+        assert result.name
+        assert result.url
         post_service.get_post.assert_called_once_with(posts[0].id)
         storage_service.put_object.assert_called_once()
         post_service.update_post.assert_called_once_with(posts[0].id, ANY)
@@ -42,7 +87,6 @@ class TestAttachmentService:
     async def test_successfully_extend_attachments(
         self,
         mocker: MockerFixture,
-        attachment: Attachment,
         attachment_service: AttachmentService,
         post_service: PostService,
         post_with_attachment: Post,
@@ -57,18 +101,31 @@ class TestAttachmentService:
         )
         mocker.patch.object(PostService, "update_post")
 
-        await attachment_service.add_attachment(
-            post_with_attachment.id, attachment.name, test_data.decode()
+        result = await attachment_service.add_attachment(
+            post_with_attachment.id,
+            ATTACHMENT_NAME,
+            test_data.decode(),
+            ATTACHMENT_NAME,
         )
 
+        assert post_with_attachment.attachments
         post_service.get_post.assert_called_once_with(post_with_attachment.id)
         storage_service.put_object.assert_called_once()
-        post_service.update_post.assert_called_once_with(post_with_attachment.id, ANY)
+        extended_attachments = copy.deepcopy(post_with_attachment.attachments)
+        extended_attachments.append(result)
+        post_service.update_post.assert_called_once_with(
+            post_with_attachment.id,
+            {
+                "attachments": [
+                    attachment.model_dump(exclude_none=True)
+                    for attachment in extended_attachments
+                ]
+            },
+        )
 
     async def test_fail_to_add_attachment_due_to_post_not_found(
         self,
         mocker: MockerFixture,
-        attachment: Attachment,
         attachment_service: AttachmentService,
         post_service: PostService,
         posts: list[Post],
@@ -80,7 +137,7 @@ class TestAttachmentService:
 
         with pytest.raises(PostNotFoundException) as exc_info:
             await attachment_service.add_attachment(
-                posts[0].id, attachment.name, test_data.decode()
+                posts[0].id, ATTACHMENT_NAME, test_data.decode(), ATTACHMENT_NAME
             )
 
         assert exc_info.type == PostNotFoundException

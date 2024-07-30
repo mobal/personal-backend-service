@@ -18,13 +18,13 @@ class AttachmentService:
         self.__storage_service = StorageService()
 
     async def add_attachment(
-        self, post_uuid: str, attachment_name: str, base64_data: str
+        self, post_uuid: str, attachment_name: str, base64_data: str, display_name: str
     ) -> Attachment:
         attachment_name = unidecode(attachment_name)
         self.__logger.info(f"Add attachment {attachment_name=} to {post_uuid=}")
         post = await self.__post_service.get_post(post_uuid)
         mime_type, _ = mimetypes.guess_type(attachment_name)
-        object_key = f"{post.post_path}/{attachment_name}"
+        object_key = f"/{post.post_path}/{attachment_name}"
         await self.__storage_service.put_object(
             "attachments", object_key, base64.b64decode(base64_data)
         )
@@ -35,12 +35,19 @@ class AttachmentService:
             id=str(uuid.uuid4()),
             bucket="attachments",
             content_length=len(base64_data),
+            display_name=display_name,
             mime_type=mime_type,
             name=object_key,
         )
         attachments.append(attachment)
         await self.__post_service.update_post(
-            post_uuid, {"attachments": post.attachments}
+            post_uuid,
+            {
+                "attachments": [
+                    attachment.model_dump(exclude_none=True)
+                    for attachment in attachments
+                ]
+            },
         )
         return attachment
 

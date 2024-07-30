@@ -1,6 +1,6 @@
 import urllib.parse
 
-from pydantic import BaseModel, computed_field, conlist, constr
+from pydantic import BaseModel, ConfigDict, computed_field, conlist, constr
 
 from app.models.camel_model import CamelModel
 
@@ -9,8 +9,12 @@ class Attachment(CamelModel):
     id: str
     bucket: str
     content_length: int
+    description: str | None = None
+    display_name: str
     mime_type: str
     name: str
+
+    model_config = ConfigDict()
 
     @computed_field
     @property
