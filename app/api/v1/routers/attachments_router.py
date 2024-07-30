@@ -15,8 +15,8 @@ jwt_bearer = JWTBearer()
 router = APIRouter()
 
 
-@authorize(roles=[Role.ATTACHMENT_CREATE])
 @router.post("")
+@authorize(roles=[Role.ATTACHMENT_CREATE])
 async def add_attachment(
     create_attachment: CreateAttachment,
     post_uuid: str,
