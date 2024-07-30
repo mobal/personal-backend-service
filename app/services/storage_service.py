@@ -61,13 +61,6 @@ class StorageService:
         key: str,
         data: bytes,
         acl: str = "public-read",
-        metadata: dict[str, str] | None = None,
     ) -> dict[str, Any]:
-        if metadata is None:
-            metadata = {}
-        self.__logger.info(
-            f"Put object with {key=} and {acl=} into {bucket=}", metadata=metadata
-        )
-        return self.__s3_resource.Object(bucket_name=bucket, key=key).put(
-            Body=data, Metadata=metadata
-        )
+        self.__logger.info(f"Put object with {key=} and {acl=} into {bucket=}")
+        return self.__s3_resource.Object(bucket_name=bucket, key=key).put(Body=data)

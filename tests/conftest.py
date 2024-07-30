@@ -29,7 +29,7 @@ def attachment(test_data: bytes) -> Attachment:
         id=str(uuid.uuid4()),
         bucket="attachments",
         content_length=len(test_data),
-        content_type="plain/text",
+        mime_type="plain/text",
         name=f"/{now.year}/{now.month}/{now.day}/post_with_attachment/lorem.txt",
     )
 

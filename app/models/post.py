@@ -9,7 +9,7 @@ class Attachment(CamelModel):
     id: str
     bucket: str
     content_length: int
-    content_type: str
+    mime_type: str
     name: str
 
     @computed_field

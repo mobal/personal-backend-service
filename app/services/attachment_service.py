@@ -1,4 +1,5 @@
 import base64
+import mimetypes
 import uuid
 
 from aws_lambda_powertools import Logger
@@ -22,6 +23,7 @@ class AttachmentService:
         attachment_name = unidecode(attachment_name)
         self.__logger.info(f"Add attachment {attachment_name=} to {post_uuid=}")
         post = await self.__post_service.get_post(post_uuid)
+        mime_type, _ = mimetypes.guess_type(attachment_name)
         object_key = f"{post.post_path}/{attachment_name}"
         await self.__storage_service.put_object(
             "attachments", object_key, base64.b64decode(base64_data)
@@ -33,8 +35,7 @@ class AttachmentService:
             id=str(uuid.uuid4()),
             bucket="attachments",
             content_length=len(base64_data),
-            # TODO: Guess mime type
-            content_type="plain/text",
+            mime_type=mime_type,
             name=object_key,
         )
         attachments.append(attachment)
