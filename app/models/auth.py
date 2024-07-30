@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 
 class Role(StrEnum):
+    ATTACHMENT_CREATE = "attachment:create"
     POST_CREATE = "post:create"
     POST_DELETE = "post:delete"
     POST_UPDATE = "post:edit"

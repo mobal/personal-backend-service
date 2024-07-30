@@ -1,6 +1,23 @@
-from pydantic import BaseModel, conlist, constr
+import urllib.parse
+
+from pydantic import BaseModel, computed_field, conlist, constr
 
 from app.models.camel_model import CamelModel
+
+
+class Attachment(CamelModel):
+    id: str
+    bucket: str
+    content_length: int
+    mime_type: str
+    name: str
+
+    @computed_field
+    @property
+    def url(self) -> str:
+        return urllib.parse.urljoin(
+            f"https://{self.bucket}.s3.amazonaws.com", self.name
+        )
 
 
 class Meta(BaseModel):
@@ -24,6 +41,7 @@ class Post(CamelModel):
     slug: str
     tags: conlist(item_type=str, min_length=1)
     meta: Meta
+    attachments: list[Attachment] | None = None
 
     @property
     def is_deleted(self) -> bool:

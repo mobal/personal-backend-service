@@ -2,9 +2,9 @@ import uuid
 
 import pendulum
 import pytest
+from fastapi import status
 from httpx import ConnectError, Response
 from respx import MockRouter
-from starlette import status
 
 from app.exceptions import CacheServiceException
 from app.middlewares import correlation_id
@@ -99,7 +99,7 @@ class TestCacheService:
             "[Errno 16] Device or resource busy"
         )
 
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(CacheServiceException) as exc_info:
             await cache_service.get(self.key_value["key"])
 
         assert exc_info.type == CacheServiceException

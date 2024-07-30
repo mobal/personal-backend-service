@@ -4,7 +4,7 @@ from random import randint
 
 import pendulum
 import pytest
-from boto3.dynamodb.conditions import AttributeBase
+from boto3.dynamodb.conditions import ConditionBase
 
 from app.models.post import Post
 from app.repositories.post_repository import PostRepository
@@ -33,7 +33,7 @@ class TestPostRepository:
 
     async def test_successfully_get_all_posts(
         self,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         posts: list[Post],
         post_repository: PostRepository,
     ):
@@ -46,7 +46,7 @@ class TestPostRepository:
 
     async def test_successfully_get_all_posts_with_fields_filter(
         self,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         posts: list[Post],
         post_repository: PostRepository,
     ):
@@ -60,7 +60,7 @@ class TestPostRepository:
     async def test_successfully_get_all_posts_with_using_last_evaluated_key(
         self,
         faker,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         make_post,
         post_repository: PostRepository,
         posts: list[Post],
@@ -82,7 +82,7 @@ class TestPostRepository:
 
     async def test_successfully_get_post_by_uuid(
         self,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         posts: list[Post],
         post_repository: PostRepository,
     ):
@@ -92,7 +92,7 @@ class TestPostRepository:
 
     async def test_fail_to_get_post_by_uuid(
         self,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         post_repository: PostRepository,
     ):
         post_uuid = str(uuid.uuid4())
@@ -103,7 +103,7 @@ class TestPostRepository:
 
     async def test_successfully_update_post(
         self,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         posts: list[Post],
         post_repository: PostRepository,
         posts_table,
@@ -127,7 +127,7 @@ class TestPostRepository:
 
     async def test_successfully_count_all_posts(
         self,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         posts: list[Post],
         post_repository: PostRepository,
     ):
@@ -136,7 +136,7 @@ class TestPostRepository:
     async def test_successfully_count_all_posts_with_using_last_evaluated_key(
         self,
         faker,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         make_post,
         posts: list[Post],
         post_repository: PostRepository,
@@ -158,7 +158,7 @@ class TestPostRepository:
 
     async def test_successfully_get_post_by_path(
         self,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         posts: list[Post],
         post_repository: PostRepository,
     ):
@@ -170,7 +170,7 @@ class TestPostRepository:
 
     async def test_successfully_get_post_by_title(
         self,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         posts: list[Post],
         post_repository: PostRepository,
     ):
@@ -182,7 +182,7 @@ class TestPostRepository:
 
     async def test_successfully_get_posts(
         self,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         posts: list[Post],
         post_repository: PostRepository,
     ):
@@ -195,7 +195,7 @@ class TestPostRepository:
 
     async def test_successfully_get_posts_without_fields(
         self,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         posts: list[Post],
         post_repository: PostRepository,
     ):
@@ -208,7 +208,7 @@ class TestPostRepository:
 
     async def test_successfully_get_posts_with_exclusive_start_key(
         self,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         posts: list[Post],
         post_repository: PostRepository,
     ):
@@ -222,7 +222,7 @@ class TestPostRepository:
     async def test_successfully_get_posts_with_the_return_of_last_evaluated_key(
         self,
         faker,
-        filter_expression: AttributeBase,
+        filter_expression: ConditionBase,
         make_post,
         posts: list[Post],
         post_repository: PostRepository,

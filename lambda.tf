@@ -1,9 +1,9 @@
 locals {
-  app_name = "${var.stage}-${var.app_name}"
+  app_name    = "${var.stage}-${var.app_name}"
 }
 
 resource "aws_lambda_function" "fastapi" {
-  filename      = "lambda.zip"
+  filename      = "${path.module}/lambda.zip"
   function_name = "${local.app_name}-fastapi"
   role          = aws_iam_role.lambda_role.arn
   handler       = "app.main.handler"
@@ -47,18 +47,18 @@ resource "terraform_data" "archive_lambda" {
   }
 
   provisioner "local-exec" {
-    command = "zsh create_lambda.zsh"
+    command = "zsh ${path.module}/create_lambda.zsh"
   }
 }
 
 resource "terraform_data" "requirements_lambda_layer" {
   triggers_replace = {
-    requirements = filebase64sha256("Pipfile.lock")
+    requirements = filebase64sha256("${path.module}/Pipfile.lock")
   }
 
   provisioner "local-exec" {
     command = <<EOT
-      DOCKER_DEFAULT_PLATFORM=linux/amd64 docker run --rm -v $(pwd):/workspace -w /workspace public.ecr.aws/sam/build-python3.12 bash -c "
+      DOCKER_DEFAULT_PLATFORM=linux/amd64 docker run --rm -v ${abspath(path.module)}:/workspace -w /workspace public.ecr.aws/sam/build-python3.12 bash -c "
       pip install pipenv && \
       pipenv requirements > requirements.txt && \
       pip install -r requirements.txt -t python/lib/python3.12/site-packages --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all: && \
@@ -75,7 +75,7 @@ resource "aws_s3_bucket" "requirements_lambda_layer" {
 resource "aws_s3_object" "requirements_lambda_layer" {
   bucket     = aws_s3_bucket.requirements_lambda_layer.id
   key        = "lambda_layers/${local.app_name}-requirements/requirements.zip"
-  source     = "requirements.zip"
+  source     = "${path.module}/requirements.zip"
   depends_on = [terraform_data.requirements_lambda_layer]
 }
 

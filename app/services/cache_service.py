@@ -1,7 +1,7 @@
 import httpx
 from aws_lambda_powertools import Logger
+from fastapi import status
 from httpx import HTTPError, codes
-from starlette import status
 
 from app import settings
 from app.exceptions import CacheServiceException
@@ -32,6 +32,6 @@ class CacheService:
                     raise CacheServiceException(
                         codes.get_reason_phrase(response.status_code)
                     )
-        except HTTPError as exc:
-            self._logger.exception("Unexpected error occurred", exc_info=exc)
+        except HTTPError:
+            self._logger.exception("Unexpected error occurred")
             raise CacheServiceException("Internal Server Error")

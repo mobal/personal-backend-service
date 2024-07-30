@@ -2,8 +2,8 @@ from unittest.mock import ANY
 
 import pendulum
 import pytest
+from fastapi import status
 from pytest_mock import MockerFixture
-from starlette import status
 
 from app.exceptions import PostAlreadyExistsException, PostNotFoundException
 from app.models.post import Post
@@ -18,10 +18,6 @@ ERROR_MESSAGE_POST_ALREADY_EXISTS = "There is already a post with this title"
 
 @pytest.mark.asyncio
 class TestPostService:
-    @pytest.fixture
-    def post_service(self) -> PostService:
-        return PostService()
-
     async def test_successfully_create_post(
         self,
         mocker: MockerFixture,
@@ -33,7 +29,11 @@ class TestPostService:
         mocker.patch.object(PostRepository, "create_post")
 
         post = make_post()
-        result = await post_service.create_post(CreatePost(**post.model_dump()))
+        result = await post_service.create_post(
+            post.model_dump(
+                include={"author", "title", "content", "tags", "meta", "published_at"}
+            )
+        )
 
         assert post.author == result.author
         assert post.content == result.content
@@ -57,7 +57,18 @@ class TestPostService:
         )
 
         with pytest.raises(PostAlreadyExistsException) as excinfo:
-            await post_service.create_post(CreatePost(**posts[0].model_dump()))
+            await post_service.create_post(
+                posts[0].model_dump(
+                    include={
+                        "author",
+                        "title",
+                        "content",
+                        "tags",
+                        "meta",
+                        "published_at",
+                    }
+                )
+            )
 
         assert status.HTTP_409_CONFLICT == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_ALREADY_EXISTS == excinfo.value.detail
@@ -142,9 +153,9 @@ class TestPostService:
         )
         mocker.patch.object(PostRepository, "update_post")
 
-        update_post = UpdatePost(content="Updated content", title="Updated title")
-
-        await post_service.update_post(posts[0].id, update_post)
+        await post_service.update_post(
+            posts[0].id, {"content": "Updated content", "title": "Updated title"}
+        )
         post_repository.update_post.assert_called_once_with(posts[0].id, ANY, ANY)
 
     async def test_fail_to_update_post_due_post_not_found_exception(
