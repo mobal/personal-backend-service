@@ -1,5 +1,5 @@
 locals {
-  app_name    = "${var.stage}-${var.app_name}"
+  app_name = "${var.stage}-${var.app_name}"
 }
 
 data "archive_file" "lambda_zip" {
@@ -98,16 +98,4 @@ resource "aws_lambda_layer_version" "requirements_lambda_layer" {
   s3_bucket                = aws_s3_bucket.requirements_lambda_layer.id
   s3_key                   = aws_s3_object.requirements_lambda_layer.key
   skip_destroy             = true
-}
-
-output "lambda_layer_version_arn" {
-  value = aws_lambda_layer_version.requirements_lambda_layer.arn
-}
-
-output "s3_object_etag" {
-  value = aws_s3_object.requirements_lambda_layer.etag
-}
-
-output "archive_file_hash" {
-  value = data.archive_file.lambda_zip.output_base64sha256
 }
