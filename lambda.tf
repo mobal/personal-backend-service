@@ -42,6 +42,7 @@ resource "aws_lambda_function" "fastapi" {
     variables = {
       APP_NAME                       = var.app_name
       APP_TIMEZONE                   = var.app_timezone
+      ATTACHMENTS_BUCKET_NAME        = aws_s3_bucket.attachments.id
       CACHE_SERVICE_BASE_URL         = var.cache_service_base_url
       DEBUG                          = var.debug
       JWT_SECRET                     = var.jwt_secret
@@ -58,7 +59,8 @@ resource "aws_lambda_function" "fastapi" {
 
   depends_on = [
     aws_iam_role_policy_attachment.lambda_policy_attachment,
-    aws_lambda_layer_version.requirements_lambda_layer
+    aws_lambda_layer_version.requirements_lambda_layer,
+    aws_s3_bucket.attachments,
   ]
 }
 

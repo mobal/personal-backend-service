@@ -19,11 +19,6 @@ class FilterExpressions:
     PUBLISHED = Attr("published_at").ne(None)
 
 
-async def _item_to_response(item: dict) -> PostResponse:
-    item["content"] = markdown.markdown(item["content"])
-    return PostResponse(**item)
-
-
 class PostService:
     ERROR_MESSAGE_POST_ALREADY_EXISTS: str = "There is already a post with this title"
     ERROR_MESSAGE_POST_WAS_NOT_FOUND: str = "The requested post was not found"
@@ -32,7 +27,7 @@ class PostService:
         self.__logger = Logger(utc=True)
         self.__post_repository = PostRepository()
 
-    async def _get_post_by_uuid(self, post_uuid: str) -> Post:
+    async def __get_post_by_uuid(self, post_uuid: str) -> Post:
         item = await self.__post_repository.get_post_by_uuid(
             post_uuid, FilterExpressions.NOT_DELETED
         )
@@ -40,6 +35,10 @@ class PostService:
             self.__logger.warning(f"Post was not found with UUID {post_uuid=}")
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return Post(**item)
+
+    async def __post_to_response(self, post_dict: dict[str, Any]) -> PostResponse:
+        post_dict["content"] = markdown.markdown(post_dict["content"])
+        return PostResponse(**post_dict)
 
     async def create_post(self, create_data: dict[str, Any]) -> Post:
         now = pendulum.now()
@@ -63,7 +62,7 @@ class PostService:
         return Post(**create_data)
 
     async def delete_post(self, post_uuid: str):
-        post = await self._get_post_by_uuid(post_uuid)
+        post = await self.__get_post_by_uuid(post_uuid)
         post.deleted_at = pendulum.now().to_iso8601_string()
         await self.__post_repository.update_post(
             post_uuid,
@@ -73,8 +72,8 @@ class PostService:
         self.__logger.info(f"Post successfully deleted {post_uuid=}")
 
     async def get_post(self, post_uuid: str) -> PostResponse:
-        return await _item_to_response(
-            (await self._get_post_by_uuid(post_uuid)).model_dump()
+        return await self.__post_to_response(
+            (await self.__get_post_by_uuid(post_uuid)).model_dump()
         )
 
     async def get_by_post_path(self, post_path: str) -> PostResponse:
@@ -84,7 +83,7 @@ class PostService:
         if post is None:
             self.__logger.warning(f"Failed to get post {FilterExpressions.NOT_DELETED}")
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
-        return await _item_to_response(post)
+        return await self.__post_to_response(post)
 
     async def get_posts(self, exclusive_start_key: str | None = None) -> Page:
         last_evaluated_key, posts = await self.__post_repository.get_posts(

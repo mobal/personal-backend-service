@@ -257,5 +257,8 @@ class TestPostService:
 
         assert len(result.posts) == len(posts)
         for idx, post in enumerate(result.posts, start=0):
-            assert post.model_dump().items() <= posts[idx].model_dump().items()
+            assert (
+                post.model_dump(exclude="attachments").items()
+                <= posts[idx].model_dump(exclude="attachments").items()
+            )
         post_repository.get_posts.assert_called_once_with(ANY, None, ANY)

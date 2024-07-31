@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Response, status
 from app.api.decorators import authorize
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken, Role
-from app.models.post import Attachment
+from app.models.response import Attachment as AttachmentResponse
 from app.schemas.attachment_schema import CreateAttachment
 from app.services.attachment_service import AttachmentService
 
@@ -39,7 +39,9 @@ async def add_attachment(
 
 
 @router.get("/{attachment_uuid}", status_code=status.HTTP_200_OK)
-async def get_attachment(post_uuid: str, attachment_uuid: str) -> Attachment:
+async def get_attachment_by_uuid(
+    post_uuid: str, attachment_uuid: str
+) -> AttachmentResponse:
     return await attachment_service.get_attachment_by_id(post_uuid, attachment_uuid)
 
 

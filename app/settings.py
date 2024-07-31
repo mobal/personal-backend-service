@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     debug: bool = False
     app_name: str
     app_timezone: str
+    attachments_bucket_name: str
     aws_access_key_id: str
     aws_secret_access_key: str
     aws_region: str = Field(alias="AWS_DEFAULT_REGION")

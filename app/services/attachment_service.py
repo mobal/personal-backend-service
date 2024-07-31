@@ -5,8 +5,10 @@ import uuid
 from aws_lambda_powertools import Logger
 from unidecode import unidecode
 
+from app import settings
 from app.exceptions import AttachmentNotFoundException
 from app.models.post import Attachment
+from app.models.response import Attachment as AttachmentResponse
 from app.services.post_service import PostService
 from app.services.storage_service import StorageService
 
@@ -26,14 +28,14 @@ class AttachmentService:
         mime_type, _ = mimetypes.guess_type(attachment_name)
         object_key = f"/{post.post_path}/{attachment_name}"
         await self.__storage_service.put_object(
-            "attachments", object_key, base64.b64decode(base64_data)
+            settings.attachments_bucket_name, object_key, base64.b64decode(base64_data)
         )
         attachments = []
         if post.attachments:
             attachments.extend(post.attachments)
         attachment = Attachment(
             id=str(uuid.uuid4()),
-            bucket="attachments",
+            bucket=settings.attachments_bucket_name,
             content_length=len(base64_data),
             display_name=display_name,
             mime_type=mime_type,
@@ -51,12 +53,21 @@ class AttachmentService:
         )
         return attachment
 
-    async def get_attachments(self, post_uuid: str) -> list[Attachment]:
+    async def get_attachments(self, post_uuid: str) -> list[AttachmentResponse]:
         self.__logger.info(f"Get attachments for {post_uuid=}")
         post = await self.__post_service.get_post(post_uuid)
-        return post.attachments if post.attachments else []
+        return (
+            [
+                AttachmentResponse(**attachment.model_dump())
+                for attachment in post.attachments
+            ]
+            if post.attachments
+            else []
+        )
 
-    async def get_attachment_by_id(self, post_uuid: str, attachment_uuid: str):
+    async def get_attachment_by_id(
+        self, post_uuid: str, attachment_uuid: str
+    ) -> AttachmentResponse:
         self.__logger.info(f"Get attachment {attachment_uuid=} from {post_uuid=}")
         post = await self.__post_service.get_post(post_uuid)
         attachment = next(
@@ -73,4 +84,4 @@ class AttachmentService:
             )
             self.__logger.exception(error_message)
             raise AttachmentNotFoundException(error_message)
-        return attachment
+        return AttachmentResponse(**attachment.model_dump())
