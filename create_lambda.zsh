@@ -2,7 +2,7 @@
 
 EXCLUDE_LIST=(
   ".git/*"
-  ".pytest_cache/*"
+  ".*_cache/*"
   ".terraform/*"
   ".venv/*"
   "htmlcov/*"
