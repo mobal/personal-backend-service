@@ -255,7 +255,7 @@ class TestPostService:
 
         result = await post_service.get_posts()
 
-        assert len(result.data) == len(posts)
-        for idx, post in enumerate(result.data, start=0):
+        assert len(result.posts) == len(posts)
+        for idx, post in enumerate(result.posts, start=0):
             assert post.model_dump().items() <= posts[idx].model_dump().items()
         post_repository.get_posts.assert_called_once_with(ANY, None, ANY)

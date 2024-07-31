@@ -18,4 +18,4 @@ class Post(CamelModel):
 
 class Page(CamelModel):
     exclusive_start_key: str | None = None
-    data: list[Post]
+    posts: list[Post]

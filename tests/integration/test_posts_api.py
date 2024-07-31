@@ -70,7 +70,7 @@ class TestPostsApi:
         response = test_client.get(BASE_URL)
 
         assert response.status_code == status.HTTP_200_OK
-        for post_response in response.json()["data"]:
+        for post_response in response.json()["posts"]:
             post = next(post for post in posts if post.id == post_response["id"])
             assert post_response.items() <= post.model_dump(by_alias=True).items()
 

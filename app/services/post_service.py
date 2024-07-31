@@ -95,7 +95,7 @@ class PostService:
         post_responses = []
         for post in posts:
             post_responses.append(PostResponse(**post))
-        return Page(exclusive_start_key=last_evaluated_key, data=post_responses)
+        return Page(exclusive_start_key=last_evaluated_key, posts=post_responses)
 
     async def update_post(self, post_uuid: str, update_data: dict[str, Any]):
         post = await self.__post_repository.get_post_by_uuid(
