@@ -23,7 +23,14 @@ async def add_attachment(
     token: JWTToken = Depends(jwt_bearer),
 ):
     attachment = await attachment_service.add_attachment(
-        post_uuid, create_attachment.name, create_attachment.data
+        post_uuid,
+        create_attachment.name,
+        create_attachment.data,
+        (
+            create_attachment.display_name
+            if create_attachment.display_name
+            else create_attachment.name
+        ),
     )
     return Response(
         status_code=status.HTTP_201_CREATED,

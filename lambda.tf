@@ -2,14 +2,36 @@ locals {
   app_name    = "${var.stage}-${var.app_name}"
 }
 
+data "archive_file" "lambda_zip" {
+  type = "zip"
+  source_dir = path.module
+  output_path = "${path.module}/lambda.zip"
+  excludes = [
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".terraform",
+    ".venv",
+    "htmlcov",
+    "python",
+    ".coverage",
+    ".env",
+    "lambda.zip",
+    "terraform.tfstate",
+    "terraform.tfstate.backup",
+    "terraform.tfvars",
+  ]
+}
+
 resource "aws_lambda_function" "fastapi" {
-  filename      = "${path.module}/lambda.zip"
-  function_name = "${local.app_name}-fastapi"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "app.main.handler"
-  runtime       = "python3.12"
-  timeout       = 15
-  memory_size   = 512
+  filename         = data.archive_file.lambda_zip.output_path
+  function_name    = "${local.app_name}-fastapi"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "app.main.handler"
+  runtime          = "python3.12"
+  timeout          = 15
+  memory_size      = 512
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
   layers = [
     aws_lambda_layer_version.requirements_lambda_layer.arn,
@@ -35,20 +57,9 @@ resource "aws_lambda_function" "fastapi" {
   }
 
   depends_on = [
-    terraform_data.archive_lambda,
     aws_iam_role_policy_attachment.lambda_policy_attachment,
     aws_lambda_layer_version.requirements_lambda_layer
   ]
-}
-
-resource "terraform_data" "archive_lambda" {
-  triggers_replace = {
-    timestamp = timestamp()
-  }
-
-  provisioner "local-exec" {
-    command = "zsh ${path.module}/create_lambda.zsh"
-  }
 }
 
 resource "terraform_data" "requirements_lambda_layer" {
