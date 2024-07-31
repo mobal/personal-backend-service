@@ -75,7 +75,7 @@ resource "terraform_data" "requirements_lambda_layer" {
       pip install -r requirements.txt -t python/lib/python3.12/site-packages --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all: && \
       zip -r requirements.zip python
       "
-      EOT
+    EOT
   }
 }
 
@@ -98,4 +98,16 @@ resource "aws_lambda_layer_version" "requirements_lambda_layer" {
   s3_bucket                = aws_s3_bucket.requirements_lambda_layer.id
   s3_key                   = aws_s3_object.requirements_lambda_layer.key
   skip_destroy             = true
+}
+
+output "lambda_layer_version_arn" {
+  value = aws_lambda_layer_version.requirements_lambda_layer.arn
+}
+
+output "s3_object_etag" {
+  value = aws_s3_object.requirements_lambda_layer.etag
+}
+
+output "archive_file_hash" {
+  value = data.archive_file.lambda_zip.output_base64sha256
 }
