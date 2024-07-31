@@ -1,5 +1,14 @@
+resource "random_string" "random_suffix"{
+  length  = 8
+  special = false
+  upper   = false
+  keepers = {
+    region = var.aws_region
+  }
+}
+
 resource "aws_s3_bucket" "attachments" {
-  bucket = "attachments"
+  bucket = "${var.stage}-attachments-${random_string.random_suffix.result}"
 }
 
 resource "aws_s3_bucket_ownership_controls" "attachments" {
