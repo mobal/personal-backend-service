@@ -1,5 +1,14 @@
 from app.models.camel_model import CamelModel
-from app.models.post import Attachment, Meta
+from app.models.post import Meta
+
+
+class Attachment(CamelModel):
+    id: str
+    content_length: int
+    description: str | None = None
+    display_name: str
+    mime_type: str
+    url: str
 
 
 class Post(CamelModel):
@@ -18,4 +27,4 @@ class Post(CamelModel):
 
 class Page(CamelModel):
     exclusive_start_key: str | None = None
-    data: list[Post]
+    posts: list[Post]

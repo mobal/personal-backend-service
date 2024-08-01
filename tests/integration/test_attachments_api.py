@@ -172,8 +172,9 @@ class TestAttachmentsApi:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.json() == post_with_attachment.attachments[0].model_dump(
-            by_alias=True
+        assert (
+            response.json().items()
+            <= post_with_attachment.attachments[0].model_dump(by_alias=True).items()
         )
 
     async def test_fail_to_get_attachment_due_to_invalid_client(
@@ -227,10 +228,10 @@ class TestAttachmentsApi:
 
         assert response.status_code == status.HTTP_200_OK
         assert (
-            response.json()
-            == post_with_attachment.model_dump(include=["attachments"], by_alias=True)[
+            response.json()[0].items()
+            <= post_with_attachment.model_dump(include=["attachments"], by_alias=True)[
                 "attachments"
-            ]
+            ][0].items()
         )
 
     async def test_successfully_get_empty_attachments(

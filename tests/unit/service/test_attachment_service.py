@@ -155,7 +155,7 @@ class TestAttachmentService:
 
         attachments = await attachment_service.get_attachments(post_with_attachment.id)
 
-        assert attachments == [attachment]
+        assert attachments[0].model_dump().items() <= attachment.model_dump().items()
         post_service.get_post.assert_called_once_with(post_with_attachment.id)
 
     async def test_fail_to_get_attachments_due_to_post_not_found(

@@ -1,5 +1,5 @@
 locals {
-  app_name    = "${var.stage}-${var.app_name}"
+  app_name = "${var.stage}-${var.app_name}"
 }
 
 data "archive_file" "lambda_zip" {
@@ -42,6 +42,7 @@ resource "aws_lambda_function" "fastapi" {
     variables = {
       APP_NAME                       = var.app_name
       APP_TIMEZONE                   = var.app_timezone
+      ATTACHMENTS_BUCKET_NAME        = aws_s3_bucket.attachments.id
       CACHE_SERVICE_BASE_URL         = var.cache_service_base_url
       DEBUG                          = var.debug
       JWT_SECRET                     = var.jwt_secret
@@ -58,7 +59,8 @@ resource "aws_lambda_function" "fastapi" {
 
   depends_on = [
     aws_iam_role_policy_attachment.lambda_policy_attachment,
-    aws_lambda_layer_version.requirements_lambda_layer
+    aws_lambda_layer_version.requirements_lambda_layer,
+    aws_s3_bucket.attachments,
   ]
 }
 
@@ -75,7 +77,7 @@ resource "terraform_data" "requirements_lambda_layer" {
       pip install -r requirements.txt -t python/lib/python3.12/site-packages --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all: && \
       zip -r requirements.zip python
       "
-      EOT
+    EOT
   }
 }
 
