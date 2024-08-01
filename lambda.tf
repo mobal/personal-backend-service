@@ -23,27 +23,6 @@ data "archive_file" "lambda_zip" {
   ]
 }
 
-data "archive_file" "lambda_zip" {
-  type = "zip"
-  source_dir = path.module
-  output_path = "${path.module}/lambda.zip"
-  excludes = [
-    ".git",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".terraform",
-    ".venv",
-    "htmlcov",
-    "python",
-    ".coverage",
-    ".env",
-    "lambda.zip",
-    "terraform.tfstate",
-    "terraform.tfstate.backup",
-    "terraform.tfvars",
-  ]
-}
-
 resource "aws_lambda_function" "fastapi" {
   filename         = data.archive_file.lambda_zip.output_path
   function_name    = "${local.app_name}-fastapi"
