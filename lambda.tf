@@ -38,6 +38,11 @@ resource "aws_lambda_function" "fastapi" {
     "arn:aws:lambda:${var.aws_region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:76"
   ]
 
+  vpc_config {
+    security_group_ids = [aws_security_group.lambda_security_groups.id]
+    subnet_ids = var.subnet_ids
+  }
+
   environment {
     variables = {
       APP_NAME                       = var.app_name
