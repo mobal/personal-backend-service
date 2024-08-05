@@ -40,7 +40,7 @@ resource "aws_lambda_function" "fastapi" {
 
   vpc_config {
     security_group_ids = [aws_security_group.lambda_security_groups.id]
-    subnet_ids = var.subnet_ids
+    subnet_ids = [var.private_subnet_id]
   }
 
   environment {
