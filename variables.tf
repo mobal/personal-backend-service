@@ -3,18 +3,6 @@ variable "aws_region" {
   type    = string
 }
 
-variable "private_subnet_id" {
-  type = string
-}
-
-variable "private_subnet_cidr_block" {
-  type = string
-}
-
-variable "vpc_id" {
-  type = string
-}
-
 variable "stage" {
   default = "dev"
   type    = string

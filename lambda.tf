@@ -1,7 +1,3 @@
-locals {
-  app_name = "${var.stage}-${var.app_name}"
-}
-
 data "archive_file" "lambda_zip" {
   type = "zip"
   source_dir = path.module
@@ -37,11 +33,6 @@ resource "aws_lambda_function" "fastapi" {
     aws_lambda_layer_version.requirements_lambda_layer.arn,
     "arn:aws:lambda:${var.aws_region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:76"
   ]
-
-  vpc_config {
-    security_group_ids = [aws_security_group.lambda_security_groups.id]
-    subnet_ids = [var.private_subnet_id]
-  }
 
   environment {
     variables = {
