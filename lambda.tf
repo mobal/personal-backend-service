@@ -50,6 +50,7 @@ resource "aws_lambda_function" "fastapi" {
       RATE_LIMIT_REQUESTS            = var.rate_limit_requests
       RATE_LIMITING                  = var.rate_limiting
       STAGE                          = var.stage
+      X_API_KEY                      = var.x_api_key
     }
   }
 

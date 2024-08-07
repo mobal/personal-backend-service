@@ -55,3 +55,7 @@ variable "power_tools_service_name" {
   default = "personal-backend-service"
   type    = string
 }
+
+variable "x_api_key" {
+  type = string
+}
