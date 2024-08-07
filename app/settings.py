@@ -16,3 +16,4 @@ class Settings(BaseSettings):
     rate_limit_requests: int
     rate_limiting: bool
     stage: str
+    x_api_key: str

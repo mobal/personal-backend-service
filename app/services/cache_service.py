@@ -18,7 +18,11 @@ class CacheService:
                 url = f"{settings.cache_service_base_url}/api/cache/{key}"
                 self.__logger.debug(f"Get cache for {key=} {url=}")
                 response = await client.get(
-                    url, headers={"X-Correlation-ID": correlation_id.get()}
+                    url,
+                    headers={
+                        "X-Api-Key": settings.x_api_key,
+                        "X-Correlation-ID": correlation_id.get(),
+                    },
                 )
             match response.status_code:
                 case status.HTTP_200_OK:
