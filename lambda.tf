@@ -36,21 +36,21 @@ resource "aws_lambda_function" "fastapi" {
 
   environment {
     variables = {
-      APP_NAME                       = var.app_name
-      APP_TIMEZONE                   = var.app_timezone
-      ATTACHMENTS_BUCKET_NAME        = aws_s3_bucket.attachments.id
-      CACHE_SERVICE_BASE_URL         = var.cache_service_base_url
-      DEBUG                          = var.debug
-      JWT_SECRET                     = var.jwt_secret
-      LOG_LEVEL                      = var.log_level
-      POWERTOOLS_LOGGER_LOG_EVENT    = "true"
-      POWERTOOLS_SERVICE_NAME        = var.power_tools_service_name
-      POWERTOOLS_DEBUG               = "false"
-      RATE_LIMIT_DURATION_IN_SECONDS = var.rate_limit_duration_in_seconds
-      RATE_LIMIT_REQUESTS            = var.rate_limit_requests
-      RATE_LIMITING                  = var.rate_limiting
-      STAGE                          = var.stage
-      X_API_KEY                      = var.x_api_key
+      APP_NAME                             = var.app_name
+      APP_TIMEZONE                         = var.default_timezone
+      ATTACHMENTS_BUCKET_NAME              = aws_s3_bucket.attachments.id
+      CACHE_SERVICE_BASE_URL               = var.cache_service_base_url
+      DEBUG                                = var.debug
+      JWT_SECRET_SSM_PARAM_NAME            = var.jwt_secret_ssm_param_name
+      LOG_LEVEL                            = var.log_level
+      POWERTOOLS_LOGGER_LOG_EVENT          = "true"
+      POWERTOOLS_SERVICE_NAME              = var.power_tools_service_name
+      POWERTOOLS_DEBUG                     = "false"
+      RATE_LIMIT_DURATION_IN_SECONDS       = var.rate_limit_duration_in_seconds
+      RATE_LIMIT_REQUESTS                  = var.rate_limit_requests
+      RATE_LIMITING                        = var.rate_limiting
+      STAGE                                = var.stage
+      CACHE_SERVICE_API_KEY_SSM_PARAM_NAME = var.cache_service_api_key_ssm_param_name
     }
   }
 

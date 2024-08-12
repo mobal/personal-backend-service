@@ -13,8 +13,30 @@ from app.settings import Settings
 
 def pytest_configure():
     pytest.aws_default_region = "eu-central-1"
+    pytest.cache_service_api_key_ssm_param_name = "/dev/service/api-key"
+    pytest.cache_service_api_key_ssm_param_value = (
+        "a2ce72ae-6e34-4c15-8c5a-cb976d119016"
+    )
     pytest.cache_service_base_url = "https://localhost"
-    pytest.jwt_secret = "6fl3AkTFmG2rVveLglUW8DOmp8J4Bvi3"
+    pytest.jwt_secret_ssm_param_name = "/dev/secrets/secret"
+    pytest.jwt_secret_ssm_param_value = "94k9yz00rw"
+
+
+@pytest.fixture(autouse=True)
+def setup():
+    with mock_aws():
+        ssm_client = boto3.client("ssm")
+        ssm_client.put_parameter(
+            Name=pytest.cache_service_api_key_ssm_param_name,
+            Value=pytest.cache_service_api_key_ssm_param_value,
+            Type="SecureString",
+        )
+        ssm_client.put_parameter(
+            Name=pytest.jwt_secret_ssm_param_name,
+            Value=pytest.jwt_secret_ssm_param_value,
+            Type="SecureString",
+        )
+        yield
 
 
 @pytest.fixture
@@ -112,7 +134,7 @@ def initialize_posts_table(
                 },
             },
         ],
-        ProvisionedThroughput={"ReadCapacityUnits": 10, "WriteCapacityUnits": 10},
+        ProvisionedThroughput={"ReadCapacityUnits": 1, "WriteCapacityUnits": 1},
     )
     posts.append(post_with_attachment)
     with posts_table.batch_writer() as batch:

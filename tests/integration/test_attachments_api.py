@@ -54,7 +54,7 @@ class TestAttachmentsApi:
         test_client: TestClient,
     ):
         jwt_token, _ = await generate_jwt_token(
-            [Role.ATTACHMENT_CREATE], pytest.jwt_secret
+            [Role.ATTACHMENT_CREATE], pytest.jwt_secret_ssm_param_value
         )
 
         response = test_client.post(
@@ -75,7 +75,7 @@ class TestAttachmentsApi:
         test_client: TestClient,
     ):
         jwt_token, _ = await generate_jwt_token(
-            [Role.ATTACHMENT_CREATE], pytest.jwt_secret
+            [Role.ATTACHMENT_CREATE], pytest.jwt_secret_ssm_param_value
         )
 
         response = test_client.post(
@@ -101,7 +101,7 @@ class TestAttachmentsApi:
         test_client: TestClient,
     ):
         jwt_token, _ = await generate_jwt_token(
-            [Role.ATTACHMENT_CREATE], pytest.jwt_secret
+            [Role.ATTACHMENT_CREATE], pytest.jwt_secret_ssm_param_value
         )
 
         response = test_client.post(
@@ -123,7 +123,7 @@ class TestAttachmentsApi:
         post_with_attachment: Post,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token([], pytest.jwt_secret_ssm_param_value)
 
         response = test_client.post(
             f"/api/v1/posts/{post_with_attachment.id}/attachments",
@@ -147,7 +147,7 @@ class TestAttachmentsApi:
         test_client: TestClient,
     ):
         jwt_token, _ = await generate_jwt_token(
-            [Role.ATTACHMENT_CREATE], pytest.jwt_secret
+            [Role.ATTACHMENT_CREATE], pytest.jwt_secret_ssm_param_value
         )
 
         response = test_client.post(

@@ -20,7 +20,7 @@ class CacheService:
                 response = await client.get(
                     url,
                     headers={
-                        "X-Api-Key": settings.x_api_key,
+                        "X-Api-Key": settings.cache_service_api_key,
                         "X-Correlation-ID": correlation_id.get(),
                     },
                 )

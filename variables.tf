@@ -13,9 +13,8 @@ variable "app_name" {
   type    = string
 }
 
-variable "app_timezone" {
-  default = "UTC"
-  type    = string
+variable "cache_service_api_key_ssm_param_name" {
+  type = string
 }
 
 variable "cache_service_base_url" {
@@ -27,7 +26,12 @@ variable "debug" {
   type    = bool
 }
 
-variable "jwt_secret" {
+variable "default_timezone" {
+  default = "UTC"
+  type    = string
+}
+
+variable "jwt_secret_ssm_param_name" {
   type = string
 }
 
@@ -54,8 +58,4 @@ variable "rate_limiting" {
 variable "power_tools_service_name" {
   default = "personal-backend-service"
   type    = string
-}
-
-variable "x_api_key" {
-  type = string
 }

@@ -55,6 +55,13 @@ resource "aws_iam_policy" "lambda_policy" {
           "logs:PutLogEvents"
         ]
         Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = [
+          "ssm:GetParameter"
+        ]
+        Resource = "*"
       }
     ]
   })

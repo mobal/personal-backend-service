@@ -215,7 +215,9 @@ class TestPostsApi:
         cache_service_mock_404: Route,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_DELETE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.delete(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -248,7 +250,9 @@ class TestPostsApi:
         cache_service_mock_200: Route,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_DELETE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.delete(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -267,7 +271,9 @@ class TestPostsApi:
         cache_service_mock_404: Route,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_CREATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_CREATE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.delete(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -286,7 +292,9 @@ class TestPostsApi:
         cache_service_mock_500: Route,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_CREATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_CREATE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.delete(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -306,7 +314,9 @@ class TestPostsApi:
         posts: list[Post],
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_DELETE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.delete(
             f"{BASE_URL}/{posts[0].id}",
@@ -322,7 +332,9 @@ class TestPostsApi:
         cache_service_mock_404: Route,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_CREATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_CREATE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.post(
             BASE_URL, headers={"Authorization": f"Bearer {jwt_token}"}, json={}
@@ -361,7 +373,9 @@ class TestPostsApi:
         create_post: CreatePost,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_CREATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_CREATE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.post(
             BASE_URL,
@@ -382,7 +396,9 @@ class TestPostsApi:
         create_post: CreatePost,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_DELETE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.post(
             BASE_URL,
@@ -403,7 +419,9 @@ class TestPostsApi:
         create_post: CreatePost,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_DELETE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.post(
             BASE_URL,
@@ -424,7 +442,9 @@ class TestPostsApi:
         create_post: CreatePost,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_CREATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_CREATE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.post(
             BASE_URL,
@@ -443,7 +463,9 @@ class TestPostsApi:
         posts: list[Post],
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_CREATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_CREATE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.post(
             BASE_URL,
@@ -461,7 +483,9 @@ class TestPostsApi:
         create_post: CreatePost,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_UPDATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_UPDATE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.put(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -482,7 +506,9 @@ class TestPostsApi:
         posts: list[Post],
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_UPDATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_UPDATE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.put(
             f"{BASE_URL}/{posts[0].id}",
@@ -529,7 +555,9 @@ class TestPostsApi:
         create_post: CreatePost,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_DELETE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.put(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -550,7 +578,9 @@ class TestPostsApi:
         create_post: CreatePost,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_DELETE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.put(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -571,7 +601,9 @@ class TestPostsApi:
         create_post: CreatePost,
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_DELETE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.put(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -592,7 +624,9 @@ class TestPostsApi:
         posts: list[Post],
         test_client: TestClient,
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_UPDATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            [Role.POST_UPDATE], pytest.jwt_secret_ssm_param_value
+        )
 
         response = test_client.put(
             f"{BASE_URL}/{posts[0].id}",

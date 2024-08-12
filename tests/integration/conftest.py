@@ -15,7 +15,8 @@ from tests.helpers.utils import generate_jwt_token
 @pytest.fixture
 async def cache_service_mock_200(respx_mock: MockRouter) -> Route:
     jwt_token, token_id = await generate_jwt_token(
-        [Role.POST_CREATE, Role.POST_DELETE, Role.POST_UPDATE], pytest.jwt_secret
+        [Role.POST_CREATE, Role.POST_DELETE, Role.POST_UPDATE],
+        pytest.jwt_secret_ssm_param_value,
     )
     return respx_mock.route(
         method="GET", url__startswith=pytest.cache_service_base_url
