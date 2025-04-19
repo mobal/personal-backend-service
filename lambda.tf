@@ -38,7 +38,6 @@ resource "aws_lambda_function" "fastapi" {
     variables = {
       APP_NAME                             = var.app_name
       ATTACHMENTS_BUCKET_NAME              = aws_s3_bucket.attachments.id
-      CACHE_SERVICE_BASE_URL               = var.cache_service_base_url
       DEBUG                                = var.debug
       DEFAULT_TIMEZONE                     = var.default_timezone
       JWT_SECRET_SSM_PARAM_NAME            = var.jwt_secret_ssm_param_name
@@ -50,7 +49,6 @@ resource "aws_lambda_function" "fastapi" {
       RATE_LIMIT_REQUESTS                  = var.rate_limit_requests
       RATE_LIMITING                        = var.rate_limiting
       STAGE                                = var.stage
-      CACHE_SERVICE_API_KEY_SSM_PARAM_NAME = var.cache_service_api_key_ssm_param_name
     }
   }
 

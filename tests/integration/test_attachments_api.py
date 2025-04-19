@@ -13,8 +13,6 @@ from app.models.post import Attachment, Post
 from app.schemas.attachment_schema import CreateAttachment
 from tests.helpers.utils import generate_jwt_token
 
-CACHE_SERVICE_URL = f"{pytest.cache_service_base_url}/api/cache"
-
 
 @pytest.mark.asyncio
 class TestAttachmentsApi:
@@ -48,7 +46,6 @@ class TestAttachmentsApi:
     async def test_successfully_add_attachment(
         self,
         attachment: Attachment,
-        cache_service_mock_404: Route,
         create_attachment: CreateAttachment,
         posts: list[Post],
         test_client: TestClient,
@@ -65,12 +62,9 @@ class TestAttachmentsApi:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.headers["Location"]
-        assert cache_service_mock_404.called
-        assert cache_service_mock_404.call_count == 1
 
     async def test_fail_to_add_attachment_due_to_bad_request(
         self,
-        cache_service_mock_404: Route,
         post_with_attachment: Post,
         test_client: TestClient,
     ):
@@ -91,8 +85,6 @@ class TestAttachmentsApi:
         assert result["id"]
         assert result["message"]
         assert result["errors"]
-        assert cache_service_mock_404.called
-        assert cache_service_mock_404.call_count == 1
 
     async def test_fail_to_add_attachment_due_to_unauthorized(
         self,
@@ -118,7 +110,6 @@ class TestAttachmentsApi:
 
     async def test_fail_to_add_attachment_due_to_missing_privileges(
         self,
-        cache_service_mock_404: Route,
         create_attachment: CreateAttachment,
         post_with_attachment: Post,
         test_client: TestClient,
@@ -136,31 +127,6 @@ class TestAttachmentsApi:
         result = response.json()
         assert result["status"] == status.HTTP_401_UNAUTHORIZED
         assert result["message"] == "Not authorized"
-        assert cache_service_mock_404.called
-        assert cache_service_mock_404.call_count == 1
-
-    async def test_fail_to_add_attachment_due_to_unexpected_cache_service_exception(
-        self,
-        cache_service_mock_500: Route,
-        create_attachment: Attachment,
-        post_with_attachment: Post,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token(
-            [Role.ATTACHMENT_CREATE], pytest.jwt_secret_ssm_param_value
-        )
-
-        response = test_client.post(
-            f"/api/v1/posts/{post_with_attachment.id}/attachments",
-            headers={"Authorization": f"Bearer {jwt_token}"},
-            json=create_attachment.model_dump(by_alias=True),
-        )
-
-        result = response.json()
-        assert result["status"] == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert result["message"] == "Internal Server Error"
-        assert cache_service_mock_500.called
-        assert cache_service_mock_500.call_count == 1
 
     async def test_successfully_get_attachment_by_uuid(
         self,

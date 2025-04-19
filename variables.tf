@@ -13,14 +13,6 @@ variable "app_name" {
   type    = string
 }
 
-variable "cache_service_api_key_ssm_param_name" {
-  type = string
-}
-
-variable "cache_service_base_url" {
-  type = string
-}
-
 variable "debug" {
   default = false
   type    = bool

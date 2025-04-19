@@ -8,7 +8,6 @@ from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken, Role
 from app.repositories.post_repository import PostRepository
 from app.services.attachment_service import AttachmentService
-from app.services.cache_service import CacheService
 from app.services.post_service import PostService
 from app.services.storage_service import StorageService
 
@@ -16,11 +15,6 @@ from app.services.storage_service import StorageService
 @pytest.fixture
 def attachment_service() -> AttachmentService:
     return AttachmentService()
-
-
-@pytest.fixture
-def cache_service() -> CacheService:
-    return CacheService()
 
 
 @pytest.fixture

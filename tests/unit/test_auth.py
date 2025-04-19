@@ -8,7 +8,6 @@ from starlette.requests import Request
 
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken
-from app.services.cache_service import CacheService
 from app.settings import Settings
 
 NOT_AUTHENTICATED = "Not authenticated"
@@ -84,23 +83,6 @@ class TestJWTAuth:
         assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
-    async def test_fail_to_authorize_request_due_to_blacklisted_token(
-        self,
-        mocker: MockerFixture,
-        cache_service: CacheService,
-        jwt_bearer: JWTBearer,
-        jwt_token: JWTToken,
-        valid_request: Request,
-    ):
-        mocker.patch.object(CacheService, "get", return_value=jwt_token.jti)
-
-        with pytest.raises(HTTPException) as excinfo:
-            await jwt_bearer(valid_request)
-
-        assert NOT_AUTHENTICATED == excinfo.value.detail
-        assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
-        cache_service.get.assert_called_once_with(f"jti_{jwt_token.jti}")
-
     async def test_fail_to_authorize_request_due_to_missing_credentials(
         self, empty_request: Mock
     ):
@@ -138,28 +120,21 @@ class TestJWTAuth:
     async def test_successfully_authorize_request(
         self,
         mocker: MockerFixture,
-        cache_service: CacheService,
         jwt_bearer: JWTBearer,
         jwt_token: JWTToken,
         valid_request: Request,
     ):
-        mocker.patch.object(CacheService, "get", return_value=False)
-
         result = await jwt_bearer(valid_request)
 
         assert jwt_token.model_dump() == result.model_dump()
-        cache_service.get.assert_called_once_with(f"jti_{jwt_token.jti}")
 
     async def test_successfully_authorize_request_with_query_token(
         self,
         mocker: MockerFixture,
-        cache_service: CacheService,
         jwt_bearer: JWTBearer,
         jwt_token: JWTToken,
         settings: Settings,
     ):
-        mocker.patch.object(CacheService, "get", return_value=False)
-
         request = Mock()
         request.headers = {}
         request.query_params = {
@@ -168,4 +143,3 @@ class TestJWTAuth:
         result = await jwt_bearer(request)
 
         assert jwt_token.model_dump() == result.model_dump()
-        cache_service.get.assert_called_once_with(f"jti_{jwt_token.jti}")

@@ -8,7 +8,6 @@ from jwt import DecodeError, ExpiredSignatureError
 
 from app import settings
 from app.models.auth import JWTToken
-from app.services.cache_service import CacheService
 
 logger = Logger(utc=True)
 
@@ -73,7 +72,6 @@ class HTTPBearer(FastAPIHTTPBearer):
 class JWTBearer:
     def __init__(self, auto_error: bool = True):
         self.__auto_error = auto_error
-        self.__cache_service = CacheService()
 
     async def __call__(self, request: Request) -> JWTToken | None:
         credentials = await HTTPBearer(self.__auto_error).__call__(request)
@@ -93,14 +91,10 @@ class JWTBearer:
 
     async def __validate_token(self, token: str) -> bool:
         try:
-            decoded_token = JWTToken(
+            self.decoded_token = JWTToken(
                 **jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
             )
-            if await self.__cache_service.get(f"jti_{decoded_token.jti}") is False:
-                logger.debug(f"Token is not blacklisted {decoded_token=}")
-                self.decoded_token = decoded_token
-                return True
-            logger.debug(f"Token blacklisted {decoded_token=}")
+            return True
         except DecodeError:
             logger.exception("Error occurred during token decoding")
         except ExpiredSignatureError:
