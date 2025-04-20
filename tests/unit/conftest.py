@@ -5,7 +5,7 @@ import pytest
 from boto3.dynamodb.conditions import Attr, ConditionBase
 
 from app.jwt_bearer import JWTBearer
-from app.models.auth import JWTToken, Role
+from app.models.auth import JWTToken
 from app.repositories.post_repository import PostRepository
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
@@ -28,29 +28,16 @@ def filter_expression() -> ConditionBase:
 
 
 @pytest.fixture
-def jwt_token() -> JWTToken:
+def jwt_token(user_dict: dict[str, str | None]) -> JWTToken:
     now = pendulum.now()
     return JWTToken(
         exp=now.add(years=1).int_timestamp,
         iat=now.int_timestamp,
         iss="https://netcode.hu",
         jti=str(uuid.uuid4()),
-        sub={
-            "id": str(uuid.uuid4()),
-            "email": "info@netcode.hu",
-            "display_name": "root",
-            "roles": [Role.POST_CREATE, Role.POST_DELETE, Role.POST_UPDATE],
-            "created_at": now.to_iso8601_string(),
-            "deleted_at": None,
-            "updated_at": None,
-        },
+        sub=user_dict["id"],
+        user=user_dict,
     )
-
-
-@pytest.fixture
-def jwt_token_without_roles(jwt_token: JWTToken) -> JWTToken:
-    jwt_token.sub["roles"] = []
-    return jwt_token
 
 
 @pytest.fixture

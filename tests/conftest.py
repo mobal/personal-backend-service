@@ -197,3 +197,15 @@ def test_data() -> bytes:
     return base64.b64encode(
         "Lorem ipsum odor amet, consectetuer adipiscing elit.".encode("utf-8")
     )
+
+
+@pytest.fixture
+def user_dict() -> dict[str, str | None]:
+    return {
+        "id": str(uuid.uuid4()),
+        "email": "info@netcode.hu",
+        "display_name": "root",
+        "created_at": pendulum.now().to_iso8601_string(),
+        "deleted_at": None,
+        "updated_at": None,
+    }

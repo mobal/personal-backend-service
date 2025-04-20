@@ -3,7 +3,6 @@ from unittest.mock import Mock
 import jwt
 import pytest
 from fastapi import HTTPException, status
-from pytest_mock import MockerFixture
 from starlette.requests import Request
 
 from app.jwt_bearer import JWTBearer
@@ -119,7 +118,6 @@ class TestJWTAuth:
 
     async def test_successfully_authorize_request(
         self,
-        mocker: MockerFixture,
         jwt_bearer: JWTBearer,
         jwt_token: JWTToken,
         valid_request: Request,
@@ -130,7 +128,6 @@ class TestJWTAuth:
 
     async def test_successfully_authorize_request_with_query_token(
         self,
-        mocker: MockerFixture,
         jwt_bearer: JWTBearer,
         jwt_token: JWTToken,
         settings: Settings,

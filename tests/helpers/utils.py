@@ -5,7 +5,7 @@ import pendulum
 
 
 async def generate_jwt_token(
-    roles: list[str], jwt_secret: str, exp: int = 1
+    jwt_secret: str, user_dict: dict[str, str | None], exp: int = 1
 ) -> tuple[str, str]:
     iat = pendulum.now()
     exp = iat.add(hours=exp)
@@ -16,7 +16,8 @@ async def generate_jwt_token(
                 "exp": exp.int_timestamp,
                 "iat": iat.int_timestamp,
                 "jti": token_id,
-                "sub": {"id": str(uuid.uuid4()), "roles": roles},
+                "sub": user_dict["id"],
+                "user": user_dict,
             },
             jwt_secret,
         ),

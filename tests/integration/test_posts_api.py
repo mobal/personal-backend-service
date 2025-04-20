@@ -9,7 +9,6 @@ from httpx import ConnectTimeout, Response
 from respx import MockRouter, Route
 
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
-from app.models.auth import Role
 from app.models.post import Post
 from app.schemas.post_schema import CreatePost
 from tests.helpers.utils import generate_jwt_token
@@ -198,9 +197,10 @@ class TestPostsApi:
     async def test_fail_to_delete_post_due_to_not_found(
         self,
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
         jwt_token, _ = await generate_jwt_token(
-            [Role.POST_DELETE], pytest.jwt_secret_ssm_param_value
+            pytest.jwt_secret_ssm_param_value, user_dict
         )
 
         response = test_client.delete(
@@ -228,32 +228,14 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
         }.items() <= response.json().items()
 
-    async def test_fail_to_delete_post_due_to_missing_privileges(
-        self,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token(
-            [Role.POST_CREATE], pytest.jwt_secret_ssm_param_value
-        )
-
-        response = test_client.delete(
-            f"{BASE_URL}/{str(uuid.uuid4())}",
-            headers={"Authorization": f"Bearer {jwt_token}"},
-        )
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert {
-            "status": status.HTTP_401_UNAUTHORIZED,
-            "message": ERROR_MESSAGE_NOT_AUTHORIZED,
-        }.items() <= response.json().items()
-
     async def test_successfully_delete_post(
         self,
         posts: list[Post],
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
         jwt_token, _ = await generate_jwt_token(
-            [Role.POST_DELETE], pytest.jwt_secret_ssm_param_value
+            pytest.jwt_secret_ssm_param_value, user_dict
         )
 
         response = test_client.delete(
@@ -266,9 +248,10 @@ class TestPostsApi:
     async def test_fail_to_create_post_due_to_bad_request(
         self,
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
         jwt_token, _ = await generate_jwt_token(
-            [Role.POST_CREATE], pytest.jwt_secret_ssm_param_value
+            pytest.jwt_secret_ssm_param_value, user_dict
         )
 
         response = test_client.post(
@@ -300,34 +283,14 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
         }.items() <= response.json().items()
 
-    async def test_fail_to_create_post_due_to_missing_privileges(
-        self,
-        create_post: CreatePost,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token(
-            [Role.POST_DELETE], pytest.jwt_secret_ssm_param_value
-        )
-
-        response = test_client.post(
-            BASE_URL,
-            headers={"Authorization": f"Bearer {jwt_token}"},
-            json=create_post.model_dump(by_alias=True),
-        )
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert {
-            "status": status.HTTP_401_UNAUTHORIZED,
-            "message": ERROR_MESSAGE_NOT_AUTHORIZED,
-        }.items() <= response.json().items()
-
     async def test_successfully_create_post(
         self,
         create_post: CreatePost,
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
         jwt_token, _ = await generate_jwt_token(
-            [Role.POST_CREATE], pytest.jwt_secret_ssm_param_value
+            pytest.jwt_secret_ssm_param_value, user_dict
         )
 
         response = test_client.post(
@@ -343,9 +306,10 @@ class TestPostsApi:
         self,
         posts: list[Post],
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
         jwt_token, _ = await generate_jwt_token(
-            [Role.POST_CREATE], pytest.jwt_secret_ssm_param_value
+            pytest.jwt_secret_ssm_param_value, user_dict
         )
 
         response = test_client.post(
@@ -360,9 +324,10 @@ class TestPostsApi:
         self,
         create_post: CreatePost,
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
         jwt_token, _ = await generate_jwt_token(
-            [Role.POST_UPDATE], pytest.jwt_secret_ssm_param_value
+            pytest.jwt_secret_ssm_param_value, user_dict
         )
 
         response = test_client.put(
@@ -381,9 +346,10 @@ class TestPostsApi:
         self,
         posts: list[Post],
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
         jwt_token, _ = await generate_jwt_token(
-            [Role.POST_UPDATE], pytest.jwt_secret_ssm_param_value
+            pytest.jwt_secret_ssm_param_value, user_dict
         )
 
         response = test_client.put(
@@ -423,34 +389,14 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
         }.items() <= response.json().items()
 
-    async def test_fail_to_update_post_due_to_missing_privileges(
-        self,
-        create_post: CreatePost,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token(
-            [Role.POST_DELETE], pytest.jwt_secret_ssm_param_value
-        )
-
-        response = test_client.put(
-            f"{BASE_URL}/{str(uuid.uuid4())}",
-            headers={"Authorization": f"Bearer {jwt_token}"},
-            json=create_post.model_dump(by_alias=True),
-        )
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert {
-            "status": status.HTTP_401_UNAUTHORIZED,
-            "message": ERROR_MESSAGE_NOT_AUTHORIZED,
-        }.items() <= response.json().items()
-
     async def test_successfully_update_post(
         self,
         posts: list[Post],
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
         jwt_token, _ = await generate_jwt_token(
-            [Role.POST_UPDATE], pytest.jwt_secret_ssm_param_value
+            pytest.jwt_secret_ssm_param_value, user_dict
         )
 
         response = test_client.put(
