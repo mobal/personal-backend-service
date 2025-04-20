@@ -82,6 +82,45 @@ class TestJWTAuth:
         assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
+    async def test_fail_to_authorize_request_due_to_bearer_token_is_missing_with_auto_error_false(
+        self, empty_request: Mock
+    ):
+        empty_request.headers = {"Authorization": "Bearer "}
+        jwt_bearer = JWTBearer(auto_error=False)
+
+        assert await jwt_bearer(empty_request) is None
+
+    async def test_fail_to_authorize_request_due_to_invalid_scheme(
+        self,
+        empty_request,
+        jwt_bearer: JWTBearer,
+        jwt_token: JWTToken,
+        settings: Settings,
+    ):
+        empty_request.headers = {
+            "Authorization": f"Bear {jwt.encode(jwt_token.model_dump(), settings.jwt_secret)}"
+        }
+
+        with pytest.raises(HTTPException) as excinfo:
+            await jwt_bearer(empty_request)
+
+        assert excinfo.typename == HTTPException.__name__
+        assert excinfo.value.status_code == status.HTTP_403_FORBIDDEN
+        assert excinfo.value.detail == "Invalid authentication credentials"
+
+    async def test_fail_to_authorize_request_due_to_invalid_scheme_with_auto_error_false(
+        self,
+        empty_request,
+        jwt_token: JWTToken,
+        settings: Settings,
+    ):
+        empty_request.headers = {
+            "Authorization": f"Bear {jwt.encode(jwt_token.model_dump(), settings.jwt_secret)}"
+        }
+        jwt_bearer = JWTBearer(auto_error=False)
+
+        assert await jwt_bearer(empty_request) is None
+
     async def test_fail_to_authorize_request_due_to_missing_credentials(
         self, empty_request: Mock
     ):
