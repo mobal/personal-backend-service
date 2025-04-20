@@ -14,16 +14,16 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Set up Python 3.13
+    - name: Set up Python 3.12
       uses: actions/setup-python@v5
       with:
         cache: pipenv
-        python-version: "3.13"
+        python-version: "3.12"
 
     - name: Install Pipenv
       run: |
         python -m pip install --upgrade pipenv wheel
-        pipenv install --dev --python 3.13
+        pipenv install --dev --python 3.12
         pipenv graph
 
     - name: Analyze code using Pycodestyle
@@ -46,7 +46,7 @@ jobs:
           -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
           -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
           -Dsonar.python.coverage.reportPaths=coverage.xml
-          -Dsonar.python.version=3.13
+          -Dsonar.python.version=3.12
           -Dsonar.sources=app
           -Dsonar.tests=tests
       env:

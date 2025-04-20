@@ -37,4 +37,4 @@ pytest-xdist = "~=3.6.1"
 respx = "~=0.21.1"
 
 [requires]
-python_version = "3.13"
+python_version = "3.12"
