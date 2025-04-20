@@ -7,7 +7,7 @@ flake:
 	pipenv run autoflake --in-place --recursive --remove-all-unused-imports --remove-unused-variables app/*.py tests/*.py
 
 install:
-	pipenv install --dev --python 3.12
+	pipenv install --dev --python 3.13
 
 mypy:
 	pipenv run python -m  mypy app/ --explicit-package-bases

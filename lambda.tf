@@ -24,7 +24,7 @@ resource "aws_lambda_function" "fastapi" {
   function_name    = "${local.app_name}-fastapi"
   role             = aws_iam_role.lambda_role.arn
   handler          = "app.main.handler"
-  runtime          = "python3.12"
+  runtime          = "python3.13"
   timeout          = 15
   memory_size      = 512
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
@@ -66,10 +66,10 @@ resource "terraform_data" "requirements_lambda_layer" {
 
   provisioner "local-exec" {
     command = <<EOT
-      DOCKER_DEFAULT_PLATFORM=linux/amd64 docker run --rm -v ${abspath(path.module)}:/workspace -w /workspace public.ecr.aws/sam/build-python3.12 bash -c "
+      DOCKER_DEFAULT_PLATFORM=linux/amd64 docker run --rm -v ${abspath(path.module)}:/workspace -w /workspace public.ecr.aws/sam/build-python3.13 bash -c "
       pip install pipenv && \
       pipenv requirements > requirements.txt && \
-      pip install -r requirements.txt -t python/lib/python3.12/site-packages --platform manylinux2014_x86_64 --python-version 3.12 --only-binary=:all: && \
+      pip install -r requirements.txt -t python/lib/python3.13/site-packages --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all: && \
       zip -r requirements.zip python
       "
     EOT
@@ -89,7 +89,7 @@ resource "aws_s3_object" "requirements_lambda_layer" {
 
 resource "aws_lambda_layer_version" "requirements_lambda_layer" {
   compatible_architectures = ["x86_64"]
-  compatible_runtimes      = ["python3.12"]
+  compatible_runtimes      = ["python3.13"]
   depends_on               = [aws_s3_object.requirements_lambda_layer]
   layer_name               = "${local.app_name}-requirements"
   s3_bucket                = aws_s3_bucket.requirements_lambda_layer.id
