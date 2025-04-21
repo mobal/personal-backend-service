@@ -9,7 +9,6 @@ from httpx import ConnectTimeout, Response
 from respx import MockRouter, Route
 
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
-from app.models.auth import Role
 from app.models.post import Post
 from app.schemas.post_schema import CreatePost
 from tests.helpers.utils import generate_jwt_token
@@ -24,21 +23,6 @@ HEADER_EMPTY_BEARER = "Bearer "
 
 @pytest.mark.asyncio
 class TestPostsApi:
-    async def __assert_response(
-        self,
-        route_mock: Route,
-        message: str,
-        status_code: int,
-        response: Response,
-    ):
-        assert response.status_code == status_code
-        assert {
-            "status": status_code,
-            "message": message,
-        }.items() <= response.json().items()
-        assert route_mock.called
-        assert route_mock.call_count == 1
-
     @pytest.fixture
     async def create_post(self, make_post) -> CreatePost:
         post = make_post()
@@ -212,22 +196,23 @@ class TestPostsApi:
 
     async def test_fail_to_delete_post_due_to_not_found(
         self,
-        cache_service_mock_404: Route,
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            pytest.jwt_secret_ssm_param_value, user_dict
+        )
 
         response = test_client.delete(
             f"{BASE_URL}/{str(uuid.uuid4())}",
             headers={"Authorization": f"Bearer {jwt_token}"},
         )
 
-        await self.__assert_response(
-            cache_service_mock_404,
-            ERROR_MESSAGE_NOT_FOUND,
-            status.HTTP_404_NOT_FOUND,
-            response,
-        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert {
+            "status": status.HTTP_404_NOT_FOUND,
+            "message": ERROR_MESSAGE_NOT_FOUND,
+        }.items() <= response.json().items()
 
     async def test_fail_to_delete_post_due_to_unauthorized(
         self, test_client: TestClient
@@ -243,70 +228,15 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
         }.items() <= response.json().items()
 
-    async def test_fail_to_delete_post_due_to_blacklisted_jwt_token(
-        self,
-        cache_service_mock_200: Route,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
-
-        response = test_client.delete(
-            f"{BASE_URL}/{str(uuid.uuid4())}",
-            headers={"Authorization": f"Bearer {jwt_token}"},
-        )
-
-        await self.__assert_response(
-            cache_service_mock_200,
-            ERROR_MESSAGE_NOT_AUTHENTICATED,
-            status.HTTP_403_FORBIDDEN,
-            response,
-        )
-
-    async def test_fail_to_delete_post_due_to_missing_privileges(
-        self,
-        cache_service_mock_404: Route,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_CREATE], pytest.jwt_secret)
-
-        response = test_client.delete(
-            f"{BASE_URL}/{str(uuid.uuid4())}",
-            headers={"Authorization": f"Bearer {jwt_token}"},
-        )
-
-        await self.__assert_response(
-            cache_service_mock_404,
-            ERROR_MESSAGE_NOT_AUTHORIZED,
-            status.HTTP_401_UNAUTHORIZED,
-            response,
-        )
-
-    async def test_fail_to_delete_post_due_to_unexpected_cache_service_exception(
-        self,
-        cache_service_mock_500: Route,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_CREATE], pytest.jwt_secret)
-
-        response = test_client.delete(
-            f"{BASE_URL}/{str(uuid.uuid4())}",
-            headers={"Authorization": f"Bearer {jwt_token}"},
-        )
-
-        await self.__assert_response(
-            cache_service_mock_500,
-            ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            response,
-        )
-
     async def test_successfully_delete_post(
         self,
-        cache_service_mock_404: Route,
         posts: list[Post],
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            pytest.jwt_secret_ssm_param_value, user_dict
+        )
 
         response = test_client.delete(
             f"{BASE_URL}/{posts[0].id}",
@@ -314,15 +244,15 @@ class TestPostsApi:
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        assert cache_service_mock_404.called
-        assert cache_service_mock_404.call_count == 1
 
     async def test_fail_to_create_post_due_to_bad_request(
         self,
-        cache_service_mock_404: Route,
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_CREATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            pytest.jwt_secret_ssm_param_value, user_dict
+        )
 
         response = test_client.post(
             BASE_URL, headers={"Authorization": f"Bearer {jwt_token}"}, json={}
@@ -335,8 +265,6 @@ class TestPostsApi:
         assert result["id"]
         assert result["message"]
         assert result["errors"]
-        assert cache_service_mock_404.called
-        assert cache_service_mock_404.call_count == 1
 
     async def test_fail_to_create_post_due_to_unauthorized(
         self,
@@ -355,76 +283,15 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
         }.items() <= response.json().items()
 
-    async def test_fail_to_create_post_due_to_blacklisted_jwt_token(
-        self,
-        cache_service_mock_200: Route,
-        create_post: CreatePost,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_CREATE], pytest.jwt_secret)
-
-        response = test_client.post(
-            BASE_URL,
-            headers={"Authorization": f"Bearer {jwt_token}"},
-            json=create_post.model_dump(by_alias=True),
-        )
-
-        await self.__assert_response(
-            cache_service_mock_200,
-            ERROR_MESSAGE_NOT_AUTHENTICATED,
-            status.HTTP_403_FORBIDDEN,
-            response,
-        )
-
-    async def test_fail_to_create_post_due_to_missing_privileges(
-        self,
-        cache_service_mock_404: Route,
-        create_post: CreatePost,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
-
-        response = test_client.post(
-            BASE_URL,
-            headers={"Authorization": f"Bearer {jwt_token}"},
-            json=create_post.model_dump(by_alias=True),
-        )
-
-        await self.__assert_response(
-            cache_service_mock_404,
-            ERROR_MESSAGE_NOT_AUTHORIZED,
-            status.HTTP_401_UNAUTHORIZED,
-            response,
-        )
-
-    async def test_fail_to_create_post_due_to_unexpected_cache_service_exception(
-        self,
-        cache_service_mock_500: Route,
-        create_post: CreatePost,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
-
-        response = test_client.post(
-            BASE_URL,
-            headers={"Authorization": f"Bearer {jwt_token}"},
-            json=create_post.model_dump(by_alias=True),
-        )
-
-        await self.__assert_response(
-            cache_service_mock_500,
-            ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            response,
-        )
-
     async def test_successfully_create_post(
         self,
-        cache_service_mock_404: Route,
         create_post: CreatePost,
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_CREATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            pytest.jwt_secret_ssm_param_value, user_dict
+        )
 
         response = test_client.post(
             BASE_URL,
@@ -434,16 +301,16 @@ class TestPostsApi:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.headers["Location"]
-        assert cache_service_mock_404.called
-        assert cache_service_mock_404.call_count == 1
 
     async def test_fail_to_create_post_due_to_already_exists_by_title(
         self,
-        cache_service_mock_404: Route,
         posts: list[Post],
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_CREATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            pytest.jwt_secret_ssm_param_value, user_dict
+        )
 
         response = test_client.post(
             BASE_URL,
@@ -452,16 +319,16 @@ class TestPostsApi:
         )
 
         assert response.status_code == status.HTTP_409_CONFLICT
-        assert cache_service_mock_404.called
-        assert cache_service_mock_404.call_count == 1
 
     async def test_fail_to_update_post_due_to_not_found(
         self,
-        cache_service_mock_404: Route,
         create_post: CreatePost,
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_UPDATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            pytest.jwt_secret_ssm_param_value, user_dict
+        )
 
         response = test_client.put(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -469,20 +336,21 @@ class TestPostsApi:
             json=create_post.model_dump(by_alias=True),
         )
 
-        await self.__assert_response(
-            cache_service_mock_404,
-            ERROR_MESSAGE_NOT_FOUND,
-            status.HTTP_404_NOT_FOUND,
-            response,
-        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert {
+            "status": status.HTTP_404_NOT_FOUND,
+            "message": ERROR_MESSAGE_NOT_FOUND,
+        }.items() <= response.json().items()
 
     async def test_fail_to_update_post_due_to_bad_request(
         self,
-        cache_service_mock_404: Route,
         posts: list[Post],
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_UPDATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            pytest.jwt_secret_ssm_param_value, user_dict
+        )
 
         response = test_client.put(
             f"{BASE_URL}/{posts[0].id}",
@@ -503,8 +371,6 @@ class TestPostsApi:
         assert result["id"]
         assert result["message"]
         assert result["errors"]
-        assert cache_service_mock_404.called
-        assert cache_service_mock_404.call_count == 1
 
     async def test_fail_to_update_post_due_to_unauthorized(
         self,
@@ -523,76 +389,15 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
         }.items() <= response.json().items()
 
-    async def test_fail_to_update_post_due_to_blacklisted_jwt_token(
-        self,
-        cache_service_mock_200: Route,
-        create_post: CreatePost,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
-
-        response = test_client.put(
-            f"{BASE_URL}/{str(uuid.uuid4())}",
-            headers={"Authorization": f"Bearer {jwt_token}"},
-            json=create_post.model_dump(by_alias=True),
-        )
-
-        await self.__assert_response(
-            cache_service_mock_200,
-            ERROR_MESSAGE_NOT_AUTHENTICATED,
-            status.HTTP_403_FORBIDDEN,
-            response,
-        )
-
-    async def test_fail_to_update_post_due_to_missing_privileges(
-        self,
-        cache_service_mock_404: Route,
-        create_post: CreatePost,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
-
-        response = test_client.put(
-            f"{BASE_URL}/{str(uuid.uuid4())}",
-            headers={"Authorization": f"Bearer {jwt_token}"},
-            json=create_post.model_dump(by_alias=True),
-        )
-
-        await self.__assert_response(
-            cache_service_mock_404,
-            ERROR_MESSAGE_NOT_AUTHORIZED,
-            status.HTTP_401_UNAUTHORIZED,
-            response,
-        )
-
-    async def test_fail_to_update_post_due_to_unexpected_cache_service_exception(
-        self,
-        cache_service_mock_500: Route,
-        create_post: CreatePost,
-        test_client: TestClient,
-    ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_DELETE], pytest.jwt_secret)
-
-        response = test_client.put(
-            f"{BASE_URL}/{str(uuid.uuid4())}",
-            headers={"Authorization": f"Bearer {jwt_token}"},
-            json=create_post.model_dump(by_alias=True),
-        )
-
-        await self.__assert_response(
-            cache_service_mock_500,
-            ERROR_MESSAGE_INTERNAL_SERVER_ERROR,
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            response,
-        )
-
     async def test_successfully_update_post(
         self,
-        cache_service_mock_404: Route,
         posts: list[Post],
         test_client: TestClient,
+        user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token([Role.POST_UPDATE], pytest.jwt_secret)
+        jwt_token, _ = await generate_jwt_token(
+            pytest.jwt_secret_ssm_param_value, user_dict
+        )
 
         response = test_client.put(
             f"{BASE_URL}/{posts[0].id}",
@@ -601,5 +406,3 @@ class TestPostsApi:
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
-        assert cache_service_mock_404.called
-        assert cache_service_mock_404.call_count == 1

@@ -13,8 +13,20 @@ from app.settings import Settings
 
 def pytest_configure():
     pytest.aws_default_region = "eu-central-1"
-    pytest.cache_service_base_url = "https://localhost"
-    pytest.jwt_secret = "6fl3AkTFmG2rVveLglUW8DOmp8J4Bvi3"
+    pytest.jwt_secret_ssm_param_name = "/dev/secrets/secret"
+    pytest.jwt_secret_ssm_param_value = "94k9yz00rw"
+
+
+@pytest.fixture(autouse=True)
+def setup():
+    with mock_aws():
+        ssm_client = boto3.client("ssm")
+        ssm_client.put_parameter(
+            Name=pytest.jwt_secret_ssm_param_name,
+            Value=pytest.jwt_secret_ssm_param_value,
+            Type="SecureString",
+        )
+        yield
 
 
 @pytest.fixture
@@ -112,7 +124,7 @@ def initialize_posts_table(
                 },
             },
         ],
-        ProvisionedThroughput={"ReadCapacityUnits": 10, "WriteCapacityUnits": 10},
+        ProvisionedThroughput={"ReadCapacityUnits": 1, "WriteCapacityUnits": 1},
     )
     posts.append(post_with_attachment)
     with posts_table.batch_writer() as batch:
@@ -185,3 +197,15 @@ def test_data() -> bytes:
     return base64.b64encode(
         "Lorem ipsum odor amet, consectetuer adipiscing elit.".encode("utf-8")
     )
+
+
+@pytest.fixture
+def user_dict() -> dict[str, str | None]:
+    return {
+        "id": str(uuid.uuid4()),
+        "email": "info@netcode.hu",
+        "display_name": "root",
+        "created_at": pendulum.now().to_iso8601_string(),
+        "deleted_at": None,
+        "updated_at": None,
+    }

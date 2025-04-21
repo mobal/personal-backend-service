@@ -1,9 +1,8 @@
 from aws_lambda_powertools import Logger
 from fastapi import APIRouter, Depends, Response, status
 
-from app.api.decorators import authorize
 from app.jwt_bearer import JWTBearer
-from app.models.auth import JWTToken, Role
+from app.models.auth import JWTToken
 from app.models.response import Attachment as AttachmentResponse
 from app.schemas.attachment_schema import CreateAttachment
 from app.services.attachment_service import AttachmentService
@@ -16,7 +15,6 @@ router = APIRouter()
 
 
 @router.post("")
-@authorize(roles=[Role.ATTACHMENT_CREATE])
 async def add_attachment(
     create_attachment: CreateAttachment,
     post_uuid: str,

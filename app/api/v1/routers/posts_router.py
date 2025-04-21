@@ -4,9 +4,8 @@ from aws_lambda_powertools import Logger
 from fastapi import APIRouter, Depends, Path, status
 from starlette.responses import Response
 
-from app.api.decorators import authorize
 from app.jwt_bearer import JWTBearer
-from app.models.auth import JWTToken, Role
+from app.models.auth import JWTToken
 from app.models.response import Page
 from app.models.response import Post as PostResponse
 from app.schemas.post_schema import CreatePost, UpdatePost
@@ -20,7 +19,6 @@ router = APIRouter()
 
 
 @router.post("")
-@authorize(roles=[Role.POST_CREATE])
 async def create_post(
     create_model: CreatePost, token: JWTToken = Depends(jwt_bearer)
 ) -> Response:
@@ -35,7 +33,6 @@ async def create_post(
     "/{uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@authorize(roles=[Role.POST_DELETE])
 async def delete_post(uuid: str, token: JWTToken = Depends(jwt_bearer)):
     await post_service.delete_post(uuid)
 
@@ -78,7 +75,6 @@ async def get_posts(exclusive_start_key: str | None = None) -> Page:
     "/{uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-@authorize(roles=[Role.POST_UPDATE])
 async def update_post(
     update_model: UpdatePost, uuid: str, token: JWTToken = Depends(jwt_bearer)
 ):

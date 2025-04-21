@@ -3,14 +3,6 @@ variable "aws_region" {
   type    = string
 }
 
-variable "subnet_ids" {
-  type = list(string)
-}
-
-variable "vpc_id" {
-  type = string
-}
-
 variable "stage" {
   default = "dev"
   type    = string
@@ -21,21 +13,17 @@ variable "app_name" {
   type    = string
 }
 
-variable "app_timezone" {
-  default = "UTC"
-  type    = string
-}
-
-variable "cache_service_base_url" {
-  type = string
-}
-
 variable "debug" {
   default = false
   type    = bool
 }
 
-variable "jwt_secret" {
+variable "default_timezone" {
+  default = "UTC"
+  type    = string
+}
+
+variable "jwt_secret_ssm_param_name" {
   type = string
 }
 
