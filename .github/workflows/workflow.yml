@@ -14,6 +14,12 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Cache venv
+      uses: actions/cache@v4
+      with:
+        path: ~/.local/share/virtualenvs
+        key: ${{ runner.os }}-venv-${{ hashFiles('Pipfile.lock') }}
+
     - name: Set up Python 3.13
       uses: actions/setup-python@v5
       with:
@@ -26,17 +32,21 @@ jobs:
         pipenv install --dev --python 3.13
         pipenv graph
 
-    - name: Analyze code using Pycodestyle
+    - name: Analyze code using Pycodestyle (strict mode)
       run: |
-        pipenv run python -m pycodestyle --ignore=E501,W503 app/ tests/
+        pipenv run pycodestyle --ignore=E501,W503 app/ tests/ || exit 1
 
+    - name: Run Bandit security scanner
+      run: |
+        pipenv run bandit --severity-level high --confidence-level high -r app/ -vvv
+    
     - name: Running tests with Pytest and generate coverage
       run: |
         pipenv run python -m pytest --cov-report=term --cov-report=xml:$Coverage_File --cov=app
 
     - name: Fix source path(s) in coverage.xml
       run: |
-        pipenv run python utils/coverage.py --coverage-file coverage.xml --find $GITHUB_WORKSPACE --replace /github/workspace
+        sed -i 's@'$GITHUB_WORKSPACE'@/github/workspace/@g' coverage.xml
 
     - name: Scan with Sonar scanner
       uses: sonarsource/sonarqube-scan-action@v2
