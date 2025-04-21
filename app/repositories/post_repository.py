@@ -9,13 +9,13 @@ from app import settings
 
 class PostRepository:
     def __init__(self):
-        self.__logger = Logger(utc=True)
-        self.__table = (
+        self._logger = Logger(utc=True)
+        self._table = (
             boto3.Session().resource("dynamodb").Table(f"{settings.stage}-posts")
         )
 
     async def create_post(self, data: dict):
-        self.__table.put_item(Item=data)
+        self._table.put_item(Item=data)
 
     async def get_all_posts(
         self,
@@ -23,13 +23,13 @@ class PostRepository:
         fields: list[str],
     ) -> list[dict[str, Any]]:
         projection_expression = ",".join(fields)
-        response = self.__table.scan(
+        response = self._table.scan(
             FilterExpression=filter_expression,
             ProjectionExpression=projection_expression,
         )
         items = response["Items"]
         while "LastEvaluatedKey" in response:
-            response = self.__table.scan(
+            response = self._table.scan(
                 ExclusiveStartKey=response["LastEvaluatedKey"],
                 FilterExpression=filter_expression,
                 ProjectionExpression=projection_expression,
@@ -39,13 +39,13 @@ class PostRepository:
 
     async def count_all_posts(self, filter_expression: ConditionBase) -> int:
         count = 0
-        response = self.__table.scan(
+        response = self._table.scan(
             Select="COUNT",
             FilterExpression=filter_expression,
         )
         count += response["Count"]
         while "LastEvaluatedKey" in response:
-            response = self.__table.scan(
+            response = self._table.scan(
                 Select="COUNT",
                 ExclusiveStartKey=response["LastEvaluatedKey"],
                 FilterExpression=filter_expression,
@@ -54,12 +54,12 @@ class PostRepository:
         return count
 
     async def item_count(self) -> int:
-        return self.__table.item_count
+        return self._table.item_count
 
     async def get_post_by_post_path(
         self, post_path: str, filter_expression: ConditionBase
     ) -> dict | None:
-        response = self.__table.query(
+        response = self._table.query(
             IndexName="PostPathIndex",
             KeyConditionExpression=Key("post_path").eq(post_path),
             FilterExpression=filter_expression,
@@ -69,7 +69,7 @@ class PostRepository:
     async def get_post_by_title(
         self, title: str, filter_expression: ConditionBase
     ) -> dict | None:
-        response = self.__table.query(
+        response = self._table.query(
             IndexName="TitleIndex",
             KeyConditionExpression=Key("title").eq(title),
             FilterExpression=filter_expression,
@@ -81,7 +81,7 @@ class PostRepository:
         post_uuid: str,
         filter_expression: ConditionBase,
     ) -> dict | None:
-        response = self.__table.query(
+        response = self._table.query(
             KeyConditionExpression=Key("id").eq(post_uuid),
             FilterExpression=filter_expression,
         )
@@ -102,7 +102,7 @@ class PostRepository:
         if fields:
             kwargs["ProjectionExpression"] = ",".join(fields)
         kwargs["FilterExpression"] = filter_expression
-        response = self.__table.scan(**kwargs)
+        response = self._table.scan(**kwargs)
         return (
             response["LastEvaluatedKey"]["id"]
             if response.get("LastEvaluatedKey", None)
@@ -119,7 +119,7 @@ class PostRepository:
             attribute_names[f"#{k}"] = k
             attribute_values[f":{k}"] = v
             update_expression.append(f"#{k}=:{k}")
-        self.__table.update_item(
+        self._table.update_item(
             Key={"id": post_uuid},
             ConditionExpression=condition_expression,
             UpdateExpression="SET " + ",".join(update_expression),

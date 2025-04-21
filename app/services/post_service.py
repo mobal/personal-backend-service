@@ -24,25 +24,25 @@ class PostService:
     ERROR_MESSAGE_POST_WAS_NOT_FOUND: str = "The requested post was not found"
 
     def __init__(self):
-        self.__logger = Logger(utc=True)
-        self.__post_repository = PostRepository()
+        self._logger = Logger(utc=True)
+        self._post_repository = PostRepository()
 
-    async def __get_post_by_uuid(self, post_uuid: str) -> Post:
-        item = await self.__post_repository.get_post_by_uuid(
+    async def _get_post_by_uuid(self, post_uuid: str) -> Post:
+        item = await self._post_repository.get_post_by_uuid(
             post_uuid, FilterExpressions.NOT_DELETED
         )
         if item is None:
-            self.__logger.warning(f"Post was not found with UUID {post_uuid=}")
+            self._logger.warning(f"Post was not found with UUID {post_uuid=}")
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         return Post(**item)
 
-    async def __post_to_response(self, post_dict: dict[str, Any]) -> PostResponse:
+    async def _post_to_response(self, post_dict: dict[str, Any]) -> PostResponse:
         post_dict["content"] = markdown.markdown(post_dict["content"])
         return PostResponse(**post_dict)
 
     async def create_post(self, create_data: dict[str, Any]) -> Post:
         now = pendulum.now()
-        if await self.__post_repository.get_post_by_title(
+        if await self._post_repository.get_post_by_title(
             create_data["title"],
             Attr("created_at").between(
                 now.start_of("day").isoformat("T"), now.end_of("day").isoformat("T")
@@ -58,35 +58,35 @@ class PostService:
         create_data["deleted_at"] = None
         create_data["slug"] = slug
         create_data["updated_at"] = None
-        await self.__post_repository.create_post(create_data)
+        await self._post_repository.create_post(create_data)
         return Post(**create_data)
 
     async def delete_post(self, post_uuid: str):
-        post = await self.__get_post_by_uuid(post_uuid)
+        post = await self._get_post_by_uuid(post_uuid)
         post.deleted_at = pendulum.now().to_iso8601_string()
-        await self.__post_repository.update_post(
+        await self._post_repository.update_post(
             post_uuid,
             post.model_dump(exclude={"id"}),
             FilterExpressions.NOT_DELETED,
         )
-        self.__logger.info(f"Post successfully deleted {post_uuid=}")
+        self._logger.info(f"Post successfully deleted {post_uuid=}")
 
     async def get_post(self, post_uuid: str) -> PostResponse:
-        return await self.__post_to_response(
-            (await self.__get_post_by_uuid(post_uuid)).model_dump()
+        return await self._post_to_response(
+            (await self._get_post_by_uuid(post_uuid)).model_dump()
         )
 
     async def get_by_post_path(self, post_path: str) -> PostResponse:
-        post = await self.__post_repository.get_post_by_post_path(
+        post = await self._post_repository.get_post_by_post_path(
             post_path, FilterExpressions.NOT_DELETED
         )
         if post is None:
-            self.__logger.warning(f"Failed to get post {FilterExpressions.NOT_DELETED}")
+            self._logger.warning(f"Failed to get post {FilterExpressions.NOT_DELETED}")
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
-        return await self.__post_to_response(post)
+        return await self._post_to_response(post)
 
     async def get_posts(self, exclusive_start_key: str | None = None) -> Page:
-        last_evaluated_key, posts = await self.__post_repository.get_posts(
+        last_evaluated_key, posts = await self._post_repository.get_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
             {"id": exclusive_start_key} if exclusive_start_key else None,
             ["id", "title", "meta", "published_at", "updated_at"],
@@ -97,24 +97,24 @@ class PostService:
         return Page(exclusive_start_key=last_evaluated_key, posts=post_responses)
 
     async def update_post(self, post_uuid: str, update_data: dict[str, Any]):
-        post = await self.__post_repository.get_post_by_uuid(
+        post = await self._post_repository.get_post_by_uuid(
             post_uuid, FilterExpressions.NOT_DELETED
         )
         if post is None:
-            self.__logger.warning(f"Post was not found by UUID {post_uuid=}")
+            self._logger.warning(f"Post was not found by UUID {post_uuid=}")
             raise PostNotFoundException(PostService.ERROR_MESSAGE_POST_WAS_NOT_FOUND)
         post.update(update_data)
         post["updated_at"] = pendulum.now().to_iso8601_string()
         post.pop("id")
-        await self.__post_repository.update_post(
+        await self._post_repository.update_post(
             post_uuid,
             post,
             FilterExpressions.NOT_DELETED,
         )
-        self.__logger.info(f"Post successfully updated {post_uuid=}")
+        self._logger.info(f"Post successfully updated {post_uuid=}")
 
     async def get_archive(self) -> dict[str, int]:
-        posts = await self.__post_repository.get_all_posts(
+        posts = await self._post_repository.get_all_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
             ["id", "published_at"],
         )

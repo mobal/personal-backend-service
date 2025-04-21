@@ -7,7 +7,8 @@ import httpx
 from aws_lambda_powertools import Logger
 from fastapi import status
 from httpx import HTTPError
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.middleware.base import (BaseHTTPMiddleware,
+                                       RequestResponseEndpoint)
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
@@ -39,7 +40,7 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
             if client_ip in banned_hosts:
                 is_banned = True
             else:
-                is_banned = await self.__validate_host(client_ip)
+                is_banned = await self._validate_host(client_ip)
                 if is_banned:
                     banned_hosts.append(client_ip)
             if is_banned:
@@ -49,7 +50,7 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
                 )
         return await call_next(request)
 
-    async def __validate_host(self, client_ip: str) -> bool:
+    async def _validate_host(self, client_ip: str) -> bool:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.get(f"{COUNTRY_IS_API_BASE_URL}/{client_ip}")
@@ -111,13 +112,13 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
                                 "message": "Rate limit exceeded. Please try again later"
                             },
                             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                            headers=await self.__get_rate_limit_headers(client),
+                            headers=await self._get_rate_limit_headers(client),
                         )
                     client["request_count"] += 1
                 client["last_request"] = datetime.now()
                 clients[client_ip] = client
                 response = await call_next(request)
-                response.headers.update(await self.__get_rate_limit_headers(client))
+                response.headers.update(await self._get_rate_limit_headers(client))
                 return response
             else:
                 logger.warning("Missing client information. Skipping rete limiting")
@@ -125,7 +126,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             logger.info("Rate limiting is turned off")
         return await call_next(request)
 
-    async def __get_rate_limit_headers(self, client: dict[str, Any]) -> dict[str, Any]:
+    async def _get_rate_limit_headers(self, client: dict[str, Any]) -> dict[str, Any]:
         return {
             "X-RateLimit-Limit": str(settings.rate_limit_requests),
             "X-RateLimit-Remaining": str(

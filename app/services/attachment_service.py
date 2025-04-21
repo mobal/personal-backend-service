@@ -15,19 +15,19 @@ from app.services.storage_service import StorageService
 
 class AttachmentService:
     def __init__(self):
-        self.__logger = Logger(utc=True)
-        self.__post_service = PostService()
-        self.__storage_service = StorageService()
+        self._logger = Logger(utc=True)
+        self._post_service = PostService()
+        self._storage_service = StorageService()
 
     async def add_attachment(
         self, post_uuid: str, attachment_name: str, base64_data: str, display_name: str
     ) -> Attachment:
         attachment_name = unidecode(attachment_name)
-        self.__logger.info(f"Add attachment {attachment_name=} to {post_uuid=}")
-        post = await self.__post_service.get_post(post_uuid)
+        self._logger.info(f"Add attachment {attachment_name=} to {post_uuid=}")
+        post = await self._post_service.get_post(post_uuid)
         mime_type, _ = mimetypes.guess_type(attachment_name)
         object_key = f"/{post.post_path}/{attachment_name}"
-        await self.__storage_service.put_object(
+        await self._storage_service.put_object(
             settings.attachments_bucket_name, object_key, base64.b64decode(base64_data)
         )
         attachments = []
@@ -42,7 +42,7 @@ class AttachmentService:
             name=object_key,
         )
         attachments.append(attachment)
-        await self.__post_service.update_post(
+        await self._post_service.update_post(
             post_uuid,
             {
                 "attachments": [
@@ -54,8 +54,8 @@ class AttachmentService:
         return attachment
 
     async def get_attachments(self, post_uuid: str) -> list[AttachmentResponse]:
-        self.__logger.info(f"Get attachments for {post_uuid=}")
-        post = await self.__post_service.get_post(post_uuid)
+        self._logger.info(f"Get attachments for {post_uuid=}")
+        post = await self._post_service.get_post(post_uuid)
         return (
             [
                 AttachmentResponse(**attachment.model_dump())
@@ -68,8 +68,8 @@ class AttachmentService:
     async def get_attachment_by_id(
         self, post_uuid: str, attachment_uuid: str
     ) -> AttachmentResponse:
-        self.__logger.info(f"Get attachment {attachment_uuid=} from {post_uuid=}")
-        post = await self.__post_service.get_post(post_uuid)
+        self._logger.info(f"Get attachment {attachment_uuid=} from {post_uuid=}")
+        post = await self._post_service.get_post(post_uuid)
         attachment = next(
             (
                 attachment
@@ -82,6 +82,6 @@ class AttachmentService:
             error_message = (
                 f"The requested {attachment_uuid=} was not found for {post_uuid=}"
             )
-            self.__logger.exception(error_message)
+            self._logger.exception(error_message)
             raise AttachmentNotFoundException(error_message)
         return AttachmentResponse(**attachment.model_dump())
