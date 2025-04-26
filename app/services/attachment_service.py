@@ -23,16 +23,17 @@ class AttachmentService:
         self, post_uuid: str, attachment_name: str, base64_data: str, display_name: str
     ) -> Attachment:
         attachment_name = unidecode(attachment_name)
-        self._logger.info(f"Add attachment {attachment_name=} to {post_uuid=}")
+        self._logger.info(f"Adding attachment {attachment_name=} to {post_uuid=}")
+
         post = await self._post_service.get_post(post_uuid)
-        mime_type, _ = mimetypes.guess_type(attachment_name)
+        mime_type = mimetypes.guess_type(attachment_name)[0]
         object_key = f"/{post.post_path}/{attachment_name}"
+
+        file_data = base64.b64decode(base64_data)
         await self._storage_service.put_object(
-            settings.attachments_bucket_name, object_key, base64.b64decode(base64_data)
+            settings.attachments_bucket_name, object_key, file_data
         )
-        attachments = []
-        if post.attachments:
-            attachments.extend(post.attachments)
+
         attachment = Attachment(
             id=str(uuid.uuid4()),
             bucket=settings.attachments_bucket_name,
@@ -41,16 +42,17 @@ class AttachmentService:
             mime_type=mime_type,
             name=object_key,
         )
-        attachments.append(attachment)
+
+        updated_attachments = list(post.attachments or []) + [attachment]
         await self._post_service.update_post(
             post_uuid,
             {
                 "attachments": [
-                    attachment.model_dump(exclude_none=True)
-                    for attachment in attachments
+                    att.model_dump(exclude_none=True) for att in updated_attachments
                 ]
             },
         )
+
         return attachment
 
     async def get_attachments(self, post_uuid: str) -> list[AttachmentResponse]:

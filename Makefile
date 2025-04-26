@@ -21,10 +21,11 @@ pycodestyle:
 sort:
 	pipenv run python -m isort --atomic app/ tests/
 
-test: unit-test integration-test
+test:
+	pipenv run python -m pytest --cov-fail-under=90
 
 unit-test:
 	pipenv run python -m pytest tests/unit
 
 integration-test:
-	pipenv run python -m pytest --cov-fail-under=90 tests/integration
+	pipenv run python -m pytest tests/integration
