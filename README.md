@@ -2,24 +2,6 @@
 
 > Simple blog application made with FastAPI. My goal with this app was to get familiar with AWS, Python and FastAPI.
 
-### Getting started
-
-1. Install dependencies in the `Pipfile` and `package.json`
-
-```sh
-python -m pipenv install
-npm i
-```
-
-2. Deploy to AWS
-
-```sh
-python3 -m pipenv run sls deploy
-```
-
-3. or run locally
-
-
 Copyright 2023 - 2024 mobal
 
 Licensed under the Apache License, Version 2.0 (the "License");
