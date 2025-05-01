@@ -50,15 +50,15 @@ jobs:
       run: |
         sed -i 's@'$GITHUB_WORKSPACE'@/github/workspace/@g' coverage.xml
 
-    - name: Scan with Sonar scanner
+    - name: Scan with SonarCloud
       uses: sonarsource/sonarcloud-github-action@v5
       with:
-        projectBaseDir: app
         args: >
           -Dsonar.language=python
           -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
           -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
           -Dsonar.python.coverage.reportPaths=coverage.xml
+          -Dsonar.sources=app/
           -Dsonar.tests=tests/
           -Dsonar.verbose=true
       env:
