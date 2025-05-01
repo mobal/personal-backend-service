@@ -1,31 +1,31 @@
 all: black flake pycodestyle sort test
 
 bandit:
-	pipenv run bandit --severity-level high --confidence-level high -r app/ -vvv
+	uv run -m bandit --severity-level high --confidence-level high -r app/ -vvv
 
 black:
-	pipenv run black ./
+	uv run -m black ./
 
 flake:
-	pipenv run autoflake --in-place --recursive --remove-all-unused-imports --remove-unused-variables app/*.py tests/*.py
+	uv run -m autoflake --in-place --recursive --remove-all-unused-imports --remove-unused-variables app/*.py tests/*.py
 
 install:
-	pipenv install --dev --python 3.13
+	uv sync
 
 mypy:
-	pipenv run python -m mypy app/ --explicit-package-bases
+	uv run -m mypy app/ --explicit-package-bases
 
 pycodestyle:
-	pipenv run python -m pycodestyle --ignore=E501,W503 app/ tests/
+	uv run -m pycodestyle --ignore=E501,W503 app/ tests/
 
 sort:
-	pipenv run python -m isort --atomic app/ tests/
+	uv run -m isort --atomic app/ tests/
 
 test:
-	pipenv run python -m pytest --cov-fail-under=90
+	uv run -m pytest --cov-fail-under=90
 
 unit-test:
-	pipenv run python -m pytest tests/unit
+	uv run -m pytest tests/unit
 
 integration-test:
-	pipenv run python -m pytest tests/integration
+	uv run -m pytest tests/integration

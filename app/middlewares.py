@@ -7,7 +7,8 @@ import httpx
 from aws_lambda_powertools import Logger
 from fastapi import status
 from httpx import HTTPError
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.middleware.base import (BaseHTTPMiddleware,
+                                       RequestResponseEndpoint)
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
