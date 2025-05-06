@@ -27,7 +27,7 @@ class PostService:
         self._logger = Logger(utc=True)
         self._post_repository = PostRepository()
 
-    async def _get_post_by_uuid(self, post_uuid: str) -> Post:
+    async def get_post_by_uuid(self, post_uuid: str) -> Post:
         item = await self._post_repository.get_post_by_uuid(
             post_uuid, FilterExpressions.NOT_DELETED
         )
@@ -62,7 +62,7 @@ class PostService:
         return Post(**create_data)
 
     async def delete_post(self, post_uuid: str):
-        post = await self._get_post_by_uuid(post_uuid)
+        post = await self.get_post_by_uuid(post_uuid)
         post.deleted_at = pendulum.now().to_iso8601_string()
         await self._post_repository.update_post(
             post_uuid,
@@ -73,7 +73,7 @@ class PostService:
 
     async def get_post(self, post_uuid: str) -> PostResponse:
         return await self._post_to_response(
-            (await self._get_post_by_uuid(post_uuid)).model_dump()
+            (await self.get_post_by_uuid(post_uuid)).model_dump()
         )
 
     async def get_by_post_path(self, post_path: str) -> PostResponse:

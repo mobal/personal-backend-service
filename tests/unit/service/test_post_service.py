@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import ANY
 
 import pendulum
@@ -9,7 +10,7 @@ from app.exceptions import PostAlreadyExistsException, PostNotFoundException
 from app.models.post import Post
 from app.models.response import Post as PostResponse
 from app.repositories.post_repository import PostRepository
-from app.schemas.post_schema import CreatePost, UpdatePost
+from app.schemas.post_schema import UpdatePost
 from app.services.post_service import PostService
 
 ERROR_MESSAGE_POST_WAS_NOT_FOUND = "The requested post was not found"
@@ -91,7 +92,7 @@ class TestPostService:
         post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
         post_repository.update_post.assert_called_once_with(posts[0].id, ANY, ANY)
 
-    async def test_fail_to_delete_post_by_uuid_due_post_not_found_exception(
+    async def test_fail_to_delete_post_due_to_not_found_exception(
         self,
         mocker: MockerFixture,
         posts: list[Post],
@@ -108,7 +109,7 @@ class TestPostService:
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
         post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
 
-    async def test_successfully_get_post_by_uuid(
+    async def test_successfully_get_post(
         self,
         mocker: MockerFixture,
         posts: list[Post],
@@ -124,7 +125,7 @@ class TestPostService:
         assert PostResponse(**result.model_dump()) == result
         post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
 
-    async def test_fail_to_get_post_by_uuid_due_post_not_found_exception(
+    async def test_fail_to_get_post_due_to_not_found_exception(
         self,
         mocker: MockerFixture,
         posts: list[Post],
@@ -262,3 +263,37 @@ class TestPostService:
                 <= posts[idx].model_dump(exclude="attachments").items()
             )
         post_repository.get_posts.assert_called_once_with(ANY, None, ANY)
+
+    async def test_successfully_get_post_by_uuid(
+        self,
+        mocker: MockerFixture,
+        post_repository: PostRepository,
+        post_service: PostService,
+        posts: list[Post],
+    ):
+        mocker.patch.object(
+            PostRepository, "get_post_by_uuid", return_value=posts[0].model_dump()
+        )
+
+        result = await post_service.get_post_by_uuid(posts[0].id)
+
+        assert result == posts[0]
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
+
+    async def test_fail_to_get_post_by_uuid_not_found(
+        self,
+        mocker: MockerFixture,
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        mocker.patch.object(PostRepository, "get_post_by_uuid", return_value=None)
+
+        invalid_id = str(uuid.uuid4())
+
+        with pytest.raises(PostNotFoundException) as excinfo:
+            await post_service.get_post_by_uuid(invalid_id)
+
+        assert PostNotFoundException.__name__ == excinfo.typename
+        assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
+        assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
+        post_repository.get_post_by_uuid.assert_called_once_with(invalid_id, ANY)

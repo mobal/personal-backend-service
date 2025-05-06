@@ -96,35 +96,41 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         if settings.rate_limiting:
             client_ip = request.client.host if request.client else None
             if client_ip:
-                client = clients.get(
-                    client_ip, {"request_count": 0, "last_request": datetime.min}
-                )
-                if (datetime.now() - client["last_request"]) > self.RATE_LIMIT_DURATION:
-                    client["request_count"] = 1
-                else:
-                    if client["request_count"] >= settings.rate_limit_requests:
-                        logger.warning(
-                            "The client has exceeded the rate limit and has been rate limited",
-                            host=client_ip,
-                        )
-                        return JSONResponse(
-                            content={
-                                "message": "Rate limit exceeded. Please try again later"
-                            },
-                            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                            headers=await self._get_rate_limit_headers(client),
-                        )
-                    client["request_count"] += 1
-                client["last_request"] = datetime.now()
-                clients[client_ip] = client
+                rate_limited_response = await self._check_rate_limit(client_ip)
+                if rate_limited_response:
+                    return rate_limited_response
                 response = await call_next(request)
-                response.headers.update(await self._get_rate_limit_headers(client))
+                response.headers.update(
+                    await self._get_rate_limit_headers(clients[client_ip])
+                )
                 return response
             else:
-                logger.warning("Missing client information. Skipping rete limiting")
+                logger.warning("Missing client information. Skipping rate limiting")
         else:
             logger.info("Rate limiting is turned off")
         return await call_next(request)
+
+    async def _check_rate_limit(self, client_ip: str) -> JSONResponse | None:
+        client = clients.get(
+            client_ip, {"request_count": 0, "last_request": datetime.min}
+        )
+        if (datetime.now() - client["last_request"]) > self.RATE_LIMIT_DURATION:
+            client["request_count"] = 1
+        else:
+            if client["request_count"] >= settings.rate_limit_requests:
+                logger.warning(
+                    "The client has exceeded the rate limit and has been rate limited",
+                    host=client_ip,
+                )
+                return JSONResponse(
+                    content={"message": "Rate limit exceeded. Please try again later"},
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    headers=await self._get_rate_limit_headers(client),
+                )
+            client["request_count"] += 1
+        client["last_request"] = datetime.now()
+        clients[client_ip] = client
+        return None
 
     async def _get_rate_limit_headers(self, client: dict[str, Any]) -> dict[str, Any]:
         return {

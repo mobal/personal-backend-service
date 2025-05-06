@@ -2,7 +2,6 @@ import copy
 import uuid
 from unittest.mock import ANY
 
-import pendulum
 import pytest
 from pytest_mock import MockerFixture
 

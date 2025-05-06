@@ -6,7 +6,7 @@ import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import ConnectTimeout, Response
-from respx import MockRouter, Route
+from respx import MockRouter
 
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
 from app.models.post import Post
