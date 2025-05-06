@@ -29,25 +29,20 @@ clients: dict[str, Any] = {}
 class ClientValidationMiddleware(BaseHTTPMiddleware):
     RESTRICTED_COUNTRY_CODES = ["CN", "RU"]
 
-    def __init__(self, app: ASGIApp):
-        super().__init__(app)
-
     async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
+            self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        client_ip = request.client.host if request.client else None
-        if client_ip:
-            if client_ip in banned_hosts:
-                is_banned = True
-            else:
-                is_banned = await self._validate_host(client_ip)
-                if is_banned:
-                    banned_hosts.append(client_ip)
-            if is_banned:
-                return JSONResponse(
-                    content={"message": "Forbidden"},
-                    status_code=status.HTTP_403_FORBIDDEN,
-                )
+        if not request.client or not request.client.host:
+            return await call_next(request)
+        client_ip = request.client.host
+        is_banned = client_ip in banned_hosts or await self._validate_host(client_ip)
+        if is_banned:
+            if client_ip not in banned_hosts:
+                banned_hosts.append(client_ip)
+            return JSONResponse(
+                content={"message": "Forbidden"},
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
         return await call_next(request)
 
     async def _validate_host(self, client_ip: str) -> bool:
@@ -55,11 +50,8 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
             try:
                 response = await client.get(f"{COUNTRY_IS_API_BASE_URL}/{client_ip}")
                 response.raise_for_status()
-                json_body = response.json()
-                if json_body["country"] in self.RESTRICTED_COUNTRY_CODES:
-                    logger.info(
-                        f"Client has restricted country_code={json_body['country']} with {client_ip=}"
-                    )
+                if response.json()["country"] in self.RESTRICTED_COUNTRY_CODES:
+                    logger.info(f"Client has restricted country_code={response.json()['country']} with {client_ip=}")
                     return True
             except HTTPError as exc:
                 logger.warning(f"HTTP exception for {exc.request.url}")
