@@ -20,7 +20,7 @@ async def add_attachment(
     post_uuid: str,
     token: JWTToken = Depends(jwt_bearer),
 ):
-    attachment = await attachment_service.add_attachment(
+    attachment = attachment_service.add_attachment(
         post_uuid,
         create_attachment.name,
         create_attachment.data,
@@ -40,9 +40,9 @@ async def add_attachment(
 async def get_attachment_by_uuid(
     post_uuid: str, attachment_uuid: str
 ) -> AttachmentResponse:
-    return await attachment_service.get_attachment_by_id(post_uuid, attachment_uuid)
+    return attachment_service.get_attachment_by_id(post_uuid, attachment_uuid)
 
 
 @router.get("", status_code=status.HTTP_200_OK)
 async def get_attachments(post_uuid: str):
-    return await attachment_service.get_attachments(post_uuid)
+    return attachment_service.get_attachments(post_uuid)

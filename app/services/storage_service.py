@@ -15,7 +15,7 @@ class StorageService:
         self._logger = Logger(utc=True)
         self._s3_resource = boto3.resource("s3", region_name=settings.aws_region)
 
-    async def create_bucket(
+    def create_bucket(
         self, bucket: str, acl: BucketCannedACLType = "private"
     ) -> Bucket:
         self._logger.info(f"Creating {bucket=} with {acl=}")
@@ -27,11 +27,11 @@ class StorageService:
             },
         )
 
-    async def delete_object(self, bucket: str, key: str) -> dict[str, Any]:
+    def delete_object(self, bucket: str, key: str) -> dict[str, Any]:
         self._logger.info(f"Delete object {key=} from {bucket=}")
         return self._s3_resource.Object(bucket_name=bucket, key=key).delete()
 
-    async def get_bucket(self, name: str) -> Bucket:
+    def get_bucket(self, name: str) -> Bucket:
         self._logger.info(f"Get bucket {name=}")
         bucket = self._s3_resource.Bucket(name=name)
         if bucket.creation_date is None:
@@ -40,7 +40,7 @@ class StorageService:
             raise BucketNotFoundException(error_message)
         return bucket
 
-    async def get_object(self, bucket: str, key: str) -> dict[str, Any]:
+    def get_object(self, bucket: str, key: str) -> dict[str, Any]:
         self._logger.info(f"Get object {key=} from {bucket=}")
         obj = self._s3_resource.Object(bucket_name=bucket, key=key)
         try:
@@ -51,11 +51,11 @@ class StorageService:
             raise ObjectNotFoundException(error_message)
         return obj.get()
 
-    async def list_objects(self, bucket: str) -> BucketObjectsCollection:
+    def list_objects(self, bucket: str) -> BucketObjectsCollection:
         self._logger.info(f"Listing {bucket=}")
         return self._s3_resource.Bucket(name=bucket).objects.all()
 
-    async def put_object(
+    def put_object(
         self,
         bucket: str,
         key: str,

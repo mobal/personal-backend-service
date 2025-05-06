@@ -21,10 +21,9 @@ ERROR_MESSAGE_NOT_FOUND = "The requested post was not found"
 HEADER_EMPTY_BEARER = "Bearer "
 
 
-@pytest.mark.asyncio
 class TestPostsApi:
     @pytest.fixture
-    async def create_post(self, make_post) -> CreatePost:
+    def create_post(self, make_post) -> CreatePost:
         post = make_post()
         return CreatePost(
             author=post.author,
@@ -36,7 +35,7 @@ class TestPostsApi:
         )
 
     @pytest.fixture(autouse=True)
-    async def setup_function(self, respx_mock: MockRouter):
+    def setup_function(self, respx_mock: MockRouter):
         banned_hosts.clear()
         respx_mock.route(method="GET", url__startswith=COUNTRY_IS_API_BASE_URL).mock(
             Response(
@@ -48,9 +47,7 @@ class TestPostsApi:
             ),
         )
 
-    async def test_successfully_get_posts(
-        self, posts: list[Post], test_client: TestClient
-    ):
+    def test_successfully_get_posts(self, posts: list[Post], test_client: TestClient):
         response = test_client.get(BASE_URL)
 
         assert response.status_code == status.HTTP_200_OK
@@ -58,7 +55,7 @@ class TestPostsApi:
             post = next(post for post in posts if post.id == post_response["id"])
             assert post_response.items() <= post.model_dump(by_alias=True).items()
 
-    async def test_fail_to_get_post_by_uuid_due_to_not_found(
+    def test_fail_to_get_post_by_uuid_due_to_not_found(
         self, posts: list[Post], test_client: TestClient
     ):
         response = test_client.get(f"{BASE_URL}/{str(uuid.uuid4())}")
@@ -69,7 +66,7 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_FOUND,
         }.items() <= response.json().items()
 
-    async def test_successfully_get_post_by_uuid(
+    def test_successfully_get_post_by_uuid(
         self, posts: list[Post], test_client: TestClient
     ):
         response = test_client.get(f"{BASE_URL}/{posts[0].id}")
@@ -92,7 +89,7 @@ class TestPostsApi:
             <= response.json().items()
         )
 
-    async def test_fail_to_get_post_due_to_invalid_client(
+    def test_fail_to_get_post_due_to_invalid_client(
         self,
         respx_mock: MockRouter,
         test_client: TestClient,
@@ -117,7 +114,7 @@ class TestPostsApi:
         assert route_mock.called
         assert route_mock.call_count == 1
 
-    async def test_successfully_get_post_despite_country_api_unavailability(
+    def test_successfully_get_post_despite_country_api_unavailability(
         self,
         posts: list[Post],
         respx_mock: MockRouter,
@@ -149,15 +146,13 @@ class TestPostsApi:
         assert route_mock.called
         assert route_mock.call_count == 1
 
-    async def test_successfully_get_archive(
-        self, posts: list[Post], test_client: TestClient
-    ):
+    def test_successfully_get_archive(self, posts: list[Post], test_client: TestClient):
         response = test_client.get(f"{BASE_URL}/archive")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json()[pendulum.now().format("YYYY-MM")] == len(posts)
 
-    async def test_successfully_get_post_by_post_path(
+    def test_successfully_get_post_by_post_path(
         self, posts: list[Post], test_client: TestClient
     ):
         now = pendulum.now()
@@ -182,7 +177,7 @@ class TestPostsApi:
             <= response.json().items()
         )
 
-    async def test_fail_to_get_post_by_date_and_slug_due_to_not_found(
+    def test_fail_to_get_post_by_date_and_slug_due_to_not_found(
         self, test_client: TestClient
     ):
         response = test_client.get(
@@ -194,14 +189,12 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_FOUND,
         }.items() <= response.json().items()
 
-    async def test_fail_to_delete_post_due_to_not_found(
+    def test_fail_to_delete_post_due_to_not_found(
         self,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token(
-            pytest.jwt_secret_ssm_param_value, user_dict
-        )
+        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.delete(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -214,9 +207,7 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_FOUND,
         }.items() <= response.json().items()
 
-    async def test_fail_to_delete_post_due_to_unauthorized(
-        self, test_client: TestClient
-    ):
+    def test_fail_to_delete_post_due_to_unauthorized(self, test_client: TestClient):
         response = test_client.delete(
             f"{BASE_URL}/{str(uuid.uuid4())}",
             headers={"Authorization": HEADER_EMPTY_BEARER},
@@ -228,15 +219,13 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
         }.items() <= response.json().items()
 
-    async def test_successfully_delete_post(
+    def test_successfully_delete_post(
         self,
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token(
-            pytest.jwt_secret_ssm_param_value, user_dict
-        )
+        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.delete(
             f"{BASE_URL}/{posts[0].id}",
@@ -245,14 +234,12 @@ class TestPostsApi:
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
-    async def test_fail_to_create_post_due_to_bad_request(
+    def test_fail_to_create_post_due_to_bad_request(
         self,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token(
-            pytest.jwt_secret_ssm_param_value, user_dict
-        )
+        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             BASE_URL, headers={"Authorization": f"Bearer {jwt_token}"}, json={}
@@ -266,7 +253,7 @@ class TestPostsApi:
         assert result["message"]
         assert result["errors"]
 
-    async def test_fail_to_create_post_due_to_unauthorized(
+    def test_fail_to_create_post_due_to_unauthorized(
         self,
         create_post: CreatePost,
         test_client: TestClient,
@@ -283,15 +270,13 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
         }.items() <= response.json().items()
 
-    async def test_successfully_create_post(
+    def test_successfully_create_post(
         self,
         create_post: CreatePost,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token(
-            pytest.jwt_secret_ssm_param_value, user_dict
-        )
+        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             BASE_URL,
@@ -302,15 +287,13 @@ class TestPostsApi:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.headers["Location"]
 
-    async def test_fail_to_create_post_due_to_already_exists_by_title(
+    def test_fail_to_create_post_due_to_already_exists_by_title(
         self,
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token(
-            pytest.jwt_secret_ssm_param_value, user_dict
-        )
+        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             BASE_URL,
@@ -320,15 +303,13 @@ class TestPostsApi:
 
         assert response.status_code == status.HTTP_409_CONFLICT
 
-    async def test_fail_to_update_post_due_to_not_found(
+    def test_fail_to_update_post_due_to_not_found(
         self,
         create_post: CreatePost,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token(
-            pytest.jwt_secret_ssm_param_value, user_dict
-        )
+        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.put(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -342,15 +323,13 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_FOUND,
         }.items() <= response.json().items()
 
-    async def test_fail_to_update_post_due_to_bad_request(
+    def test_fail_to_update_post_due_to_bad_request(
         self,
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token(
-            pytest.jwt_secret_ssm_param_value, user_dict
-        )
+        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.put(
             f"{BASE_URL}/{posts[0].id}",
@@ -372,7 +351,7 @@ class TestPostsApi:
         assert result["message"]
         assert result["errors"]
 
-    async def test_fail_to_update_post_due_to_unauthorized(
+    def test_fail_to_update_post_due_to_unauthorized(
         self,
         create_post: CreatePost,
         test_client: TestClient,
@@ -389,15 +368,13 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
         }.items() <= response.json().items()
 
-    async def test_successfully_update_post(
+    def test_successfully_update_post(
         self,
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token(
-            pytest.jwt_secret_ssm_param_value, user_dict
-        )
+        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.put(
             f"{BASE_URL}/{posts[0].id}",

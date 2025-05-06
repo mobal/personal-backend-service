@@ -19,18 +19,18 @@ class AttachmentService:
         self._post_service = PostService()
         self._storage_service = StorageService()
 
-    async def add_attachment(
+    def add_attachment(
         self, post_uuid: str, attachment_name: str, base64_data: str, display_name: str
     ) -> Attachment:
         attachment_name = unidecode(attachment_name)
         self._logger.info(f"Adding attachment {attachment_name=} to {post_uuid=}")
 
-        post = await self._post_service.get_post(post_uuid)
+        post = self._post_service.get_post(post_uuid)
         mime_type = mimetypes.guess_type(attachment_name)[0]
         object_key = f"/{post.post_path}/{attachment_name}"
 
         file_data = base64.b64decode(base64_data)
-        await self._storage_service.put_object(
+        self._storage_service.put_object(
             settings.attachments_bucket_name, object_key, file_data
         )
 
@@ -44,7 +44,7 @@ class AttachmentService:
         )
 
         updated_attachments = list(post.attachments or []) + [attachment]
-        await self._post_service.update_post(
+        self._post_service.update_post(
             post_uuid,
             {
                 "attachments": [
@@ -55,9 +55,9 @@ class AttachmentService:
 
         return attachment
 
-    async def get_attachments(self, post_uuid: str) -> list[AttachmentResponse]:
+    def get_attachments(self, post_uuid: str) -> list[AttachmentResponse]:
         self._logger.info(f"Get attachments for {post_uuid=}")
-        post = await self._post_service.get_post(post_uuid)
+        post = self._post_service.get_post(post_uuid)
         return (
             [
                 AttachmentResponse(**attachment.model_dump())
@@ -67,11 +67,11 @@ class AttachmentService:
             else []
         )
 
-    async def get_attachment_by_id(
+    def get_attachment_by_id(
         self, post_uuid: str, attachment_uuid: str
     ) -> AttachmentResponse:
         self._logger.info(f"Get attachment {attachment_uuid=} from {post_uuid=}")
-        post = await self._post_service.get_post(post_uuid)
+        post = self._post_service.get_post(post_uuid)
         attachment = next(
             (
                 attachment

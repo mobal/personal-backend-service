@@ -22,7 +22,7 @@ router = APIRouter()
 async def create_post(
     create_model: CreatePost, token: JWTToken = Depends(jwt_bearer)
 ) -> Response:
-    post = await post_service.create_post(create_model.model_dump())
+    post = post_service.create_post(create_model.model_dump())
     return Response(
         status_code=status.HTTP_201_CREATED,
         headers={"Location": f"/api/v1/posts/{post.id}"},
@@ -34,12 +34,12 @@ async def create_post(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_post(uuid: str, token: JWTToken = Depends(jwt_bearer)):
-    await post_service.delete_post(uuid)
+    post_service.delete_post(uuid)
 
 
 @router.get("/archive", status_code=status.HTTP_200_OK)
 async def get_archive() -> dict[str, Any]:
-    return await post_service.get_archive()
+    return post_service.get_archive()
 
 
 @router.get("/{year}/{month}/{day}/{slug}", status_code=status.HTTP_200_OK)
@@ -49,7 +49,7 @@ async def get_by_post_path(
     month: int = Path(ge=1, le=12),
     day: int = Path(ge=1, le=31),
 ) -> PostResponse:
-    return await post_service.get_by_post_path(f"{year}/{month}/{day}/{slug}")
+    return post_service.get_by_post_path(f"{year}/{month}/{day}/{slug}")
 
 
 @router.get(
@@ -58,7 +58,7 @@ async def get_by_post_path(
     response_model_exclude_none=True,
 )
 async def get_post_by_uuid(uuid: str) -> PostResponse:
-    return await post_service.get_post(uuid)
+    return post_service.get_post(uuid)
 
 
 @router.get(
@@ -68,7 +68,7 @@ async def get_post_by_uuid(uuid: str) -> PostResponse:
     response_model_exclude_none=True,
 )
 async def get_posts(exclusive_start_key: str | None = None) -> Page:
-    return await post_service.get_posts(exclusive_start_key)
+    return post_service.get_posts(exclusive_start_key)
 
 
 @router.put(
@@ -78,4 +78,4 @@ async def get_posts(exclusive_start_key: str | None = None) -> Page:
 async def update_post(
     update_model: UpdatePost, uuid: str, token: JWTToken = Depends(jwt_bearer)
 ):
-    await post_service.update_post(uuid, update_model.model_dump(exclude_none=True))
+    post_service.update_post(uuid, update_model.model_dump(exclude_none=True))

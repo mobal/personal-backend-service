@@ -13,7 +13,6 @@ from app.schemas.attachment_schema import CreateAttachment
 from tests.helpers.utils import generate_jwt_token
 
 
-@pytest.mark.asyncio
 class TestAttachmentsApi:
     @pytest.fixture
     def create_attachment(self, test_data: str) -> CreateAttachment:
@@ -23,9 +22,7 @@ class TestAttachmentsApi:
         )
 
     @pytest.fixture(autouse=True)
-    async def setup_function(
-        self, s3_resource: ServiceResource, respx_mock: MockRouter
-    ):
+    def setup_function(self, s3_resource: ServiceResource, respx_mock: MockRouter):
         s3_resource.create_bucket(
             ACL="public-read-write",
             Bucket="attachments",
@@ -42,7 +39,7 @@ class TestAttachmentsApi:
             ),
         )
 
-    async def test_successfully_add_attachment(
+    def test_successfully_add_attachment(
         self,
         attachment: Attachment,
         create_attachment: CreateAttachment,
@@ -50,9 +47,7 @@ class TestAttachmentsApi:
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token(
-            pytest.jwt_secret_ssm_param_value, user_dict
-        )
+        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             f"/api/v1/posts/{posts[0].id}/attachments",
@@ -63,15 +58,13 @@ class TestAttachmentsApi:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.headers["Location"]
 
-    async def test_fail_to_add_attachment_due_to_bad_request(
+    def test_fail_to_add_attachment_due_to_bad_request(
         self,
         post_with_attachment: Post,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token(
-            pytest.jwt_secret_ssm_param_value, user_dict
-        )
+        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             f"/api/v1/posts/{post_with_attachment.id}/attachments",
@@ -87,16 +80,14 @@ class TestAttachmentsApi:
         assert result["message"]
         assert result["errors"]
 
-    async def test_fail_to_add_attachment_due_to_unauthorized(
+    def test_fail_to_add_attachment_due_to_unauthorized(
         self,
         create_attachment: CreateAttachment,
         post_with_attachment: Post,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = await generate_jwt_token(
-            pytest.jwt_secret_ssm_param_value, user_dict
-        )
+        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             f"/api/v1/posts/{post_with_attachment.id}/attachments",
@@ -110,7 +101,7 @@ class TestAttachmentsApi:
             "message": "Not authenticated",
         }.items() <= response.json().items()
 
-    async def test_successfully_get_attachment_by_uuid(
+    def test_successfully_get_attachment_by_uuid(
         self,
         post_with_attachment: Post,
         test_client: TestClient,
@@ -125,7 +116,7 @@ class TestAttachmentsApi:
             <= post_with_attachment.attachments[0].model_dump(by_alias=True).items()
         )
 
-    async def test_fail_to_get_attachment_due_to_invalid_client(
+    def test_fail_to_get_attachment_due_to_invalid_client(
         self,
         respx_mock: MockRouter,
         post_with_attachment: Post,
@@ -153,7 +144,7 @@ class TestAttachmentsApi:
         assert route_mock.called
         assert route_mock.call_count == 1
 
-    async def test_fail_to_get_attachment_due_to_not_found(
+    def test_fail_to_get_attachment_due_to_not_found(
         self,
         post_with_attachment: Post,
         test_client: TestClient,
@@ -165,7 +156,7 @@ class TestAttachmentsApi:
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert response.json()
 
-    async def test_successfully_get_attachments(
+    def test_successfully_get_attachments(
         self,
         post_with_attachment: Post,
         test_client: TestClient,
@@ -182,7 +173,7 @@ class TestAttachmentsApi:
             ][0].items()
         )
 
-    async def test_successfully_get_empty_attachments(
+    def test_successfully_get_empty_attachments(
         self,
         posts: list[Post],
         test_client: TestClient,
