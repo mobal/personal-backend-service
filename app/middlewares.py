@@ -30,7 +30,7 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
     RESTRICTED_COUNTRY_CODES = ["CN", "RU"]
 
     async def dispatch(
-            self, request: Request, call_next: RequestResponseEndpoint
+        self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         if not request.client or not request.client.host:
             return await call_next(request)
@@ -51,7 +51,9 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
                 response = await client.get(f"{COUNTRY_IS_API_BASE_URL}/{client_ip}")
                 response.raise_for_status()
                 if response.json()["country"] in self.RESTRICTED_COUNTRY_CODES:
-                    logger.info(f"Client has restricted country_code={response.json()['country']} with {client_ip=}")
+                    logger.info(
+                        f"Client has restricted country_code={response.json()['country']} with {client_ip=}"
+                    )
                     return True
             except HTTPError as exc:
                 logger.warning(f"HTTP exception for {exc.request.url}")
