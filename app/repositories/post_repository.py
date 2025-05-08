@@ -14,10 +14,10 @@ class PostRepository:
             boto3.Session().resource("dynamodb").Table(f"{settings.stage}-posts")
         )
 
-    async def create_post(self, data: dict):
+    def create_post(self, data: dict):
         self._table.put_item(Item=data)
 
-    async def get_all_posts(
+    def get_all_posts(
         self,
         filter_expression: ConditionBase,
         fields: list[str],
@@ -37,7 +37,7 @@ class PostRepository:
             items.extend(response["Items"])
         return items
 
-    async def count_all_posts(self, filter_expression: ConditionBase) -> int:
+    def count_all_posts(self, filter_expression: ConditionBase) -> int:
         count = 0
         response = self._table.scan(
             Select="COUNT",
@@ -53,10 +53,10 @@ class PostRepository:
             count += response["Count"]
         return count
 
-    async def item_count(self) -> int:
+    def item_count(self) -> int:
         return self._table.item_count
 
-    async def get_post_by_post_path(
+    def get_post_by_post_path(
         self, post_path: str, filter_expression: ConditionBase
     ) -> dict | None:
         response = self._table.query(
@@ -66,7 +66,7 @@ class PostRepository:
         )
         return response["Items"][0] if response["Items"] else None
 
-    async def get_post_by_title(
+    def get_post_by_title(
         self, title: str, filter_expression: ConditionBase
     ) -> dict | None:
         response = self._table.query(
@@ -76,7 +76,7 @@ class PostRepository:
         )
         return response["Items"][0] if response["Items"] else None
 
-    async def get_post_by_uuid(
+    def get_post_by_uuid(
         self,
         post_uuid: str,
         filter_expression: ConditionBase,
@@ -89,7 +89,7 @@ class PostRepository:
             return response["Items"][0]
         return None
 
-    async def get_posts(
+    def get_posts(
         self,
         filter_expression: ConditionBase,
         exclusive_start_key: dict[str, str] | None = None,
@@ -109,7 +109,7 @@ class PostRepository:
             else None
         ), response["Items"]
 
-    async def update_post(
+    def update_post(
         self, post_uuid: str, data: dict, condition_expression: ConditionBase
     ):
         attribute_names = {}

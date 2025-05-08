@@ -29,25 +29,20 @@ clients: dict[str, Any] = {}
 class ClientValidationMiddleware(BaseHTTPMiddleware):
     RESTRICTED_COUNTRY_CODES = ["CN", "RU"]
 
-    def __init__(self, app: ASGIApp):
-        super().__init__(app)
-
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        client_ip = request.client.host if request.client else None
-        if client_ip:
-            if client_ip in banned_hosts:
-                is_banned = True
-            else:
-                is_banned = await self._validate_host(client_ip)
-                if is_banned:
-                    banned_hosts.append(client_ip)
-            if is_banned:
-                return JSONResponse(
-                    content={"message": "Forbidden"},
-                    status_code=status.HTTP_403_FORBIDDEN,
-                )
+        if not request.client or not request.client.host:
+            return await call_next(request)
+        client_ip = request.client.host
+        is_banned = client_ip in banned_hosts or await self._validate_host(client_ip)
+        if is_banned:
+            if client_ip not in banned_hosts:
+                banned_hosts.append(client_ip)
+            return JSONResponse(
+                content={"message": "Forbidden"},
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
         return await call_next(request)
 
     async def _validate_host(self, client_ip: str) -> bool:
@@ -55,10 +50,9 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
             try:
                 response = await client.get(f"{COUNTRY_IS_API_BASE_URL}/{client_ip}")
                 response.raise_for_status()
-                json_body = response.json()
-                if json_body["country"] in self.RESTRICTED_COUNTRY_CODES:
+                if response.json()["country"] in self.RESTRICTED_COUNTRY_CODES:
                     logger.info(
-                        f"Client has restricted country_code={json_body['country']} with {client_ip=}"
+                        f"Client has restricted country_code={response.json()['country']} with {client_ip=}"
                     )
                     return True
             except HTTPError as exc:
@@ -96,35 +90,41 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         if settings.rate_limiting:
             client_ip = request.client.host if request.client else None
             if client_ip:
-                client = clients.get(
-                    client_ip, {"request_count": 0, "last_request": datetime.min}
-                )
-                if (datetime.now() - client["last_request"]) > self.RATE_LIMIT_DURATION:
-                    client["request_count"] = 1
-                else:
-                    if client["request_count"] >= settings.rate_limit_requests:
-                        logger.warning(
-                            "The client has exceeded the rate limit and has been rate limited",
-                            host=client_ip,
-                        )
-                        return JSONResponse(
-                            content={
-                                "message": "Rate limit exceeded. Please try again later"
-                            },
-                            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                            headers=await self._get_rate_limit_headers(client),
-                        )
-                    client["request_count"] += 1
-                client["last_request"] = datetime.now()
-                clients[client_ip] = client
+                rate_limited_response = await self._check_rate_limit(client_ip)
+                if rate_limited_response:
+                    return rate_limited_response
                 response = await call_next(request)
-                response.headers.update(await self._get_rate_limit_headers(client))
+                response.headers.update(
+                    await self._get_rate_limit_headers(clients[client_ip])
+                )
                 return response
             else:
-                logger.warning("Missing client information. Skipping rete limiting")
+                logger.warning("Missing client information. Skipping rate limiting")
         else:
             logger.info("Rate limiting is turned off")
         return await call_next(request)
+
+    async def _check_rate_limit(self, client_ip: str) -> JSONResponse | None:
+        client = clients.get(
+            client_ip, {"request_count": 0, "last_request": datetime.min}
+        )
+        if (datetime.now() - client["last_request"]) > self.RATE_LIMIT_DURATION:
+            client["request_count"] = 1
+        else:
+            if client["request_count"] >= settings.rate_limit_requests:
+                logger.warning(
+                    "The client has exceeded the rate limit and has been rate limited",
+                    host=client_ip,
+                )
+                return JSONResponse(
+                    content={"message": "Rate limit exceeded. Please try again later"},
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    headers=await self._get_rate_limit_headers(client),
+                )
+            client["request_count"] += 1
+        client["last_request"] = datetime.now()
+        clients[client_ip] = client
+        return None
 
     async def _get_rate_limit_headers(self, client: dict[str, Any]) -> dict[str, Any]:
         return {

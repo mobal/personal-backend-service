@@ -46,10 +46,6 @@ jobs:
       run: |
         uv run -m pytest --cov-report=term --cov-report=xml:$Coverage_File --cov=app
 
-    - name: Fix source path(s) in coverage.xml
-      run: |
-        sed -i 's@'$GITHUB_WORKSPACE'@/github/workspace/@g' coverage.xml
-
     - name: Scan with SonarCloud
       uses: sonarsource/sonarcloud-github-action@v5
       with:

@@ -4,7 +4,7 @@ import jwt
 import pendulum
 
 
-async def generate_jwt_token(
+def generate_jwt_token(
     jwt_secret: str, user_dict: dict[str, str | None], exp: int = 1
 ) -> tuple[str, str]:
     iat = pendulum.now()

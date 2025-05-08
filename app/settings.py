@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     rate_limit_duration_in_seconds: int
     rate_limit_requests: int
     rate_limiting: bool
+    ssh_host: str
+    ssh_password: str
+    ssh_username: str
     stage: str
 
     @computed_field
