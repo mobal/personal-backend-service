@@ -23,7 +23,7 @@ resource "aws_lambda_function" "fastapi" {
   filename         = data.archive_file.lambda_zip.output_path
   function_name    = "${local.app_name}-fastapi"
   role             = aws_iam_role.lambda_role.arn
-  handler          = "app.main.handler"
+  handler          = "app.http_handler.handler"
   runtime          = "python3.13"
   timeout          = 15
   memory_size      = 512
