@@ -9,6 +9,7 @@ from app.models.auth import JWTToken
 from app.repositories.post_repository import PostRepository
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
+from app.services.publisher_service import PublisherService
 from app.services.storage_service import StorageService
 
 
@@ -48,6 +49,11 @@ def post_repository(initialize_posts_table) -> PostRepository:
 @pytest.fixture
 def post_service() -> PostService:
     return PostService()
+
+
+@pytest.fixture
+def publisher_service() -> PublisherService:
+    return PublisherService()
 
 
 @pytest.fixture

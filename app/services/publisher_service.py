@@ -1,0 +1,39 @@
+import pendulum
+from aws_lambda_powertools import Logger
+from sshfs import SSHFileSystem
+
+from app import Settings
+from app.services.post_service import PostService
+
+
+class PublisherService:
+    def __init__(self):
+        self._logging = Logger(utc=True)
+        self._post_service = PostService()
+        self._settings = Settings()
+
+    def publish(self, post_uuid: str) -> None:
+        self._logging.info(f"Publishing post with UUID {post_uuid}")
+        post = self._post_service.get_post_by_uuid(post_uuid)
+        if pendulum.parse(post.published_at).is_past():
+            self._logging.info(f"Publishing post id={post.id}")
+            self._write(
+                self._settings.ssh_host,
+                self._settings.ssh_username,
+                self._settings.ssh_password,
+                post.content.encode("utf-8"),
+                post.post_path,
+            )
+
+    def rm(self, path: str):
+        fs = SSHFileSystem(
+            self._settings.ssh_host,
+            username=self._settings.ssh_username,
+            password=self._settings.ssh_password,
+        )
+        fs.rm(path)
+
+    def _write(self, host: str, username: str, password: str, data: bytes, path: str):
+        fs = SSHFileSystem(host, username=username, password=password)
+        with fs.open(path, "wb") as stream:
+            stream.write(data)
