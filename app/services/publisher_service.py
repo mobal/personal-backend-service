@@ -1,8 +1,10 @@
 import pendulum
+from asyncssh import Error as SSHError
 from aws_lambda_powertools import Logger
 from sshfs import SSHFileSystem
 
 from app import Settings
+from app.exceptions import PublishException
 from app.services.post_service import PostService
 
 
@@ -31,9 +33,17 @@ class PublisherService:
             username=self._settings.ssh_username,
             password=self._settings.ssh_password,
         )
-        fs.rm(path)
+        try:
+            fs.rm(path)
+        except (SSHError, OSError) as e:
+            self._logging.error(e)
+            raise PublishException(detail=str(e))
 
     def _write(self, host: str, username: str, password: str, data: bytes, path: str):
         fs = SSHFileSystem(host, username=username, password=password)
         with fs.open(path, "wb") as stream:
-            stream.write(data)
+            try:
+                stream.write(data)
+            except (SSHError, OSError) as e:
+                self._logging.error(e)
+                raise PublishException(detail=str(e))
