@@ -2,10 +2,10 @@ import uuid
 
 import pytest
 from fastapi import status
+from fastapi.testclient import TestClient
 from httpx import Response
 from mypy_boto3_cloudformation import ServiceResource
 from respx import MockRouter
-from starlette.testclient import TestClient
 
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
 from app.models.post import Attachment, Post

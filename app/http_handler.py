@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import UJSONResponse
 from mangum import Mangum
 
 from app import settings
@@ -48,12 +48,12 @@ class ValidationErrorResponse(ErrorResponse):
 @app.exception_handler(ClientError)
 async def botocore_error_handler(
     request: Request, error: BotoCoreError
-) -> JSONResponse:
+) -> UJSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error) if settings.debug else "Internal Server Error"
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     logger.exception(f"Received botocore error {error_id=}")
-    return JSONResponse(
+    return UJSONResponse(
         content=jsonable_encoder(
             ErrorResponse(status=status_code, id=error_id, message=error_message)
         ),
@@ -64,10 +64,10 @@ async def botocore_error_handler(
 @app.exception_handler(HTTPException)
 async def http_exception_handler(
     request: Request, error: HTTPException
-) -> JSONResponse:
+) -> UJSONResponse:
     error_id = uuid.uuid4()
     logger.exception(f"Received http exception {error_id=}")
-    return JSONResponse(
+    return UJSONResponse(
         content=jsonable_encoder(
             ErrorResponse(status=error.status_code, id=error_id, message=error.detail)
         ),
@@ -78,11 +78,11 @@ async def http_exception_handler(
 @app.exception_handler(RequestValidationError)
 async def request_validation_error_handler(
     request: Request, error: RequestValidationError
-) -> JSONResponse:
+) -> UJSONResponse:
     error_id = uuid.uuid4()
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     logger.exception(f"Received request validation error {error_id=}")
-    return JSONResponse(
+    return UJSONResponse(
         content=jsonable_encoder(
             ValidationErrorResponse(
                 status=status_code,
