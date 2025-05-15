@@ -61,7 +61,7 @@ resource "aws_lambda_function" "fastapi" {
 
 resource "terraform_data" "requirements_lambda_layer" {
   triggers_replace = {
-    requirements = filebase64sha256("${path.module}/Pipfile.lock")
+    requirements = filebase64sha256("${path.module}/uv.lock")
   }
 
   provisioner "local-exec" {
