@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 import asyncssh
 import pendulum
 import pytest
+from fastapi import status
 from pytest_mock import MockerFixture
-from starlette import status
 
 from app.exceptions import PublishException
 from app.models.post import Post

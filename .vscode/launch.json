@@ -12,7 +12,7 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "app.main:app",
+                "app.http_handler:app",
                 "--host",
                 "localhost",
                 "--port",

@@ -3,7 +3,7 @@ from unittest.mock import Mock
 import jwt
 import pytest
 from fastapi import HTTPException, status
-from starlette.requests import Request
+from fastapi.requests import Request
 
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken

@@ -2,7 +2,7 @@ from typing import Any
 
 from aws_lambda_powertools import Logger
 from fastapi import APIRouter, Depends, Path, status
-from starlette.responses import Response
+from fastapi.responses import Response
 
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken
