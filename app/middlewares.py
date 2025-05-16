@@ -68,8 +68,9 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         correlation_id.set(
-            request.headers[X_CORRELATION_ID]
-            if request.headers.get(X_CORRELATION_ID)
+            request.headers.get(X_CORRELATION_ID)
+            or request.scope.get("aws.context", {}).aws_request_id
+            if request.scope.get("aws.context")
             else str(uuid.uuid4())
         )
         logger.set_correlation_id(correlation_id.get())
