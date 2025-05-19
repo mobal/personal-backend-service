@@ -19,7 +19,7 @@ router = APIRouter()
 
 
 @router.post("")
-async def create_post(
+def create_post(
     create_model: CreatePost, token: JWTToken = Depends(jwt_bearer)
 ) -> Response:
     post = post_service.create_post(create_model.model_dump())
@@ -33,17 +33,17 @@ async def create_post(
     "/{uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def delete_post(uuid: str, token: JWTToken = Depends(jwt_bearer)):
+def delete_post(uuid: str, token: JWTToken = Depends(jwt_bearer)):
     post_service.delete_post(uuid)
 
 
 @router.get("/archive", status_code=status.HTTP_200_OK)
-async def get_archive() -> dict[str, Any]:
+def get_archive() -> dict[str, Any]:
     return post_service.get_archive()
 
 
 @router.get("/{year}/{month}/{day}/{slug}", status_code=status.HTTP_200_OK)
-async def get_by_post_path(
+def get_by_post_path(
     slug: str,
     year: int = Path(ge=1970),
     month: int = Path(ge=1, le=12),
@@ -57,7 +57,7 @@ async def get_by_post_path(
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
 )
-async def get_post_by_uuid(uuid: str) -> PostResponse:
+def get_post_by_uuid(uuid: str) -> PostResponse:
     return post_service.get_post(uuid)
 
 
@@ -67,7 +67,7 @@ async def get_post_by_uuid(uuid: str) -> PostResponse:
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
 )
-async def get_posts(exclusive_start_key: str | None = None) -> Page:
+def get_posts(exclusive_start_key: str | None = None) -> Page:
     return post_service.get_posts(exclusive_start_key)
 
 
@@ -75,7 +75,7 @@ async def get_posts(exclusive_start_key: str | None = None) -> Page:
     "/{uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def update_post(
+def update_post(
     update_model: UpdatePost, uuid: str, token: JWTToken = Depends(jwt_bearer)
 ):
     post_service.update_post(uuid, update_model.model_dump(exclude_none=True))

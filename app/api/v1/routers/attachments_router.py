@@ -15,7 +15,7 @@ router = APIRouter()
 
 
 @router.post("")
-async def add_attachment(
+def add_attachment(
     create_attachment: CreateAttachment,
     post_uuid: str,
     token: JWTToken = Depends(jwt_bearer),
@@ -37,12 +37,10 @@ async def add_attachment(
 
 
 @router.get("/{attachment_uuid}", status_code=status.HTTP_200_OK)
-async def get_attachment_by_uuid(
-    post_uuid: str, attachment_uuid: str
-) -> AttachmentResponse:
+def get_attachment_by_uuid(post_uuid: str, attachment_uuid: str) -> AttachmentResponse:
     return attachment_service.get_attachment_by_id(post_uuid, attachment_uuid)
 
 
 @router.get("", status_code=status.HTTP_200_OK)
-async def get_attachments(post_uuid: str):
+def get_attachments(post_uuid: str):
     return attachment_service.get_attachments(post_uuid)

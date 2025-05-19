@@ -46,9 +46,7 @@ class ValidationErrorResponse(ErrorResponse):
 
 @app.exception_handler(BotoCoreError)
 @app.exception_handler(ClientError)
-async def botocore_error_handler(
-    request: Request, error: BotoCoreError
-) -> UJSONResponse:
+def botocore_error_handler(request: Request, error: BotoCoreError) -> UJSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error) if settings.debug else "Internal Server Error"
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -62,9 +60,7 @@ async def botocore_error_handler(
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(
-    request: Request, error: HTTPException
-) -> UJSONResponse:
+def http_exception_handler(request: Request, error: HTTPException) -> UJSONResponse:
     error_id = uuid.uuid4()
     logger.exception(f"Received http exception {error_id=}")
     return UJSONResponse(
@@ -76,7 +72,7 @@ async def http_exception_handler(
 
 
 @app.exception_handler(RequestValidationError)
-async def request_validation_error_handler(
+def request_validation_error_handler(
     request: Request, error: RequestValidationError
 ) -> UJSONResponse:
     error_id = uuid.uuid4()
