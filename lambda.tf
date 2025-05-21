@@ -70,7 +70,7 @@ resource "terraform_data" "requirements_lambda_layer" {
       curl -Ls https://astral.sh/uv/install.sh | sh
       source $HOME/.local/bin/env
       uv sync --no-dev
-      uv pip freeze > requirements.txt
+      uv export --frozen --no-dev --format requirements.txt
       pip install -r requirements.txt -t python/lib/python3.13/site-packages --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all: && \
       zip -r requirements.zip python
       "
