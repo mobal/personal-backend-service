@@ -4,15 +4,21 @@ data "archive_file" "lambda_zip" {
   output_path = "${path.module}/lambda.zip"
   excludes = [
     ".git",
+    ".github",
+    ".idea",
     ".mypy_cache",
     ".pytest_cache",
+    ".ruff_cache",
     ".terraform",
     ".venv",
+    ".vscode",
     "htmlcov",
     "python",
     ".coverage",
     ".env",
     "lambda.zip",
+    "requirements.txt",
+    "requirements.zip",
     "terraform.tfstate",
     "terraform.tfstate.backup",
     "terraform.tfvars",
@@ -48,6 +54,9 @@ resource "aws_lambda_function" "fastapi" {
       RATE_LIMIT_DURATION_IN_SECONDS       = var.rate_limit_duration_in_seconds
       RATE_LIMIT_REQUESTS                  = var.rate_limit_requests
       RATE_LIMITING                        = var.rate_limiting
+      SSH_HOST                             = var.ssh_host
+      SSH_PASSWORD                         = var.ssh_password
+      SSH_USERNAME                         = var.ssh_username
       STAGE                                = var.stage
     }
   }
@@ -67,10 +76,12 @@ resource "terraform_data" "requirements_lambda_layer" {
   provisioner "local-exec" {
     command = <<EOT
       DOCKER_DEFAULT_PLATFORM=linux/amd64 docker run --rm -v ${abspath(path.module)}:/workspace -w /workspace public.ecr.aws/sam/build-python3.13 bash -c "
+      export UV_INSTALL_DIR=/tmp/uv
+      mkdir -p \$UV_INSTALL_DIR
       curl -Ls https://astral.sh/uv/install.sh | sh
-      source $HOME/.local/bin/env
+      export PATH=\$UV_INSTALL_DIR:\$PATH
       uv sync --no-dev
-      uv export --locked --no-dev --format requirements.txt
+      uv export --locked --no-dev --format requirements.txt > requirements.txt
       pip install -r requirements.txt -t python/lib/python3.13/site-packages --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all: && \
       zip -r requirements.zip python
       "

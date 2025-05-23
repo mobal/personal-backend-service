@@ -47,6 +47,18 @@ variable "rate_limiting" {
   type    = bool
 }
 
+variable "ssh_host" {
+  type = string
+}
+
+variable "ssh_password" {
+  type = string
+}
+
+variable "ssh_username" {
+  type = string
+}
+
 variable "power_tools_service_name" {
   default = "personal-backend-service"
   type    = string
