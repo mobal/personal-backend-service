@@ -92,4 +92,4 @@ def request_validation_error_handler(
 
 
 if __name__ == "__main__":
-    uvicorn.run("app.http_handler:app", host="localhost", port=8080, reload=True)
+    uvicorn.run("app.api_handler:app", host="localhost", port=8080, reload=True)
