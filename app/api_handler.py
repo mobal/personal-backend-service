@@ -18,7 +18,6 @@ from app.middlewares import (ClientValidationMiddleware,
                              CorrelationIdMiddleware, RateLimitingMiddleware)
 from app.models.camel_model import CamelModel
 from app.services.publisher_service import PublisherService
-from tests.unit.conftest import publisher_service
 
 if settings.debug:
     set_package_logger()
