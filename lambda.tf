@@ -32,7 +32,7 @@ resource "aws_lambda_function" "fastapi" {
   handler          = "app.api_handler.handler"
   runtime          = "python3.13"
   timeout          = 15
-  memory_size      = 512
+  memory_size      = 768
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
   layers = [
