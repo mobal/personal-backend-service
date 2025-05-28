@@ -32,7 +32,7 @@ resource "aws_lambda_function" "fastapi" {
   handler          = "app.api_handler.handler"
   runtime          = "python3.13"
   timeout          = 15
-  memory_size      = 512
+  memory_size      = 768
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
   layers = [
@@ -56,6 +56,7 @@ resource "aws_lambda_function" "fastapi" {
       RATE_LIMITING                        = var.rate_limiting
       SSH_HOST                             = var.ssh_host
       SSH_PASSWORD                         = var.ssh_password
+      SSH_ROOT_PATH                        = var.ssh_root_path
       SSH_USERNAME                         = var.ssh_username
       STAGE                                = var.stage
     }

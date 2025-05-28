@@ -17,13 +17,11 @@ from app.api.v1.api import router as api_v1_router
 from app.middlewares import (ClientValidationMiddleware,
                              CorrelationIdMiddleware, RateLimitingMiddleware)
 from app.models.camel_model import CamelModel
-from app.services.publisher_service import PublisherService
-from tests.unit.conftest import publisher_service
 
 if settings.debug:
     set_package_logger()
 
-logger = Logger(service="PersonalBackendApplication", utc=True)
+logger = Logger(utc=True)
 
 app = FastAPI(debug=settings.debug, title="PersonalBackendApplication", version="1.0.0")
 app.add_middleware(CorrelationIdMiddleware)
@@ -94,7 +92,4 @@ def request_validation_error_handler(
 
 
 if __name__ == "__main__":
-    logger.info("Starting KAPPAPride!")
-    publisher_service = PublisherService()
-    publisher_service.publish("7bc99360-2b7c-4423-9646-d5b7a1108a0a")
     uvicorn.run("app.api_handler:app", host="localhost", port=8080, reload=True)

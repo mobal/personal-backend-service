@@ -55,6 +55,10 @@ variable "ssh_password" {
   type = string
 }
 
+variable "ssh_root_path" {
+  type = string
+}
+
 variable "ssh_username" {
   type = string
 }
