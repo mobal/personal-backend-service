@@ -56,6 +56,7 @@ resource "aws_lambda_function" "fastapi" {
       RATE_LIMITING                        = var.rate_limiting
       SSH_HOST                             = var.ssh_host
       SSH_PASSWORD                         = var.ssh_password
+      SSH_ROOT_PATH                        = var.ssh_root_path
       SSH_USERNAME                         = var.ssh_username
       STAGE                                = var.stage
     }
