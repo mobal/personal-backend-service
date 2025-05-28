@@ -66,7 +66,7 @@ class TestStorageService:
             storage_service.get_bucket("invalid")
 
         assert exc_info.type == BucketNotFoundException
-        assert exc_info.value.detail == "The requested bucket='invalid' was not found"
+        assert exc_info.value.detail == "Bucket 'invalid' not found"
 
     def test_successfully_get_object(
         self,
@@ -83,7 +83,7 @@ class TestStorageService:
         assert exc_info.type == ObjectNotFoundException
         assert (
             exc_info.value.detail
-            == f"Failed to load object from bucket='{BUCKET_NAME}' with key='invalid'"
+            == f"Object key=invalid not found in bucket={BUCKET_NAME}"
         )
 
     def test_successfully_list_objects(

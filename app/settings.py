@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     rate_limiting: bool
     ssh_host: str
     ssh_password: str
+    ssh_root_path: str
     ssh_username: str
     stage: str
 
@@ -26,4 +27,11 @@ class Settings(BaseSettings):
     def jwt_secret(self) -> str:
         return parameters.get_parameter(
             os.environ.get("JWT_SECRET_SSM_PARAM_NAME"), decrypt=True
+        )
+
+    @computed_field
+    @property
+    def ssh_secret(self) -> dict:
+        return parameters.get_parameter(
+            os.environ.get("SSH_SECRET_SSM_PARAM_NAME"), transform="json", decrypt=True
         )
