@@ -17,11 +17,13 @@ from app.api.v1.api import router as api_v1_router
 from app.middlewares import (ClientValidationMiddleware,
                              CorrelationIdMiddleware, RateLimitingMiddleware)
 from app.models.camel_model import CamelModel
+from app.services.publisher_service import PublisherService
+from tests.unit.conftest import publisher_service
 
 if settings.debug:
     set_package_logger()
 
-logger = Logger(utc=True)
+logger = Logger(service="PersonalBackendApplication", utc=True)
 
 app = FastAPI(debug=settings.debug, title="PersonalBackendApplication", version="1.0.0")
 app.add_middleware(CorrelationIdMiddleware)
@@ -46,9 +48,7 @@ class ValidationErrorResponse(ErrorResponse):
 
 @app.exception_handler(BotoCoreError)
 @app.exception_handler(ClientError)
-async def botocore_error_handler(
-    request: Request, error: BotoCoreError
-) -> UJSONResponse:
+def botocore_error_handler(request: Request, error: BotoCoreError) -> UJSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error) if settings.debug else "Internal Server Error"
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -62,9 +62,7 @@ async def botocore_error_handler(
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(
-    request: Request, error: HTTPException
-) -> UJSONResponse:
+def http_exception_handler(request: Request, error: HTTPException) -> UJSONResponse:
     error_id = uuid.uuid4()
     logger.exception(f"Received http exception {error_id=}")
     return UJSONResponse(
@@ -76,7 +74,7 @@ async def http_exception_handler(
 
 
 @app.exception_handler(RequestValidationError)
-async def request_validation_error_handler(
+def request_validation_error_handler(
     request: Request, error: RequestValidationError
 ) -> UJSONResponse:
     error_id = uuid.uuid4()
@@ -96,4 +94,7 @@ async def request_validation_error_handler(
 
 
 if __name__ == "__main__":
-    uvicorn.run("app.http_handler:app", host="localhost", port=8080, reload=True)
+    logger.info("Starting KAPPAPride!")
+    publisher_service = PublisherService()
+    publisher_service.publish("7bc99360-2b7c-4423-9646-d5b7a1108a0a")
+    uvicorn.run("app.api_handler:app", host="localhost", port=8080, reload=True)

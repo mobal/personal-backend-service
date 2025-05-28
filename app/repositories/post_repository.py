@@ -10,39 +10,32 @@ from app import settings
 class PostRepository:
     def __init__(self):
         self._logger = Logger(utc=True)
-        self._table = (
-            boto3.Session().resource("dynamodb").Table(f"{settings.stage}-posts")
-        )
+        self._table = boto3.resource("dynamodb").Table(f"{settings.stage}-posts")
 
     def create_post(self, data: dict):
         self._table.put_item(Item=data)
 
     def get_all_posts(
-        self,
-        filter_expression: ConditionBase,
-        fields: list[str],
+        self, filter_expression: ConditionBase, fields: list[str]
     ) -> list[dict[str, Any]]:
-        projection_expression = ",".join(fields)
+        projection = ",".join(fields)
+        items = []
         response = self._table.scan(
-            FilterExpression=filter_expression,
-            ProjectionExpression=projection_expression,
+            FilterExpression=filter_expression, ProjectionExpression=projection
         )
-        items = response["Items"]
+        items.extend(response["Items"])
         while "LastEvaluatedKey" in response:
             response = self._table.scan(
                 ExclusiveStartKey=response["LastEvaluatedKey"],
                 FilterExpression=filter_expression,
-                ProjectionExpression=projection_expression,
+                ProjectionExpression=projection,
             )
             items.extend(response["Items"])
         return items
 
     def count_all_posts(self, filter_expression: ConditionBase) -> int:
         count = 0
-        response = self._table.scan(
-            Select="COUNT",
-            FilterExpression=filter_expression,
-        )
+        response = self._table.scan(Select="COUNT", FilterExpression=filter_expression)
         count += response["Count"]
         while "LastEvaluatedKey" in response:
             response = self._table.scan(
@@ -77,17 +70,13 @@ class PostRepository:
         return response["Items"][0] if response["Items"] else None
 
     def get_post_by_uuid(
-        self,
-        post_uuid: str,
-        filter_expression: ConditionBase,
+        self, post_uuid: str, filter_expression: ConditionBase
     ) -> dict | None:
         response = self._table.query(
             KeyConditionExpression=Key("id").eq(post_uuid),
             FilterExpression=filter_expression,
         )
-        if response["Items"]:
-            return response["Items"][0]
-        return None
+        return response["Items"][0] if response["Items"] else None
 
     def get_posts(
         self,
@@ -95,34 +84,27 @@ class PostRepository:
         exclusive_start_key: dict[str, str] | None = None,
         fields: list[str] | None = None,
     ) -> tuple[str | None, list[dict[str, Any]]]:
-
-        kwargs: dict[str, Any] = {}
-        if exclusive_start_key:
-            kwargs["ExclusiveStartKey"] = exclusive_start_key
-        if fields:
-            kwargs["ProjectionExpression"] = ",".join(fields)
-        kwargs["FilterExpression"] = filter_expression
-        response = self._table.scan(**kwargs)
-        return (
-            response["LastEvaluatedKey"]["id"]
-            if response.get("LastEvaluatedKey", None)
-            else None
-        ), response["Items"]
+        kwargs = {
+            "FilterExpression": filter_expression,
+            "ExclusiveStartKey": exclusive_start_key,
+            "ProjectionExpression": ",".join(fields) if fields else None,
+        }
+        response = self._table.scan(
+            **{k: v for k, v in kwargs.items() if v is not None}
+        )
+        last_key = response.get("LastEvaluatedKey", {}).get("id")
+        return last_key, response["Items"]
 
     def update_post(
         self, post_uuid: str, data: dict, condition_expression: ConditionBase
     ):
-        attribute_names = {}
-        attribute_values = {}
-        update_expression = []
-        for k, v in data.items():
-            attribute_names[f"#{k}"] = k
-            attribute_values[f":{k}"] = v
-            update_expression.append(f"#{k}=:{k}")
+        attr_names = {f"#{k}": k for k in data}
+        attr_values = {f":{k}": v for k, v in data.items()}
+        update_expr = ", ".join(f"#{k}=:{k}" for k in data)
         self._table.update_item(
             Key={"id": post_uuid},
             ConditionExpression=condition_expression,
-            UpdateExpression="SET " + ",".join(update_expression),
-            ExpressionAttributeNames=attribute_names,
-            ExpressionAttributeValues=attribute_values,
+            UpdateExpression=f"SET {update_expr}",
+            ExpressionAttributeNames=attr_names,
+            ExpressionAttributeValues=attr_values,
         )

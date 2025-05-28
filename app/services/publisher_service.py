@@ -1,3 +1,5 @@
+import os
+
 import pendulum
 from asyncssh import Error as SSHError
 from aws_lambda_powertools import Logger
@@ -10,21 +12,20 @@ from app.services.post_service import PostService
 
 class PublisherService:
     def __init__(self):
-        self._logging = Logger(utc=True)
+        self._logger = Logger(utc=True)
         self._post_service = PostService()
         self._settings = Settings()
 
     def publish(self, post_uuid: str) -> None:
-        self._logging.info(f"Publishing post with UUID {post_uuid}")
+        self._logger.info(f"Publishing post with id={post_uuid}")
         post = self._post_service.get_post_by_uuid(post_uuid)
         if pendulum.parse(post.published_at).is_past():
-            self._logging.info(f"Publishing post id={post.id}")
             self._write(
                 self._settings.ssh_host,
                 self._settings.ssh_username,
                 self._settings.ssh_password,
                 post.content.encode("utf-8"),
-                post.post_path,
+                f"{post.id}.md",
             )
 
     def rm(self, path: str):
@@ -36,14 +37,15 @@ class PublisherService:
         try:
             fs.rm(path)
         except (SSHError, OSError) as e:
-            self._logging.error(e)
+            self._logger.error(e)
             raise PublishException(detail=str(e))
 
     def _write(self, host: str, username: str, password: str, data: bytes, path: str):
         fs = SSHFileSystem(host, username=username, password=password)
-        with fs.open(path, "wb") as stream:
-            try:
+        abs_path = os.path.join(self._settings.ssh_root_path, path)
+        try:
+            with fs.open(abs_path, "wb") as stream:
                 stream.write(data)
-            except (SSHError, OSError) as e:
-                self._logging.error(e)
-                raise PublishException(detail=str(e))
+        except (SSHError, OSError) as e:
+            self._logger.error(e)
+            raise PublishException(detail=str(e))
