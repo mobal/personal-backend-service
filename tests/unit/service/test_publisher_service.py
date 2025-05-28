@@ -42,7 +42,9 @@ class TestPublisherService:
 
         post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         mock_sshfs.assert_called_once()
-        mock_fs.open.assert_called_once_with(f"{os.environ.get("SSH_ROOT_PATH")}/{posts[0].id}.md", "wb")
+        mock_fs.open.assert_called_once_with(
+            f"{os.environ.get("SSH_ROOT_PATH")}/{posts[0].id}.md", "wb"
+        )
         mock_stream.write.assert_called_once_with(posts[0].content.encode("utf-8"))
 
     def test_publish_future_post(

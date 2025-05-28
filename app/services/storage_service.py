@@ -1,9 +1,11 @@
 from typing import Any
+
 import boto3
 from aws_lambda_powertools import Logger
 from botocore.exceptions import ClientError
 from mypy_boto3_s3.literals import BucketCannedACLType
 from mypy_boto3_s3.service_resource import Bucket, BucketObjectsCollection
+
 from app import settings
 from app.exceptions import BucketNotFoundException, ObjectNotFoundException
 
@@ -13,7 +15,9 @@ class StorageService:
         self._logger = Logger(utc=True)
         self._s3 = boto3.resource("s3", region_name=settings.aws_region)
 
-    def create_bucket(self, bucket: str, acl: BucketCannedACLType = "private") -> Bucket:
+    def create_bucket(
+        self, bucket: str, acl: BucketCannedACLType = "private"
+    ) -> Bucket:
         self._logger.info(f"Creating bucket={bucket} with acl={acl}")
         return self._s3.create_bucket(
             ACL=acl,
@@ -49,6 +53,10 @@ class StorageService:
         self._logger.info(f"Listing objects in bucket={bucket}")
         return self._s3.Bucket(name=bucket).objects.all()
 
-    def put_object(self, bucket: str, key: str, data: bytes, acl: str = "public-read") -> dict[str, Any]:
-        self._logger.info(f"Uploading object key={key} with acl={acl} to bucket={bucket}")
+    def put_object(
+        self, bucket: str, key: str, data: bytes, acl: str = "public-read"
+    ) -> dict[str, Any]:
+        self._logger.info(
+            f"Uploading object key={key} with acl={acl} to bucket={bucket}"
+        )
         return self._s3.Object(bucket_name=bucket, key=key).put(Body=data)
