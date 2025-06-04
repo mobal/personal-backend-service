@@ -157,7 +157,7 @@ class TestPostsApi:
     ):
         now = pendulum.now()
         response = test_client.get(
-            f"{BASE_URL}/{now.year}/{now.month}/{now.day}/{posts[0].slug}"
+            f"{BASE_URL}/{now.format("YYYY/MM/DD")}/{posts[0].slug}"
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -180,8 +180,14 @@ class TestPostsApi:
     def test_fail_to_get_post_by_date_and_slug_due_to_not_found(
         self, test_client: TestClient
     ):
+        random_timestamp = random.uniform(
+            pendulum.parse("1970-01-01").timestamp(),
+            pendulum.parse("2999-12-31").timestamp(),
+        )
+        random_date = pendulum.from_timestamp(random_timestamp)
+
         response = test_client.get(
-            f"{BASE_URL}/{random.randint(1970, 2999)}/{random.randint(3, 12)}/{random.randint(1, 30)}/slug"
+            f"{BASE_URL}/{random_date.format("YYYY/MM/DD")}/slug"
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert {

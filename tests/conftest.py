@@ -141,7 +141,7 @@ def make_post(faker):
             id=str(uuid.uuid4()),
             author=faker.name(),
             content=faker.text(),
-            post_path=f"{now.year}/{now.month}/{now.day}/{slug}",
+            post_path=f"{now.format("YYYY/MM/DD")}/{slug}",
             created_at=now.to_iso8601_string(),
             deleted_at=None,
             published_at=now.to_iso8601_string(),
