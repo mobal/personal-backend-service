@@ -33,6 +33,10 @@ resource "aws_lambda_function" "fastapi" {
   runtime          = "python3.13"
   timeout          = 15
   memory_size      = 768
+  snap_start {
+    apply_on         = "PublishedVersions"
+    optimization_mode = "Speed"
+  }
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
   layers = [
