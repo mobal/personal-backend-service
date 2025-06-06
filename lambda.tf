@@ -37,7 +37,7 @@ resource "aws_lambda_function" "fastapi" {
 
   layers = [
     aws_lambda_layer_version.requirements_lambda_layer.arn,
-    "arn:aws:lambda:${var.aws_region}:017000801446:layer:AWSLambdaPowertoolsPythonV2:76"
+    "arn:aws:lambda:${var.aws_region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-${var.architecture}:16"
   ]
 
   environment {
@@ -83,7 +83,7 @@ resource "terraform_data" "requirements_lambda_layer" {
       export PATH=\$UV_INSTALL_DIR:\$PATH
       uv sync --no-dev
       uv export --locked --no-dev --format requirements.txt > requirements.txt
-      pip install -r requirements.txt -t python/lib/python3.13/site-packages --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all: && \
+      pip install -r requirements.txt -t python/lib/python3.13/site-packages --platform manylinux2014_${var.architecture} --python-version 3.13 --only-binary=:all: && \
       zip -r requirements.zip python
       "
     EOT
@@ -102,7 +102,7 @@ resource "aws_s3_object" "requirements_lambda_layer" {
 }
 
 resource "aws_lambda_layer_version" "requirements_lambda_layer" {
-  compatible_architectures = ["x86_64"]
+  compatible_architectures = [var.architecture]
   compatible_runtimes      = ["python3.13"]
   depends_on               = [aws_s3_object.requirements_lambda_layer]
   layer_name               = "${local.app_name}-requirements"

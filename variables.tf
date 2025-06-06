@@ -13,6 +13,11 @@ variable "app_name" {
   type    = string
 }
 
+variable "architecture" {
+  default = "x86_64"
+  type    = string
+}
+
 variable "debug" {
   default = false
   type    = bool
