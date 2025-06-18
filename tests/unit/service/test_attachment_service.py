@@ -184,11 +184,11 @@ class TestAttachmentService:
     ):
         mocker.patch.object(PostService, "get_post", return_value=post_with_attachment)
 
-        attachment = attachment_service.get_attachment_by_id(
+        post_attachment = attachment_service.get_attachment_by_id(
             post_with_attachment.id, attachment.id
         )
 
-        assert attachment == attachment
+        assert attachment == post_attachment
         post_service.get_post.assert_called_once_with(post_with_attachment.id)
 
     def test_fail_to_get_attachment_by_name_due_to_post_not_found(
