@@ -9,7 +9,8 @@ from fastapi import status
 from fastapi.requests import Request
 from fastapi.responses import Response, UJSONResponse
 from httpx import HTTPError
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.middleware.base import (BaseHTTPMiddleware,
+                                       RequestResponseEndpoint)
 from starlette.types import ASGIApp
 
 from app import Settings
@@ -96,7 +97,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
                     return rate_limited_response
                 response = await call_next(request)
                 response.headers.update(
-                    await self._get_rate_limit_headers(clients[client_ip])
+                    self._get_rate_limit_headers(clients[client_ip])
                 )
                 return response
             else:
@@ -120,14 +121,14 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
                 return UJSONResponse(
                     content={"message": "Rate limit exceeded. Please try again later"},
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    headers=await self._get_rate_limit_headers(client),
+                    headers=self._get_rate_limit_headers(client),
                 )
             client["request_count"] += 1
         client["last_request"] = datetime.now()
         clients[client_ip] = client
         return None
 
-    async def _get_rate_limit_headers(self, client: dict[str, Any]) -> dict[str, Any]:
+    def _get_rate_limit_headers(self, client: dict[str, Any]) -> dict[str, Any]:
         return {
             "X-RateLimit-Limit": str(settings.rate_limit_requests),
             "X-RateLimit-Remaining": str(
