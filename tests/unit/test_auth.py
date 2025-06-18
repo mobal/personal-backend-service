@@ -20,10 +20,15 @@ def empty_request() -> Mock:
     return request
 
 
+def generate_bearer_token(jwt_token: JWTToken, jwt_secret: str) -> str:
+    return jwt.encode(jwt_token.model_dump(), jwt_secret)
+
+
 @pytest.fixture
 def valid_request(empty_request: Mock, jwt_token: JWTToken, settings: Settings) -> Mock:
+    bearer_token = generate_bearer_token(jwt_token, settings.jwt_secret)
     empty_request.headers = {
-        "Authorization": f"Bearer {jwt.encode(jwt_token.model_dump(), settings.jwt_secret)}"
+        "Authorization": f"Bearer {bearer_token}",
     }
     return empty_request
 
@@ -96,8 +101,9 @@ class TestJWTAuth:
         jwt_token: JWTToken,
         settings: Settings,
     ):
+        bearer_token = generate_bearer_token(jwt_token, settings.jwt_secret)
         empty_request.headers = {
-            "Authorization": f"Bear {jwt.encode(jwt_token.model_dump(), settings.jwt_secret)}"
+            "Authorization": f"Bear {bearer_token}",
         }
 
         with pytest.raises(HTTPException) as excinfo:
@@ -113,8 +119,9 @@ class TestJWTAuth:
         jwt_token: JWTToken,
         settings: Settings,
     ):
+        bearer_token = generate_bearer_token(jwt_token, settings.jwt_secret)
         empty_request.headers = {
-            "Authorization": f"Bear {jwt.encode(jwt_token.model_dump(), settings.jwt_secret)}"
+            "Authorization": f"Bear {bearer_token}",
         }
         jwt_bearer = JWTBearer(auto_error=False)
 
@@ -144,8 +151,9 @@ class TestJWTAuth:
         self, jwt_bearer: JWTBearer, jwt_token: JWTToken, settings: Settings
     ):
         request = Mock()
+        bearer_token = generate_bearer_token(jwt_token, settings.jwt_secret)
         request.headers = {
-            "Authorization": f"Basic {jwt.encode(jwt_token.model_dump(), settings.jwt_secret)}"
+            "Authorization": f"Basic {bearer_token}",
         }
 
         with pytest.raises(HTTPException) as excinfo:

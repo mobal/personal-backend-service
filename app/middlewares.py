@@ -9,8 +9,7 @@ from fastapi import status
 from fastapi.requests import Request
 from fastapi.responses import Response, UJSONResponse
 from httpx import HTTPError
-from starlette.middleware.base import (BaseHTTPMiddleware,
-                                       RequestResponseEndpoint)
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp
 
 from app import Settings
@@ -52,7 +51,8 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
                 response.raise_for_status()
                 if response.json()["country"] in self.RESTRICTED_COUNTRY_CODES:
                     logger.info(
-                        f"Client has restricted country_code={response.json()['country']} with {client_ip=}"
+                        f"Client has restricted "
+                        f"country_code={response.json()['country']} with {client_ip=}"
                     )
                     return True
             except HTTPError as exc:

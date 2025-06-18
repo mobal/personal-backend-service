@@ -4,7 +4,7 @@ bandit:
 	uv run -m bandit --severity-level high --confidence-level high -r app/ -vvv
 
 black:
-	uv run -m black ./
+	uv run -m black --verbose ./
 
 flake:
 	uv run -m autoflake --in-place --recursive --remove-all-unused-imports --remove-unused-variables app/*.py tests/*.py
