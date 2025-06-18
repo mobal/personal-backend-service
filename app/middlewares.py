@@ -92,7 +92,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         if settings.rate_limiting:
             client_ip = request.client.host if request.client else None
             if client_ip:
-                rate_limited_response = await self._check_rate_limit(client_ip)
+                rate_limited_response = self._check_rate_limit(client_ip)
                 if rate_limited_response:
                     return rate_limited_response
                 response = await call_next(request)
@@ -106,7 +106,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             logger.info("Rate limiting is turned off")
         return await call_next(request)
 
-    async def _check_rate_limit(self, client_ip: str) -> UJSONResponse | None:
+    def _check_rate_limit(self, client_ip: str) -> UJSONResponse | None:
         client = clients.get(
             client_ip, {"request_count": 0, "last_request": datetime.min}
         )
