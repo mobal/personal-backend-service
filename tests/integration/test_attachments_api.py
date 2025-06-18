@@ -87,8 +87,6 @@ class TestAttachmentsApi:
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
-
         response = test_client.post(
             f"/api/v1/posts/{post_with_attachment.id}/attachments",
             headers={"Authorization": "Bearer "},

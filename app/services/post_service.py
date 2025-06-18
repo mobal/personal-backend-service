@@ -47,10 +47,11 @@ class PostService:
             ),
         ):
             raise PostAlreadyExistsException(self.ERROR_POST_EXISTS)
+        post_path = f"{now.year}/{now.month}/{now.day}/{slugify(data['title'])}"
         data.update(
             {
                 "id": str(uuid.uuid4()),
-                "post_path": f"{now.year}/{now.month}/{now.day}/{slugify(data['title'])}",
+                "post_path": post_path,
                 "created_at": now.to_iso8601_string(),
                 "deleted_at": None,
                 "slug": slugify(data["title"]),

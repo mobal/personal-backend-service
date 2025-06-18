@@ -52,7 +52,8 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
                 response.raise_for_status()
                 if response.json()["country"] in self.RESTRICTED_COUNTRY_CODES:
                     logger.info(
-                        f"Client has restricted country_code={response.json()['country']} with {client_ip=}"
+                        f"Client has restricted "
+                        f"country_code={response.json()['country']} with {client_ip=}"
                     )
                     return True
             except HTTPError as exc:
@@ -91,12 +92,12 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         if settings.rate_limiting:
             client_ip = request.client.host if request.client else None
             if client_ip:
-                rate_limited_response = await self._check_rate_limit(client_ip)
+                rate_limited_response = self._check_rate_limit(client_ip)
                 if rate_limited_response:
                     return rate_limited_response
                 response = await call_next(request)
                 response.headers.update(
-                    await self._get_rate_limit_headers(clients[client_ip])
+                    self._get_rate_limit_headers(clients[client_ip])
                 )
                 return response
             else:
@@ -105,7 +106,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             logger.info("Rate limiting is turned off")
         return await call_next(request)
 
-    async def _check_rate_limit(self, client_ip: str) -> UJSONResponse | None:
+    def _check_rate_limit(self, client_ip: str) -> UJSONResponse | None:
         client = clients.get(
             client_ip, {"request_count": 0, "last_request": datetime.min}
         )
@@ -120,14 +121,14 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
                 return UJSONResponse(
                     content={"message": "Rate limit exceeded. Please try again later"},
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    headers=await self._get_rate_limit_headers(client),
+                    headers=self._get_rate_limit_headers(client),
                 )
             client["request_count"] += 1
         client["last_request"] = datetime.now()
         clients[client_ip] = client
         return None
 
-    async def _get_rate_limit_headers(self, client: dict[str, Any]) -> dict[str, Any]:
+    def _get_rate_limit_headers(self, client: dict[str, Any]) -> dict[str, Any]:
         return {
             "X-RateLimit-Limit": str(settings.rate_limit_requests),
             "X-RateLimit-Remaining": str(

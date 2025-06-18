@@ -1,7 +1,7 @@
 from typing import Any
 
 from aws_lambda_powertools import Logger
-from fastapi import APIRouter, Depends, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, status
 from fastapi.responses import Response
 
 from app.jwt_bearer import JWTBearer
@@ -45,10 +45,21 @@ def get_archive() -> dict[str, Any]:
 @router.get("/{year}/{month}/{day}/{slug}", status_code=status.HTTP_200_OK)
 def get_by_post_path(
     slug: str,
-    year: int = Path(ge=1970),
-    month: int = Path(ge=1, le=12),
-    day: int = Path(ge=1, le=31),
+    year: str = Path(regex=r"^\d{4}$", description="4 digit year"),
+    month: str = Path(regex=r"^(0[1-9]|1[0-2])$", description="2 digit month (01-12)"),
+    day: str = Path(
+        regex=r"^(0[1-9]|[12]\d|3[01])$", description="2 digit day (01-31)"
+    ),
 ) -> PostResponse:
+    year_int = int(year)
+    month_int = int(month)
+    day_int = int(day)
+
+    if not (1970 <= year_int and 1 <= month_int <= 12 and 1 <= day_int <= 31):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date"
+        )
+
     return post_service.get_by_post_path(f"{year}/{month}/{day}/{slug}")
 
 

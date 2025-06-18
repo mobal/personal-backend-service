@@ -52,7 +52,8 @@ class TestStorageService:
         assert issubclass(exc_info.type, ClientError)
         assert (
             str(exc_info.value)
-            == "An error occurred (NoSuchKey) when calling the GetObject operation: The specified key does not exist."
+            == "An error occurred (NoSuchKey) when calling the GetObject operation: "
+            "The specified key does not exist."
         )
 
     def test_successfully_get_bucket(self, storage_service: StorageService):
