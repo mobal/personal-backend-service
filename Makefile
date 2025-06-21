@@ -18,6 +18,9 @@ mypy:
 pycodestyle:
 	uv run -m pycodestyle --ignore=E501,W503 app/ tests/
 
+serve:
+	uv run -m uvicorn app.api_handler:app
+
 sort:
 	uv run -m isort --atomic app/ tests/
 
