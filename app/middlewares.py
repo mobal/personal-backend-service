@@ -28,11 +28,16 @@ clients: dict[str, Any] = {}
 
 class ClientValidationMiddleware(BaseHTTPMiddleware):
     RESTRICTED_COUNTRY_CODES = ["CN", "RU"]
+    WHITELIST = ["127.0.0.1", "localhost", "::1"]
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        if not request.client or not request.client.host:
+        if (
+            not request.client
+            or not request.client.host
+            or request.client.host in self.WHITELIST
+        ):
             return await call_next(request)
         client_ip = request.client.host
         is_banned = client_ip in banned_hosts or await self._validate_host(client_ip)
