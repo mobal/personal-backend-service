@@ -30,5 +30,8 @@ test:
 unit-test:
 	uv run -m pytest tests/unit
 
+upgrade:
+	uv sync --upgrade
+
 integration-test:
 	uv run -m pytest tests/integration
