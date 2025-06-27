@@ -7,6 +7,7 @@ from pytest_mock import MockerFixture
 
 from app.exceptions import AttachmentNotFoundException, PostNotFoundException
 from app.models.post import Attachment, Post
+from app.models.response import Attachment as AttachmentResponse
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.storage_service import StorageService
@@ -174,9 +175,9 @@ class TestAttachmentService:
         assert exc_info.type == PostNotFoundException
         post_service.get_post.assert_called_once_with(posts[0].id)
 
-    @pytest.mark.skip(
+    """@pytest.mark.skip(
         "Skipping test for now, as something is wrong with the attachment comparison"
-    )
+    )"""
     def test_successfully_get_attachment_by_name(
         self,
         mocker: MockerFixture,
@@ -191,7 +192,7 @@ class TestAttachmentService:
             post_with_attachment.id, attachment.id
         )
 
-        assert attachment == post_attachment
+        assert AttachmentResponse(**attachment.model_dump()) == post_attachment
         post_service.get_post.assert_called_once_with(post_with_attachment.id)
 
     def test_fail_to_get_attachment_by_name_due_to_post_not_found(
