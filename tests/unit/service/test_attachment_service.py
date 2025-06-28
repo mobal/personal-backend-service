@@ -175,9 +175,6 @@ class TestAttachmentService:
         assert exc_info.type == PostNotFoundException
         post_service.get_post.assert_called_once_with(posts[0].id)
 
-    """@pytest.mark.skip(
-        "Skipping test for now, as something is wrong with the attachment comparison"
-    )"""
     def test_successfully_get_attachment_by_name(
         self,
         mocker: MockerFixture,
