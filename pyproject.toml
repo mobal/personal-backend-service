@@ -28,9 +28,7 @@ dev = [
     "autoflake>=2.3.1",
     "aws-lambda-powertools[validation]>=3.13.0",
     "bandit>=1.8.3",
-    "black>=25.1.0",
     "faker>=37.3.0",
-    "isort>=6.0.1",
     "moto>=5.0.28",
     "mypy>=1.15.0",
     "pycodestyle>=2.13.0",
@@ -40,6 +38,7 @@ dev = [
     "pytest-mock>=3.14.0",
     "pytest-xdist>=3.6.1",
     "respx>=0.22.0",
+    "ruff >=0.12.9",
 ]
 
 [tool.black]
