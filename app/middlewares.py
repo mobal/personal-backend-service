@@ -9,8 +9,7 @@ from fastapi import status
 from fastapi.requests import Request
 from fastapi.responses import Response, UJSONResponse
 from httpx import HTTPError
-from starlette.middleware.base import (BaseHTTPMiddleware,
-                                       RequestResponseEndpoint)
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp
 
 from app import Settings

@@ -1,6 +1,4 @@
-from unittest.mock import MagicMock
 
-import asyncssh
 import pendulum
 import pytest
 from asyncssh import Error as SSHError
