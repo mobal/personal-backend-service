@@ -6,7 +6,7 @@ from aws_lambda_powertools import Logger
 from sshfs import SSHFileSystem
 
 
-class FSStorageService:
+class SSHFSStorageService:
     def __init__(self):
         self._logger = Logger(utc=True)
 

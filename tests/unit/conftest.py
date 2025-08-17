@@ -8,6 +8,7 @@ from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken
 from app.repositories.post_repository import PostRepository
 from app.services.attachment_service import AttachmentService
+from app.services.fs_storage_service import SSHFSStorageService
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
 from app.services.s3_storage_service import S3StorageService
@@ -57,5 +58,10 @@ def publisher_service() -> PublisherService:
 
 
 @pytest.fixture
-def storage_service() -> S3StorageService:
+def s3_storage_service() -> S3StorageService:
     return S3StorageService()
+
+
+@pytest.fixture
+def sshfs_storage_service() -> SSHFSStorageService:
+    return SSHFSStorageService()

@@ -22,7 +22,7 @@ class TestAttachmentService:
         attachment_service: AttachmentService,
         post_service: PostService,
         posts: list[Post],
-        storage_service: S3StorageService,
+        s3_storage_service: S3StorageService,
         test_data: bytes,
     ):
         mocker.patch.object(PostService, "get_post", return_value=posts[0])
@@ -46,7 +46,7 @@ class TestAttachmentService:
         assert result.name
         assert result.url
         post_service.get_post.assert_called_once_with(posts[0].id)
-        storage_service.put_object.assert_called_once()
+        s3_storage_service.put_object.assert_called_once()
         post_service.update_post.assert_called_once_with(
             posts[0].id, {"attachments": [result.model_dump(exclude_none=True)]}
         )
@@ -57,7 +57,7 @@ class TestAttachmentService:
         attachment_service: AttachmentService,
         post_service: PostService,
         posts: list[Post],
-        storage_service: S3StorageService,
+        s3_storage_service: S3StorageService,
         test_data: bytes,
     ):
         mocker.patch.object(PostService, "get_post", return_value=posts[0])
@@ -81,7 +81,7 @@ class TestAttachmentService:
         assert result.name
         assert result.url
         post_service.get_post.assert_called_once_with(posts[0].id)
-        storage_service.put_object.assert_called_once()
+        s3_storage_service.put_object.assert_called_once()
         post_service.update_post.assert_called_once_with(posts[0].id, ANY)
 
     def test_successfully_extend_attachments(
@@ -90,7 +90,7 @@ class TestAttachmentService:
         attachment_service: AttachmentService,
         post_service: PostService,
         post_with_attachment: Post,
-        storage_service: S3StorageService,
+        s3_storage_service: S3StorageService,
         test_data: bytes,
     ):
         mocker.patch.object(PostService, "get_post", return_value=post_with_attachment)
@@ -110,7 +110,7 @@ class TestAttachmentService:
 
         assert post_with_attachment.attachments
         post_service.get_post.assert_called_once_with(post_with_attachment.id)
-        storage_service.put_object.assert_called_once()
+        s3_storage_service.put_object.assert_called_once()
         extended_attachments = copy.deepcopy(post_with_attachment.attachments)
         extended_attachments.append(result)
         post_service.update_post.assert_called_once_with(

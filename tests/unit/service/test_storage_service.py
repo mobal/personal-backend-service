@@ -28,20 +28,20 @@ class TestStorageService:
     def test_successfully_create_bucket(
         self,
         s3_resource,
-        storage_service: S3StorageService,
+        s3_storage_service: S3StorageService,
     ):
         bucket_name = "attachments"
 
-        storage_service.create_bucket(bucket_name)
+        s3_storage_service.create_bucket(bucket_name)
 
         assert bucket_name in [bucket.name for bucket in s3_resource.buckets.all()]
 
     def test_successfully_delete_object(
         self,
         s3_resource,
-        storage_service: S3StorageService,
+        s3_storage_service: S3StorageService,
     ):
-        response = storage_service.delete_object(BUCKET_NAME, OBJECT_KEY)
+        response = s3_storage_service.delete_object(BUCKET_NAME, OBJECT_KEY)
 
         assert (
             response["ResponseMetadata"]["HTTPStatusCode"] == status.HTTP_204_NO_CONTENT
@@ -56,34 +56,34 @@ class TestStorageService:
             "The specified key does not exist."
         )
 
-    def test_successfully_get_bucket(self, storage_service: S3StorageService):
-        response = storage_service.get_bucket(BUCKET_NAME)
+    def test_successfully_get_bucket(self, s3_storage_service: S3StorageService):
+        response = s3_storage_service.get_bucket(BUCKET_NAME)
 
         assert response.creation_date
         assert response.name == BUCKET_NAME
 
     def test_fail_to_get_bucket_due_to_not_found(
-        self, storage_service: S3StorageService
+        self, s3_storage_service: S3StorageService
     ):
         with pytest.raises(BucketNotFoundException) as exc_info:
-            storage_service.get_bucket("invalid")
+            s3_storage_service.get_bucket("invalid")
 
         assert exc_info.type == BucketNotFoundException
         assert exc_info.value.detail == "Bucket 'invalid' not found"
 
     def test_successfully_get_object(
         self,
-        storage_service: S3StorageService,
+        s3_storage_service: S3StorageService,
     ):
-        response = storage_service.get_object(BUCKET_NAME, OBJECT_KEY)
+        response = s3_storage_service.get_object(BUCKET_NAME, OBJECT_KEY)
 
         assert response["Body"].read().decode("utf-8") == OBJECT_BODY
 
     def test_fail_to_get_object_due_to_not_found(
-        self, storage_service: S3StorageService
+        self, s3_storage_service: S3StorageService
     ):
         with pytest.raises(ObjectNotFoundException) as exc_info:
-            storage_service.get_object(BUCKET_NAME, "invalid")
+            s3_storage_service.get_object(BUCKET_NAME, "invalid")
 
         assert exc_info.type == ObjectNotFoundException
         assert (
@@ -93,9 +93,9 @@ class TestStorageService:
 
     def test_successfully_list_objects(
         self,
-        storage_service: S3StorageService,
+        s3_storage_service: S3StorageService,
     ):
-        response = storage_service.list_objects(BUCKET_NAME)
+        response = s3_storage_service.list_objects(BUCKET_NAME)
         objects = list(response)
         assert len(objects) == 1
         assert objects[0].get()["Body"].read().decode("utf-8") == OBJECT_BODY
@@ -103,12 +103,14 @@ class TestStorageService:
     def test_successfully_put_object(
         self,
         s3_resource,
-        storage_service: S3StorageService,
+        s3_storage_service: S3StorageService,
     ):
         object_body = pendulum.now().to_iso8601_string()
         object_key = str(uuid.uuid4())
 
-        storage_service.put_object(BUCKET_NAME, object_key, object_body.encode("utf-8"))
+        s3_storage_service.put_object(
+            BUCKET_NAME, object_key, object_body.encode("utf-8")
+        )
 
         obj = s3_resource.Object(bucket_name=BUCKET_NAME, key=OBJECT_KEY)
         assert obj.get()["Body"].read().decode("utf-8") == OBJECT_BODY
