@@ -6,7 +6,7 @@ from aws_lambda_powertools import Logger
 
 from app import Settings
 from app.exceptions import PublishException
-from app.services.fs_storage_service import SSHFSStorageService
+from app.services.sshfs_storage_service import SSHFSStorageService
 from app.services.post_service import PostService
 
 
