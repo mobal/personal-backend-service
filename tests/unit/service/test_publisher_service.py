@@ -9,9 +9,9 @@ from pytest_mock import MockerFixture
 
 from app.exceptions import PublishException
 from app.models.post import Post
-from app.services.sshfs_storage_service import SSHFSStorageService
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
+from app.services.sshfs_storage_service import SSHFSStorageService
 
 ERROR_MESSAGE: str = "error"
 
