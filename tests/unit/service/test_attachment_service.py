@@ -10,7 +10,7 @@ from app.models.post import Attachment, Post
 from app.models.response import Attachment as AttachmentResponse
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
-from app.services.storage_service import StorageService
+from app.services.s3_storage_service import S3StorageService
 
 ATTACHMENT_NAME = "lorem.txt"
 
@@ -22,12 +22,12 @@ class TestAttachmentService:
         attachment_service: AttachmentService,
         post_service: PostService,
         posts: list[Post],
-        storage_service: StorageService,
+        storage_service: S3StorageService,
         test_data: bytes,
     ):
         mocker.patch.object(PostService, "get_post", return_value=posts[0])
         mocker.patch.object(
-            StorageService,
+            S3StorageService,
             "put_object",
             return_value={
                 "ContentLength": len(test_data.decode()),
@@ -57,12 +57,12 @@ class TestAttachmentService:
         attachment_service: AttachmentService,
         post_service: PostService,
         posts: list[Post],
-        storage_service: StorageService,
+        storage_service: S3StorageService,
         test_data: bytes,
     ):
         mocker.patch.object(PostService, "get_post", return_value=posts[0])
         mocker.patch.object(
-            StorageService,
+            S3StorageService,
             "put_object",
             return_value={
                 "ContentLength": len(test_data.decode()),
@@ -90,12 +90,12 @@ class TestAttachmentService:
         attachment_service: AttachmentService,
         post_service: PostService,
         post_with_attachment: Post,
-        storage_service: StorageService,
+        storage_service: S3StorageService,
         test_data: bytes,
     ):
         mocker.patch.object(PostService, "get_post", return_value=post_with_attachment)
         mocker.patch.object(
-            StorageService,
+            S3StorageService,
             "put_object",
             return_value={"ContentLength": len(test_data), "ContentType": "plain/text"},
         )

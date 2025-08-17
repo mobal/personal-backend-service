@@ -10,14 +10,14 @@ from app.exceptions import AttachmentNotFoundException
 from app.models.post import Attachment
 from app.models.response import Attachment as AttachmentResponse
 from app.services.post_service import PostService
-from app.services.storage_service import StorageService
+from app.services.s3_storage_service import S3StorageService
 
 
 class AttachmentService:
     def __init__(self):
         self._logger = Logger(utc=True)
         self._post_service = PostService()
-        self._storage_service = StorageService()
+        self._storage_service = S3StorageService()
 
     def add_attachment(
         self, post_uuid: str, attachment_name: str, base64_data: str, display_name: str

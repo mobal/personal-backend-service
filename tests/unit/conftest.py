@@ -10,7 +10,7 @@ from app.repositories.post_repository import PostRepository
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
-from app.services.storage_service import StorageService
+from app.services.s3_storage_service import S3StorageService
 
 
 @pytest.fixture
@@ -57,5 +57,5 @@ def publisher_service() -> PublisherService:
 
 
 @pytest.fixture
-def storage_service() -> StorageService:
-    return StorageService()
+def storage_service() -> S3StorageService:
+    return S3StorageService()
