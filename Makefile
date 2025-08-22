@@ -15,7 +15,7 @@ mypy:
 serve:
 	uv run -m uvicorn app.api_handler:app
 test:
-	uv run -m pytest --cov-fail-under=90
+	uv run -m pytest --cov-fail-under=90 --cov-report=term --cov=app tests/
 
 unit-test:
 	uv run -m pytest tests/unit
