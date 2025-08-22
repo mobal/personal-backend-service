@@ -7,7 +7,7 @@ import httpx
 from aws_lambda_powertools import Logger
 from fastapi import status
 from fastapi.requests import Request
-from fastapi.responses import Response, UJSONResponse
+from fastapi.responses import ORJSONResponse, Response
 from httpx import HTTPError
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp
@@ -43,7 +43,7 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
         if is_banned:
             if client_ip not in banned_hosts:
                 banned_hosts.append(client_ip)
-            return UJSONResponse(
+            return ORJSONResponse(
                 content={"message": "Forbidden"},
                 status_code=status.HTTP_403_FORBIDDEN,
             )
@@ -110,7 +110,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             logger.info("Rate limiting is turned off")
         return await call_next(request)
 
-    def _check_rate_limit(self, client_ip: str) -> UJSONResponse | None:
+    def _check_rate_limit(self, client_ip: str) -> ORJSONResponse | None:
         client = clients.get(
             client_ip, {"request_count": 0, "last_request": datetime.min}
         )
@@ -122,7 +122,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
                     "The client has exceeded the rate limit and has been rate limited",
                     host=client_ip,
                 )
-                return UJSONResponse(
+                return ORJSONResponse(
                     content={"message": "Rate limit exceeded. Please try again later"},
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     headers=self._get_rate_limit_headers(client),
