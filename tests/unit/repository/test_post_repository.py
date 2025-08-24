@@ -36,7 +36,7 @@ class TestPostRepository:
         post_repository: PostRepository,
     ):
         items = post_repository.get_all_posts(
-            filter_expression, list(posts[0].model_fields.keys())
+            filter_expression, list(Post.model_fields.keys())
         )
 
         assert len(items) == len(posts)
@@ -73,7 +73,7 @@ class TestPostRepository:
                 batch.put_item(Item=long_sized_post.model_dump())
 
         items = post_repository.get_all_posts(
-            filter_expression, list(long_sized_post.model_fields.keys())
+            filter_expression, list(Post.model_fields.keys())
         )
 
         assert len(posts) + MAX_NUMBER_OF_LARGE_SIZED_POSTS == len(items)
@@ -181,7 +181,7 @@ class TestPostRepository:
         post_repository: PostRepository,
     ):
         last_evaluated_key, response = post_repository.get_posts(
-            filter_expression, None, list(posts[0].model_fields.keys())
+            filter_expression, None, list(Post.model_fields.keys())
         )
 
         assert last_evaluated_key is None
