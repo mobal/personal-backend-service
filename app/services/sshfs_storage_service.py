@@ -17,30 +17,47 @@ class SSHFSStorageService:
         fs = SSHFileSystem(host, username=username, password=password)
         try:
             yield fs
-        except (SSHError, OSError) as err:
-            self._logger.exception(err)
-            raise
         finally:
             fs.client.close()
 
     def delete(self, host: str, username: str, password: str, path: str):
-        with self._fs(host, username, password) as fs:
-            fs.rm(path)
+        try:
+            with self._fs(host, username, password) as fs:
+                fs.rm(path)
+        except (SSHError, OSError):
+            self._logger.exception("Failed to delete file", extra={"path": path})
+            raise
 
     def download(self, host: str, username: str, password: str, path: str) -> bytes:
-        with self._fs(host, username, password) as fs:
-            with fs.open(path, "rb") as f:
-                return f.read()
+        try:
+            with self._fs(host, username, password) as fs:
+                with fs.open(path, "rb") as f:
+                    return f.read()
+        except (SSHError, OSError):
+            self._logger.exception("Failed to download file", extra={"path": path})
+            raise
 
     def exists(self, host: str, username: str, password: str, path: str) -> bool:
-        with self._fs(host, username, password) as fs:
-            return fs.exists(path)
+        try:
+            with self._fs(host, username, password) as fs:
+                return fs.exists(path)
+        except (SSHError, OSError):
+            self._logger.exception("Failed to check file existence", extra={"path": path})
+            raise
 
     def list(self, host: str, username: str, password: str, path: str) -> list[str]:
-        with self._fs(host, username, password) as fs:
-            return fs.ls(path)
+        try:
+            with self._fs(host, username, password) as fs:
+                return fs.ls(path)
+        except (SSHError, OSError):
+            self._logger.exception("Failed to list files", extra={"path": path})
+            raise
 
     def write(self, host: str, username: str, password: str, data: bytes, path: str):
-        with self._fs(host, username, password) as fs:
-            with fs.open(path, "wb") as f:
-                f.write(data)
+        try:
+            with self._fs(host, username, password) as fs:
+                with fs.open(path, "wb") as f:
+                    f.write(data)
+        except (SSHError, OSError):
+            self._logger.exception("Failed to write file", extra={"path": path})
+            raise
