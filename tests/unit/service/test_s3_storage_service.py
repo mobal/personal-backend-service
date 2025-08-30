@@ -13,7 +13,7 @@ OBJECT_BODY = "This is a simple string."
 OBJECT_KEY = str(uuid.uuid4())
 
 
-class TestStorageService:
+class TestS3StorageService:
     @pytest.fixture(autouse=True)
     def setup_function(self, s3_resource):
         bucket = s3_resource.create_bucket(
