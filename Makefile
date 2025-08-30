@@ -1,4 +1,4 @@
-all: lint test
+all: lint sort test
 
 bandit:
 	uv run -m bandit --severity-level high --confidence-level high -r app/ -vvv
@@ -14,6 +14,10 @@ mypy:
 
 serve:
 	uv run -m uvicorn app.api_handler:app
+
+sort:
+	uv run -m ruff check --select I --fix
+
 test:
 	uv run -m pytest --cov-fail-under=90 --cov-report=term --cov=app tests/
 
