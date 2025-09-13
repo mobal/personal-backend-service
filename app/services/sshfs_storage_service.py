@@ -42,7 +42,9 @@ class SSHFSStorageService:
             with self._fs(host, username, password) as fs:
                 return fs.exists(path)
         except (SSHError, OSError):
-            self._logger.exception("Failed to check file existence", extra={"path": path})
+            self._logger.exception(
+                "Failed to check file existence", extra={"path": path}
+            )
             raise
 
     def list(self, host: str, username: str, password: str, path: str) -> list[str]:

@@ -157,7 +157,7 @@ class TestPostsApi:
     ):
         now = pendulum.now()
         response = test_client.get(
-            f"{BASE_URL}/{now.format("YYYY/MM/DD")}/{posts[0].slug}"
+            f"{BASE_URL}/{now.format('YYYY/MM/DD')}/{posts[0].slug}"
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -187,7 +187,7 @@ class TestPostsApi:
         random_date = pendulum.from_timestamp(random_timestamp)
 
         response = test_client.get(
-            f"{BASE_URL}/{random_date.format("YYYY/MM/DD")}/slug"
+            f"{BASE_URL}/{random_date.format('YYYY/MM/DD')}/slug"
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert {

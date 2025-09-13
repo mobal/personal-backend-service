@@ -1,7 +1,10 @@
-all: lint sort test
+all: format sort test
 
 bandit:
-	uv run -m bandit --severity-level high --confidence-level high -r app/ -vvv
+	uv run -m bandit --severity-level high --confidence-level high -r app/
+
+format:
+	uv run -m ruff format
 
 install:
 	uv sync

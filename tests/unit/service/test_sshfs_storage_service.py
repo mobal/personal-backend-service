@@ -26,8 +26,10 @@ class TestSSHFSStorageService:
         mock_stream = MagicMock()
         mock_stream.read.return_value = b"test content"
         mock_fs.open.return_value.__enter__.return_value = mock_stream
-        
-        result = sshfs_storage_service.download("localhost", "username", "password", "/path/to/file")
+
+        result = sshfs_storage_service.download(
+            "localhost", "username", "password", "/path/to/file"
+        )
 
         assert result == b"test content"
         mock_fs.open.assert_called_once_with("/path/to/file", "rb")
@@ -44,7 +46,9 @@ class TestSSHFSStorageService:
         mock_fs.open.side_effect = SSHError(1, "SSH error")
 
         with pytest.raises(SSHError):
-            sshfs_storage_service.download("localhost", "username", "password", "/path/to/file")
+            sshfs_storage_service.download(
+                "localhost", "username", "password", "/path/to/file"
+            )
 
         mock_fs.open.assert_called_once_with("/path/to/file", "rb")
         mock_fs.client.close.assert_called_once()
@@ -59,7 +63,9 @@ class TestSSHFSStorageService:
         mock_fs.open.side_effect = OSError("OS error")
 
         with pytest.raises(OSError):
-            sshfs_storage_service.download("localhost", "username", "password", "/path/to/file")
+            sshfs_storage_service.download(
+                "localhost", "username", "password", "/path/to/file"
+            )
 
         mock_fs.open.assert_called_once_with("/path/to/file", "rb")
         mock_fs.client.close.assert_called_once()
@@ -74,8 +80,10 @@ class TestSSHFSStorageService:
         mock_stream = MagicMock()
         mock_fs.open.return_value.__enter__.return_value = mock_stream
         test_data = b"test data to write"
-        
-        sshfs_storage_service.write("localhost", "username", "password", test_data, "/path/to/file")
+
+        sshfs_storage_service.write(
+            "localhost", "username", "password", test_data, "/path/to/file"
+        )
 
         mock_fs.open.assert_called_once_with("/path/to/file", "wb")
         mock_stream.write.assert_called_once_with(test_data)
@@ -91,7 +99,9 @@ class TestSSHFSStorageService:
         mock_fs.open.side_effect = SSHError(2, "SSH connection failed")
 
         with pytest.raises(SSHError):
-            sshfs_storage_service.write("localhost", "username", "password", b"data", "/path/to/file")
+            sshfs_storage_service.write(
+                "localhost", "username", "password", b"data", "/path/to/file"
+            )
 
         mock_fs.open.assert_called_once_with("/path/to/file", "wb")
         mock_fs.client.close.assert_called_once()
@@ -106,7 +116,9 @@ class TestSSHFSStorageService:
         mock_fs.open.side_effect = OSError("Permission denied")
 
         with pytest.raises(OSError):
-            sshfs_storage_service.write("localhost", "username", "password", b"data", "/path/to/file")
+            sshfs_storage_service.write(
+                "localhost", "username", "password", b"data", "/path/to/file"
+            )
 
         mock_fs.client.close.assert_called_once()
 
@@ -117,8 +129,10 @@ class TestSSHFSStorageService:
         sshfs_storage_service: SSHFSStorageService,
     ):
         mock_sshfs.return_value = mock_fs
-        
-        sshfs_storage_service.delete("localhost", "username", "password", "/path/to/file")
+
+        sshfs_storage_service.delete(
+            "localhost", "username", "password", "/path/to/file"
+        )
 
         mock_fs.rm.assert_called_once_with("/path/to/file")
         mock_fs.client.close.assert_called_once()
@@ -133,7 +147,9 @@ class TestSSHFSStorageService:
         mock_fs.rm.side_effect = SSHError(3, "File not found")
 
         with pytest.raises(SSHError):
-            sshfs_storage_service.delete("localhost", "username", "password", "/path/to/file")
+            sshfs_storage_service.delete(
+                "localhost", "username", "password", "/path/to/file"
+            )
 
         mock_fs.rm.assert_called_once_with("/path/to/file")
         mock_fs.client.close.assert_called_once()
@@ -148,7 +164,9 @@ class TestSSHFSStorageService:
         mock_fs.rm.side_effect = OSError("Access denied")
 
         with pytest.raises(OSError):
-            sshfs_storage_service.delete("localhost", "username", "password", "/path/to/file")
+            sshfs_storage_service.delete(
+                "localhost", "username", "password", "/path/to/file"
+            )
 
         mock_fs.client.close.assert_called_once()
 
@@ -160,8 +178,10 @@ class TestSSHFSStorageService:
     ):
         mock_sshfs.return_value = mock_fs
         mock_fs.exists.return_value = True
-        
-        result = sshfs_storage_service.exists("localhost", "username", "password", "/path/to/file")
+
+        result = sshfs_storage_service.exists(
+            "localhost", "username", "password", "/path/to/file"
+        )
 
         assert result is True
         mock_fs.exists.assert_called_once_with("/path/to/file")
@@ -175,8 +195,10 @@ class TestSSHFSStorageService:
     ):
         mock_sshfs.return_value = mock_fs
         mock_fs.exists.return_value = False
-        
-        result = sshfs_storage_service.exists("localhost", "username", "password", "/path/to/file")
+
+        result = sshfs_storage_service.exists(
+            "localhost", "username", "password", "/path/to/file"
+        )
 
         assert result is False
         mock_fs.exists.assert_called_once_with("/path/to/file")
@@ -192,7 +214,9 @@ class TestSSHFSStorageService:
         mock_fs.exists.side_effect = SSHError(4, "Connection timeout")
 
         with pytest.raises(SSHError):
-            sshfs_storage_service.exists("localhost", "username", "password", "/path/to/file")
+            sshfs_storage_service.exists(
+                "localhost", "username", "password", "/path/to/file"
+            )
 
         mock_fs.client.close.assert_called_once()
 
@@ -206,7 +230,9 @@ class TestSSHFSStorageService:
         mock_fs.exists.side_effect = OSError("Network unreachable")
 
         with pytest.raises(OSError):
-            sshfs_storage_service.exists("localhost", "username", "password", "/path/to/file")
+            sshfs_storage_service.exists(
+                "localhost", "username", "password", "/path/to/file"
+            )
 
         mock_fs.client.close.assert_called_once()
 
@@ -219,8 +245,10 @@ class TestSSHFSStorageService:
         mock_sshfs.return_value = mock_fs
         expected_files = ["file1.txt", "file2.txt", "subdir/"]
         mock_fs.ls.return_value = expected_files
-        
-        result = sshfs_storage_service.list("localhost", "username", "password", "/path/to/dir")
+
+        result = sshfs_storage_service.list(
+            "localhost", "username", "password", "/path/to/dir"
+        )
 
         assert result == expected_files
         mock_fs.ls.assert_called_once_with("/path/to/dir")
@@ -234,8 +262,10 @@ class TestSSHFSStorageService:
     ):
         mock_sshfs.return_value = mock_fs
         mock_fs.ls.return_value = []
-        
-        result = sshfs_storage_service.list("localhost", "username", "password", "/empty/dir")
+
+        result = sshfs_storage_service.list(
+            "localhost", "username", "password", "/empty/dir"
+        )
 
         assert result == []
         mock_fs.ls.assert_called_once_with("/empty/dir")
@@ -251,7 +281,9 @@ class TestSSHFSStorageService:
         mock_fs.ls.side_effect = SSHError(5, "Directory not found")
 
         with pytest.raises(SSHError):
-            sshfs_storage_service.list("localhost", "username", "password", "/nonexistent/dir")
+            sshfs_storage_service.list(
+                "localhost", "username", "password", "/nonexistent/dir"
+            )
 
         mock_fs.client.close.assert_called_once()
 
@@ -265,6 +297,8 @@ class TestSSHFSStorageService:
         mock_fs.ls.side_effect = OSError("Permission denied")
 
         with pytest.raises(OSError):
-            sshfs_storage_service.list("localhost", "username", "password", "/restricted/dir")
+            sshfs_storage_service.list(
+                "localhost", "username", "password", "/restricted/dir"
+            )
 
         mock_fs.client.close.assert_called_once()

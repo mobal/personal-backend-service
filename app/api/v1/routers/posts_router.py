@@ -46,7 +46,9 @@ def get_archive() -> dict[str, Any]:
 def get_by_post_path(
     slug: str,
     year: str = Path(pattern=r"^\d{4}$", description="4 digit year"),
-    month: str = Path(pattern=r"^(0[1-9]|1[0-2])$", description="2 digit month (01-12)"),
+    month: str = Path(
+        pattern=r"^(0[1-9]|1[0-2])$", description="2 digit month (01-12)"
+    ),
     day: str = Path(
         pattern=r"^(0[1-9]|[12]\d|3[01])$", description="2 digit day (01-31)"
     ),
