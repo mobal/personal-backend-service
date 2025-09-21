@@ -1,4 +1,4 @@
-all: format sort test
+all: format sort lint test
 
 bandit:
 	uv run -m bandit --severity-level high --confidence-level high -r app/
