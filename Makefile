@@ -10,7 +10,7 @@ install:
 	uv sync
 
 lint:
-	uv run -m ruff check app --fix
+	uv run -m ruff check app/ --fix
 
 mypy:
 	uv run -m mypy app/ --explicit-package-bases
@@ -22,7 +22,7 @@ sort:
 	uv run -m ruff check --select I --fix
 
 test:
-	uv run -m pytest --cov-fail-under=90 --cov-report=term --cov=app tests/
+	uv run -m pytest --cov-fail-under=90 --cov-report=term --cov=app/ tests/
 
 unit-test:
 	uv run -m pytest tests/unit
