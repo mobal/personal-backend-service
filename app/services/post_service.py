@@ -24,7 +24,7 @@ class PostService:
     ERROR_POST_NOT_FOUND = "The requested post was not found"
 
     def __init__(self):
-        self._logger = Logger(utc=True)
+        self._logger = Logger()
         self._repo = PostRepository()
 
     def get_post_by_uuid(self, post_uuid: str) -> Post:

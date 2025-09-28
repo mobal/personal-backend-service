@@ -8,7 +8,7 @@ from sshfs import SSHFileSystem
 
 class SSHFSStorageService:
     def __init__(self):
-        self._logger = Logger(utc=True)
+        self._logger = Logger()
 
     @contextmanager
     def _fs(

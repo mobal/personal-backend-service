@@ -18,7 +18,7 @@ COUNTRY_IS_API_BASE_URL = "https://api.country.is"
 X_CORRELATION_ID = "X-Correlation-ID"
 
 correlation_id: ContextVar[str] = ContextVar(X_CORRELATION_ID)
-logger = Logger(utc=True)
+logger = Logger()
 settings = Settings()
 
 banned_hosts: list[str] = []

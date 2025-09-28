@@ -12,7 +12,7 @@ from app.services.sshfs_storage_service import SSHFSStorageService
 
 class PublisherService:
     def __init__(self):
-        self._logger = Logger(utc=True)
+        self._logger = Logger()
         self._post_service = PostService()
         self._settings = Settings()
         self._sshfs_storage_service = SSHFSStorageService()

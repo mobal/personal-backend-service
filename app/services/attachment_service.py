@@ -15,7 +15,7 @@ from app.services.s3_storage_service import S3StorageService
 
 class AttachmentService:
     def __init__(self):
-        self._logger = Logger(utc=True)
+        self._logger = Logger()
         self._post_service = PostService()
         self._storage_service = S3StorageService()
 

@@ -7,7 +7,7 @@ from app.models.response import Attachment as AttachmentResponse
 from app.schemas.attachment_schema import CreateAttachment
 from app.services.attachment_service import AttachmentService
 
-logger = Logger(utc=True)
+logger = Logger()
 
 attachment_service = AttachmentService()
 jwt_bearer = JWTBearer()

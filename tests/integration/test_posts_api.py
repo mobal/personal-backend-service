@@ -251,10 +251,10 @@ class TestPostsApi:
             BASE_URL, headers={"Authorization": f"Bearer {jwt_token}"}, json={}
         )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
         result = response.json()
-        assert result["status"] == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert result["status"] == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert result["id"]
         assert result["message"]
         assert result["errors"]
@@ -349,10 +349,10 @@ class TestPostsApi:
             },
         )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
         result = response.json()
-        assert result["status"] == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert result["status"] == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert result["id"]
         assert result["message"]
         assert result["errors"]

@@ -24,7 +24,7 @@ from app.models.camel_model import CamelModel
 if settings.debug:
     set_package_logger()
 
-logger = Logger(utc=True)
+logger = Logger()
 
 app = FastAPI(debug=settings.debug, title="PersonalBackendApplication", version="1.0.0")
 app.add_middleware(CorrelationIdMiddleware)
@@ -79,7 +79,7 @@ def request_validation_error_handler(
     request: Request, error: RequestValidationError
 ) -> ORJSONResponse:
     error_id = uuid.uuid4()
-    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
     logger.exception(f"Received request validation error {error_id=}")
     return ORJSONResponse(
         content=jsonable_encoder(

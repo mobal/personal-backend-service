@@ -9,7 +9,7 @@ from app import settings
 
 class PostRepository:
     def __init__(self):
-        self._logger = Logger(utc=True)
+        self._logger = Logger()
         self._table = boto3.resource("dynamodb").Table(f"{settings.stage}-posts")
 
     def create_post(self, data: dict):
