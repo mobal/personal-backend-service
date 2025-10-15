@@ -5,6 +5,7 @@ import uvicorn
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.logging.logger import set_package_logger
 from botocore.exceptions import BotoCoreError, ClientError
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -20,6 +21,8 @@ from app.middlewares import (
     RateLimitingMiddleware,
 )
 from app.models.camel_model import CamelModel
+
+load_dotenv()
 
 if settings.debug:
     set_package_logger()
