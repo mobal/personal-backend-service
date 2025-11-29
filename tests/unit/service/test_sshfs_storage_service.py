@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, call, mock_open
+from unittest.mock import MagicMock
 
 import pytest
 from asyncssh import Error as SSHError

@@ -1,5 +1,6 @@
 import uuid
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import uvicorn
 from aws_lambda_powertools import Logger

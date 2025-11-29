@@ -6,8 +6,10 @@ from fastapi.responses import Response
 
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken
-from app.models.response import Page
-from app.models.response import Post as PostResponse
+from app.models.response import (
+    Page,
+    Post as PostResponse,
+)
 from app.schemas.post_schema import CreatePost, UpdatePost
 from app.services.post_service import PostService
 

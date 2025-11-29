@@ -1,5 +1,5 @@
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 from asyncssh import Error as SSHError
 from aws_lambda_powertools import Logger
@@ -11,9 +11,7 @@ class SSHFSStorageService:
         self._logger = Logger()
 
     @contextmanager
-    def _fs(
-        self, host: str, username: str, password: str
-    ) -> Generator[SSHFileSystem, None, None]:
+    def _fs(self, host: str, username: str, password: str) -> Generator[SSHFileSystem]:
         fs = SSHFileSystem(host, username=username, password=password)
         try:
             yield fs

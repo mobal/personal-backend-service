@@ -9,8 +9,10 @@ from slugify import slugify
 
 from app.exceptions import PostAlreadyExistsException, PostNotFoundException
 from app.models.post import Post
-from app.models.response import Page
-from app.models.response import Post as PostResponse
+from app.models.response import (
+    Page,
+    Post as PostResponse,
+)
 from app.repositories.post_repository import PostRepository
 
 

@@ -1,0 +1,30 @@
+target-version = "py313"
+src = ["app"]
+exclude = [
+    ".venv",
+    "venv",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".pytest_cache",
+    "dist",
+    "build",
+]
+
+[lint]
+select = ["E", "F", "I", "UP", "N", "A", "C4"]
+ignore = ["E501"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
+
+[lint.isort]
+combine-as-imports = true
+force-wrap-aliases = true
+known-first-party = ["app"]
+
+[lint.per-file-ignores]
+"tests/*" = ["N802", "N803"]

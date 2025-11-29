@@ -6,11 +6,11 @@ from fastapi.testclient import TestClient
 from httpx import Response
 from mypy_boto3_cloudformation import ServiceResource
 from respx import MockRouter
+from tests.helpers.utils import generate_jwt_token
 
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
 from app.models.post import Attachment, Post
 from app.schemas.attachment_schema import CreateAttachment
-from tests.helpers.utils import generate_jwt_token
 
 
 class TestAttachmentsApi:

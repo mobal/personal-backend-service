@@ -194,9 +194,7 @@ def s3_resource(settings: Settings):
 
 @pytest.fixture
 def test_data() -> bytes:
-    return base64.b64encode(
-        "Lorem ipsum odor amet, consectetuer adipiscing elit.".encode("utf-8")
-    )
+    return base64.b64encode(b"Lorem ipsum odor amet, consectetuer adipiscing elit.")
 
 
 @pytest.fixture

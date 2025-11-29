@@ -7,11 +7,11 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import ConnectTimeout, Response
 from respx import MockRouter
+from tests.helpers.utils import generate_jwt_token
 
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
 from app.models.post import Post
 from app.schemas.post_schema import CreatePost
-from tests.helpers.utils import generate_jwt_token
 
 BASE_URL = "/api/v1/posts"
 ERROR_MESSAGE_INTERNAL_SERVER_ERROR = "Internal Server Error"

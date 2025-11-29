@@ -16,7 +16,7 @@ NOT_AUTHENTICATED = "Not authenticated"
 def empty_request() -> Mock:
     request = Mock()
     request.headers = {}
-    request.query_params = dict()
+    request.query_params = {}
     return request
 
 
