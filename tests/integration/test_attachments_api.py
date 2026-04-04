@@ -6,11 +6,11 @@ from fastapi.testclient import TestClient
 from httpx import Response
 from mypy_boto3_cloudformation import ServiceResource
 from respx import MockRouter
+from tests.helpers.utils import generate_jwt_token
 
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
 from app.models.post import Attachment, Post
 from app.schemas.attachment_schema import CreateAttachment
-from tests.helpers.utils import generate_jwt_token
 
 
 class TestAttachmentsApi:
@@ -72,10 +72,10 @@ class TestAttachmentsApi:
             json={},
         )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
         result = response.json()
-        assert result["status"] == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert result["status"] == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert result["id"]
         assert result["message"]
         assert result["errors"]

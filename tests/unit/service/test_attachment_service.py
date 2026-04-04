@@ -10,7 +10,7 @@ from app.models.post import Attachment, Post
 from app.models.response import Attachment as AttachmentResponse
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
-from app.services.storage_service import StorageService
+from app.services.s3_storage_service import S3StorageService
 
 ATTACHMENT_NAME = "lorem.txt"
 
@@ -22,12 +22,12 @@ class TestAttachmentService:
         attachment_service: AttachmentService,
         post_service: PostService,
         posts: list[Post],
-        storage_service: StorageService,
+        s3_storage_service: S3StorageService,
         test_data: bytes,
     ):
         mocker.patch.object(PostService, "get_post", return_value=posts[0])
         mocker.patch.object(
-            StorageService,
+            S3StorageService,
             "put_object",
             return_value={
                 "ContentLength": len(test_data.decode()),
@@ -46,7 +46,7 @@ class TestAttachmentService:
         assert result.name
         assert result.url
         post_service.get_post.assert_called_once_with(posts[0].id)
-        storage_service.put_object.assert_called_once()
+        s3_storage_service.put_object.assert_called_once()
         post_service.update_post.assert_called_once_with(
             posts[0].id, {"attachments": [result.model_dump(exclude_none=True)]}
         )
@@ -57,12 +57,12 @@ class TestAttachmentService:
         attachment_service: AttachmentService,
         post_service: PostService,
         posts: list[Post],
-        storage_service: StorageService,
+        s3_storage_service: S3StorageService,
         test_data: bytes,
     ):
         mocker.patch.object(PostService, "get_post", return_value=posts[0])
         mocker.patch.object(
-            StorageService,
+            S3StorageService,
             "put_object",
             return_value={
                 "ContentLength": len(test_data.decode()),
@@ -81,7 +81,7 @@ class TestAttachmentService:
         assert result.name
         assert result.url
         post_service.get_post.assert_called_once_with(posts[0].id)
-        storage_service.put_object.assert_called_once()
+        s3_storage_service.put_object.assert_called_once()
         post_service.update_post.assert_called_once_with(posts[0].id, ANY)
 
     def test_successfully_extend_attachments(
@@ -90,12 +90,12 @@ class TestAttachmentService:
         attachment_service: AttachmentService,
         post_service: PostService,
         post_with_attachment: Post,
-        storage_service: StorageService,
+        s3_storage_service: S3StorageService,
         test_data: bytes,
     ):
         mocker.patch.object(PostService, "get_post", return_value=post_with_attachment)
         mocker.patch.object(
-            StorageService,
+            S3StorageService,
             "put_object",
             return_value={"ContentLength": len(test_data), "ContentType": "plain/text"},
         )
@@ -110,7 +110,7 @@ class TestAttachmentService:
 
         assert post_with_attachment.attachments
         post_service.get_post.assert_called_once_with(post_with_attachment.id)
-        storage_service.put_object.assert_called_once()
+        s3_storage_service.put_object.assert_called_once()
         extended_attachments = copy.deepcopy(post_with_attachment.attachments)
         extended_attachments.append(result)
         post_service.update_post.assert_called_once_with(

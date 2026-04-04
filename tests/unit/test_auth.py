@@ -16,7 +16,7 @@ NOT_AUTHENTICATED = "Not authenticated"
 def empty_request() -> Mock:
     request = Mock()
     request.headers = {}
-    request.query_params = dict()
+    request.query_params = {}
     return request
 
 
@@ -65,7 +65,7 @@ class TestJWTAuth:
         assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
-    def test_fail_to_authorize_request_due_to_bearer_token_is_invalid_with_auto_error_false(
+    def test_fail_to_authorize_request_due_to_invalid_token_without_auto_error(
         self, empty_request: Mock
     ):
         empty_request.headers = {"Authorization": "Bearer asdf"}
@@ -86,7 +86,7 @@ class TestJWTAuth:
         assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
-    def test_fail_to_authorize_request_due_to_bearer_token_is_missing_with_auto_error_false(
+    def test_fail_to_authorize_request_due_to_token_is_missing_without_auto_error(
         self, empty_request: Mock
     ):
         empty_request.headers = {"Authorization": "Bearer "}

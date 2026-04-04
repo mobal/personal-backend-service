@@ -141,7 +141,7 @@ def make_post(faker):
             id=str(uuid.uuid4()),
             author=faker.name(),
             content=faker.text(),
-            post_path=f"{now.format("YYYY/MM/DD")}/{slug}",
+            post_path=f"{now.format('YYYY/MM/DD')}/{slug}",
             created_at=now.to_iso8601_string(),
             deleted_at=None,
             published_at=now.to_iso8601_string(),
@@ -194,9 +194,7 @@ def s3_resource(settings: Settings):
 
 @pytest.fixture
 def test_data() -> bytes:
-    return base64.b64encode(
-        "Lorem ipsum odor amet, consectetuer adipiscing elit.".encode("utf-8")
-    )
+    return base64.b64encode(b"Lorem ipsum odor amet, consectetuer adipiscing elit.")
 
 
 @pytest.fixture

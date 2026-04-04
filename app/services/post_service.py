@@ -9,8 +9,10 @@ from slugify import slugify
 
 from app.exceptions import PostAlreadyExistsException, PostNotFoundException
 from app.models.post import Post
-from app.models.response import Page
-from app.models.response import Post as PostResponse
+from app.models.response import (
+    Page,
+    Post as PostResponse,
+)
 from app.repositories.post_repository import PostRepository
 
 
@@ -24,7 +26,7 @@ class PostService:
     ERROR_POST_NOT_FOUND = "The requested post was not found"
 
     def __init__(self):
-        self._logger = Logger(utc=True)
+        self._logger = Logger()
         self._repo = PostRepository()
 
     def get_post_by_uuid(self, post_uuid: str) -> Post:

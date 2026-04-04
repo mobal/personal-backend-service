@@ -10,9 +10,9 @@ from app import settings
 from app.exceptions import BucketNotFoundException, ObjectNotFoundException
 
 
-class StorageService:
+class S3StorageService:
     def __init__(self):
-        self._logger = Logger(utc=True)
+        self._logger = Logger()
         self._s3 = boto3.resource("s3", region_name=settings.aws_region)
 
     def create_bucket(

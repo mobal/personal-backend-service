@@ -7,11 +7,11 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import ConnectTimeout, Response
 from respx import MockRouter
+from tests.helpers.utils import generate_jwt_token
 
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
 from app.models.post import Post
 from app.schemas.post_schema import CreatePost
-from tests.helpers.utils import generate_jwt_token
 
 BASE_URL = "/api/v1/posts"
 ERROR_MESSAGE_INTERNAL_SERVER_ERROR = "Internal Server Error"
@@ -157,7 +157,7 @@ class TestPostsApi:
     ):
         now = pendulum.now()
         response = test_client.get(
-            f"{BASE_URL}/{now.format("YYYY/MM/DD")}/{posts[0].slug}"
+            f"{BASE_URL}/{now.format('YYYY/MM/DD')}/{posts[0].slug}"
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -187,7 +187,7 @@ class TestPostsApi:
         random_date = pendulum.from_timestamp(random_timestamp)
 
         response = test_client.get(
-            f"{BASE_URL}/{random_date.format("YYYY/MM/DD")}/slug"
+            f"{BASE_URL}/{random_date.format('YYYY/MM/DD')}/slug"
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert {
@@ -251,10 +251,10 @@ class TestPostsApi:
             BASE_URL, headers={"Authorization": f"Bearer {jwt_token}"}, json={}
         )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
         result = response.json()
-        assert result["status"] == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert result["status"] == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert result["id"]
         assert result["message"]
         assert result["errors"]
@@ -349,10 +349,10 @@ class TestPostsApi:
             },
         )
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
         result = response.json()
-        assert result["status"] == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert result["status"] == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert result["id"]
         assert result["message"]
         assert result["errors"]

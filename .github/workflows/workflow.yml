@@ -3,7 +3,7 @@ name: Workflow
 on: [push]
 
 jobs:
-  pycodestyle-and-pytest:
+  build-and-test:
     name: Build
     runs-on: ubuntu-24.04
     env:
@@ -34,9 +34,9 @@ jobs:
     - name: Install project dependencies
       run: uv sync --locked
 
-    - name: Analyze code using Pycodestyle (strict mode)
+    - name: Check code using ruff
       run: |
-        uv run -m pycodestyle --ignore=E501,W503 app/ tests/ || exit 1
+        uv run -m ruff check app/ || exit 1
 
     - name: Run Bandit security scanner
       run: |

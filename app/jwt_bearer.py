@@ -1,8 +1,10 @@
 import jwt
 from aws_lambda_powertools import Logger
 from fastapi import HTTPException, Request, status
-from fastapi.security.http import HTTPAuthorizationCredentials
-from fastapi.security.http import HTTPBearer as FastAPIHTTPBearer
+from fastapi.security.http import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer as FastAPIHTTPBearer,
+)
 from fastapi.security.utils import get_authorization_scheme_param
 from jwt import DecodeError, ExpiredSignatureError
 
@@ -95,8 +97,8 @@ class JWTBearer:
                 **jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
             )
             return True
-        except DecodeError:
-            logger.exception("Error occurred during token decoding")
-        except ExpiredSignatureError:
-            logger.exception("Expired signature")
+        except (DecodeError, ExpiredSignatureError):
+            logger.exception("Error occurred during token validation")
+        except Exception:
+            logger.exception("Unexpected error during JWT validation")
         return False

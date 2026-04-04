@@ -6,12 +6,14 @@ from fastapi.responses import Response
 
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken
-from app.models.response import Page
-from app.models.response import Post as PostResponse
+from app.models.response import (
+    Page,
+    Post as PostResponse,
+)
 from app.schemas.post_schema import CreatePost, UpdatePost
 from app.services.post_service import PostService
 
-logger = Logger(utc=True)
+logger = Logger()
 
 jwt_bearer = JWTBearer()
 post_service = PostService()
@@ -45,10 +47,12 @@ def get_archive() -> dict[str, Any]:
 @router.get("/{year}/{month}/{day}/{slug}", status_code=status.HTTP_200_OK)
 def get_by_post_path(
     slug: str,
-    year: str = Path(regex=r"^\d{4}$", description="4 digit year"),
-    month: str = Path(regex=r"^(0[1-9]|1[0-2])$", description="2 digit month (01-12)"),
+    year: str = Path(pattern=r"^\d{4}$", description="4 digit year"),
+    month: str = Path(
+        pattern=r"^(0[1-9]|1[0-2])$", description="2 digit month (01-12)"
+    ),
     day: str = Path(
-        regex=r"^(0[1-9]|[12]\d|3[01])$", description="2 digit day (01-31)"
+        pattern=r"^(0[1-9]|[12]\d|3[01])$", description="2 digit day (01-31)"
     ),
 ) -> PostResponse:
     year_int = int(year)
