@@ -50,8 +50,6 @@ docker run --rm \
       | sha256sum \
       | awk "{print \$1}")
 
-    HASH_B64=$(printf "%s" "$HASH" | base64)
-
     S3_KEY="'"$PROJECT"'/requirements-${HASH}.zip"
 
     if aws s3api head-object --bucket "$BUCKET" --key "$S3_KEY" >/dev/null 2>&1; then
@@ -65,7 +63,6 @@ docker run --rm \
 REQUIREMENTS_LAYER_BUCKET=$BUCKET
 REQUIREMENTS_LAYER_S3_KEY=$S3_KEY
 REQUIREMENTS_LAYER_HASH=$HASH
-REQUIREMENTS_LAYER_HASH_BASE64=$HASH_B64
 EOF
 
     echo "✅ Wrote $OUT"

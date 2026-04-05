@@ -46,13 +46,7 @@ docker run --rm \
     ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
     BUCKET="artifacts-${ACCOUNT_ID}"
 
-    HASH=$(find "'"$APP"'" -type f -print0 \
-      | sort -z \
-      | xargs -0 sha256sum \
-      | sha256sum \
-      | awk "{print \$1}")
-
-    HASH_B64=$(printf "%s" "$HASH" | base64)
+    HASH=$(sha256sum "'"$ZIP"'" | awk "{print \$1}")
 
     S3_KEY="'"$PROJECT"'/api-${HASH}.zip"
 
@@ -67,7 +61,6 @@ docker run --rm \
 LAMBDA_BUCKET=$BUCKET
 LAMBDA_S3_KEY=$S3_KEY
 LAMBDA_HASH=$HASH
-LAMBDA_HASH_BASE64=$HASH_B64
 EOF
 
     echo "✅ Wrote $OUT"
