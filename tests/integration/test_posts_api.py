@@ -197,10 +197,11 @@ class TestPostsApi:
 
     def test_fail_to_delete_post_due_to_not_found(
         self,
+        jwt_secret_ssm_param_value: str,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.delete(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -227,11 +228,12 @@ class TestPostsApi:
 
     def test_successfully_delete_post(
         self,
+        jwt_secret_ssm_param_value: str,
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.delete(
             f"{BASE_URL}/{posts[0].id}",
@@ -242,10 +244,11 @@ class TestPostsApi:
 
     def test_fail_to_create_post_due_to_bad_request(
         self,
+        jwt_secret_ssm_param_value: str,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             BASE_URL, headers={"Authorization": f"Bearer {jwt_token}"}, json={}
@@ -279,10 +282,11 @@ class TestPostsApi:
     def test_successfully_create_post(
         self,
         create_post: CreatePost,
+        jwt_secret_ssm_param_value: str,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             BASE_URL,
@@ -295,11 +299,12 @@ class TestPostsApi:
 
     def test_fail_to_create_post_due_to_already_exists_by_title(
         self,
+        jwt_secret_ssm_param_value: str,
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             BASE_URL,
@@ -312,10 +317,11 @@ class TestPostsApi:
     def test_fail_to_update_post_due_to_not_found(
         self,
         create_post: CreatePost,
+        jwt_secret_ssm_param_value: str,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.put(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -331,11 +337,12 @@ class TestPostsApi:
 
     def test_fail_to_update_post_due_to_bad_request(
         self,
+        jwt_secret_ssm_param_value: str,
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.put(
             f"{BASE_URL}/{posts[0].id}",
@@ -376,11 +383,12 @@ class TestPostsApi:
 
     def test_successfully_update_post(
         self,
+        jwt_secret_ssm_param_value: str,
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.put(
             f"{BASE_URL}/{posts[0].id}",

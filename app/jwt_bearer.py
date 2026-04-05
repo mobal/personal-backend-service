@@ -97,7 +97,7 @@ class JWTBearer:
                 **jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
             )
             return True
-        except (DecodeError, ExpiredSignatureError):
+        except DecodeError, ExpiredSignatureError:
             logger.exception("Error occurred during token validation")
         except Exception:
             logger.exception("Unexpected error during JWT validation")

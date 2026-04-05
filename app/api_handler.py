@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse
 from mangum import Mangum
 
 from app import settings
@@ -53,12 +53,12 @@ class ValidationErrorResponse(ErrorResponse):
 
 @app.exception_handler(BotoCoreError)
 @app.exception_handler(ClientError)
-def botocore_error_handler(request: Request, error: BotoCoreError) -> ORJSONResponse:
+def botocore_error_handler(request: Request, error: BotoCoreError) -> JSONResponse:
     error_id = uuid.uuid4()
     error_message = str(error) if settings.debug else "Internal Server Error"
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     logger.exception(f"Received botocore error {error_id=}")
-    return ORJSONResponse(
+    return JSONResponse(
         content=jsonable_encoder(
             ErrorResponse(status=status_code, id=error_id, message=error_message)
         ),
@@ -67,10 +67,10 @@ def botocore_error_handler(request: Request, error: BotoCoreError) -> ORJSONResp
 
 
 @app.exception_handler(HTTPException)
-def http_exception_handler(request: Request, error: HTTPException) -> ORJSONResponse:
+def http_exception_handler(request: Request, error: HTTPException) -> JSONResponse:
     error_id = uuid.uuid4()
     logger.exception(f"Received http exception {error_id=}")
-    return ORJSONResponse(
+    return JSONResponse(
         content=jsonable_encoder(
             ErrorResponse(status=error.status_code, id=error_id, message=error.detail)
         ),
@@ -81,11 +81,11 @@ def http_exception_handler(request: Request, error: HTTPException) -> ORJSONResp
 @app.exception_handler(RequestValidationError)
 def request_validation_error_handler(
     request: Request, error: RequestValidationError
-) -> ORJSONResponse:
+) -> JSONResponse:
     error_id = uuid.uuid4()
     status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
     logger.exception(f"Received request validation error {error_id=}")
-    return ORJSONResponse(
+    return JSONResponse(
         content=jsonable_encoder(
             ValidationErrorResponse(
                 status=status_code,

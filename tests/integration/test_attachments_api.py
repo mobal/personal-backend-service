@@ -4,7 +4,6 @@ import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from httpx import Response
-from mypy_boto3_cloudformation import ServiceResource
 from respx import MockRouter
 from tests.helpers.utils import generate_jwt_token
 
@@ -22,11 +21,13 @@ class TestAttachmentsApi:
         )
 
     @pytest.fixture(autouse=True)
-    def setup_function(self, s3_resource: ServiceResource, respx_mock: MockRouter):
+    def setup_function(
+        self, aws_default_region: str, s3_resource, respx_mock: MockRouter
+    ):
         s3_resource.create_bucket(
             ACL="public-read-write",
             Bucket="attachments",
-            CreateBucketConfiguration={"LocationConstraint": pytest.aws_default_region},
+            CreateBucketConfiguration={"LocationConstraint": aws_default_region},
         )
         banned_hosts.clear()
         respx_mock.route(method="GET", url__startswith=COUNTRY_IS_API_BASE_URL).mock(
@@ -46,8 +47,9 @@ class TestAttachmentsApi:
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
+        jwt_secret_ssm_param_value: str,
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             f"/api/v1/posts/{posts[0].id}/attachments",
@@ -60,11 +62,12 @@ class TestAttachmentsApi:
 
     def test_fail_to_add_attachment_due_to_bad_request(
         self,
+        jwt_secret_ssm_param_value: str,
         post_with_attachment: Post,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             f"/api/v1/posts/{post_with_attachment.id}/attachments",

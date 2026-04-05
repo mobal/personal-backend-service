@@ -15,11 +15,11 @@ OBJECT_KEY = str(uuid.uuid4())
 
 class TestS3StorageService:
     @pytest.fixture(autouse=True)
-    def setup_function(self, s3_resource):
+    def setup_function(self, aws_default_region: str, s3_resource):
         bucket = s3_resource.create_bucket(
             ACL="public-read-write",
             Bucket=BUCKET_NAME,
-            CreateBucketConfiguration={"LocationConstraint": pytest.aws_default_region},
+            CreateBucketConfiguration={"LocationConstraint": aws_default_region},
         )
         s3_resource.Object(bucket.name, OBJECT_KEY).put(
             Body=OBJECT_BODY.encode("utf-8")
@@ -59,8 +59,8 @@ class TestS3StorageService:
     def test_successfully_get_bucket(self, s3_storage_service: S3StorageService):
         response = s3_storage_service.get_bucket(BUCKET_NAME)
 
-        assert response.creation_date
-        assert response.name == BUCKET_NAME
+        assert response["creation_date"]
+        assert response["name"] == BUCKET_NAME
 
     def test_fail_to_get_bucket_due_to_not_found(
         self, s3_storage_service: S3StorageService
@@ -98,7 +98,7 @@ class TestS3StorageService:
         response = s3_storage_service.list_objects(BUCKET_NAME)
         objects = list(response)
         assert len(objects) == 1
-        assert objects[0].get()["Body"].read().decode("utf-8") == OBJECT_BODY
+        assert objects[0]["Body"].read().decode("utf-8") == OBJECT_BODY
 
     def test_successfully_put_object(
         self,

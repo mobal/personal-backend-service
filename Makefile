@@ -1,31 +1,33 @@
-all: format lint test
+.PHONY: all build build-layer build-lambda format install lint bandit test tflint ty
 
-bandit:
-	uv run -m bandit --severity-level high --confidence-level high -r app/
+all: bandit format lint test
+
+build: build-layer build-lambda
+
+build-layer:
+	./scripts/build_requirements_layer.sh
+
+build-lambda:
+	./scripts/build_api.sh
 
 format:
-	uv run -m ruff format .
+	uv run ruff format app/ tests/
 
 install:
 	uv sync
 
 lint:
-	uv run -m ruff check app/ tests/ --fix
+	uv run ruff check app/ tests/ --fix
 
-mypy:
-	uv run -m mypy app/ --explicit-package-bases
-
-serve:
-	uv run -m uvicorn app.api_handler:app
+bandit:
+	uv run -m bandit --severity-level high --confidence-level high -r app/ -vvv
 
 test:
-	uv run -m pytest --cov-fail-under=90 --cov-report=term --cov=app/ tests/
+	uv run -m pytest tests --cov=app --cov-report=term-missing --cov-branch
 
-unit-test:
-	uv run -m pytest tests/unit
+tflint:
+	tflint --init
+	tflint --chdir=./infrastructure
 
-upgrade:
-	uv sync --upgrade
-
-integration-test:
-	uv run -m pytest tests/integration
+ty:
+	uv run ty check

@@ -1,9 +1,8 @@
-target-version = "py313"
+target-version = "py314"
 src = ["app"]
 exclude = [
     ".venv",
     "venv",
-    ".mypy_cache",
     ".ruff_cache",
     ".pytest_cache",
     "dist",
