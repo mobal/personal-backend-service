@@ -25,19 +25,34 @@ resource "aws_dynamodb_table" "posts" {
 
   global_secondary_index {
     name            = "PostPathIndex"
-    hash_key        = "post_path"
+
+    key_schema {
+      attribute_name = "post_path"
+      key_type       = "HASH"
+    }
+
     projection_type = "ALL"
   }
 
   global_secondary_index {
     name            = "TitleIndex"
-    hash_key        = "title"
+
+    key_schema {
+      attribute_name = "title"
+      key_type       = "HASH"
+    }
+
     projection_type = "ALL"
   }
 
   global_secondary_index {
     name            = "CreatedAtIndex"
-    hash_key        = "created_at"
+
+    key_schema {
+      attribute_name = "created_at"
+      key_type       = "HASH"
+    }
+
     projection_type = "ALL"
   }
 }

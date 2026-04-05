@@ -18,6 +18,10 @@ variable "architecture" {
   type    = string
 }
 
+variable "artifacts_bucket" {
+  type = string
+}
+
 variable "debug" {
   default = false
   type    = bool
@@ -32,9 +36,18 @@ variable "jwt_secret_ssm_param_name" {
   type = string
 }
 
+variable "lambda_hash" {
+  type = string
+}
+
 variable "log_level" {
   default = "INFO"
   type    = string
+}
+
+variable "memory_size" {
+  default = 768
+  type    = number
 }
 
 variable "rate_limit_duration_in_seconds" {
@@ -71,4 +84,21 @@ variable "ssh_username" {
 variable "power_tools_service_name" {
   default = "personal-backend-service"
   type    = string
+}
+
+variable "requirements_layer_hash" {
+  type = string
+}
+
+variable "tags" {
+  default = {
+    Environment = "dev"
+    Project     = "personal-backend-service"
+  }
+  type = map(string)
+}
+
+variable "timeout" {
+  default = 15
+  type    = number
 }
