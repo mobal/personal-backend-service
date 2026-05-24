@@ -5,6 +5,7 @@ import markdown
 import pendulum
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Attr
+from pendulum import DateTime
 from slugify import slugify
 
 from app.exceptions import PostAlreadyExistsException, PostNotFoundException
@@ -105,21 +106,43 @@ class PostService:
         self._repo.update_post(post_uuid, post, FilterExpressions.NOT_DELETED)
         self._logger.info(f"Post updated: {post_uuid=}")
 
-    def get_archive(self) -> dict[str, int]:
+    def _sort_dates_and_group_by_month(
+        self, dates: list[DateTime], max_results: int = 100
+    ) -> dict[str, int]:
+        sorted_dates = sorted(dates)
+        archive = {}
+        current_month = None
+        count = 0
+
+        for date in sorted_dates:
+            if count >= max_results:
+                break
+
+            month_key = date.strftime("%Y-%m")
+
+            if current_month != month_key:
+                if current_month is not None:
+                    archive[current_month] = count
+                current_month = month_key
+                count = 1
+            else:
+                count += 1
+
+        if current_month is not None:
+            archive[current_month] = count
+
+        return archive
+
+    def get_archive(
+        self,
+        max_results: int = 100,
+    ) -> dict[str, int]:
         posts = self._repo.get_all_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
             ["id", "published_at"],
         )
         if not posts:
             return {}
+
         dates = [pendulum.parse(post["published_at"]) for post in posts]
-        archive = {}
-        for dt in pendulum.interval(
-            min(dates).start_of("month"), max(dates).end_of("month")
-        ).range("months"):
-            archive[dt.format("YYYY-MM")] = sum(
-                1
-                for date in dates
-                if dt.start_of("month") <= date <= dt.end_of("month")
-            )
-        return archive
+        return self._sort_dates_and_group_by_month(dates, max_results) if dates else {}

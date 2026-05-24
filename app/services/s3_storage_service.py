@@ -2,6 +2,7 @@ from typing import Any
 
 import boto3
 from aws_lambda_powertools import Logger
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from app import settings
@@ -11,7 +12,17 @@ from app.exceptions import BucketNotFoundException, ObjectNotFoundException
 class S3StorageService:
     def __init__(self):
         self._logger = Logger()
-        self._s3 = boto3.resource("s3", region_name=settings.aws_region)
+        self._retry_config = Config(
+            retries={
+                "max_attempts": 5,
+                "mode": "adaptive",
+            }
+        )
+        self._s3 = boto3.resource(
+            "s3",
+            region_name=settings.aws_region,
+            config=self._retry_config,
+        )
 
     def create_bucket(self, bucket: str, acl: str = "private") -> dict[str, Any]:
         self._logger.info(f"Creating bucket={bucket} with acl={acl}")

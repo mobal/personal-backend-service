@@ -3,7 +3,7 @@ name = "personal-backend-service"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "boto3>=1.42.45",
     "boto3-stubs>=1.42.48",
@@ -40,7 +40,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cache-clear --cov-branch --cov-report term --cov=app/ -n 4 -r f"
+addopts = "--cache-clear --cov-branch --cov-report term --cov=app/ -n 8 -r f"
 env = [
     "APP_NAME=personal-backend-service",
     "ATTACHMENTS_BUCKET_NAME=attachments",

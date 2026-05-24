@@ -1,3 +1,4 @@
+import base64
 import copy
 import uuid
 from unittest.mock import ANY
@@ -30,14 +31,15 @@ class TestAttachmentService:
             S3StorageService,
             "put_object",
             return_value={
-                "ContentLength": len(test_data.decode()),
+                "ContentLength": len(test_data),
                 "ContentType": "plain/text",
             },
         )
         mocker.patch.object(PostService, "update_post")
 
+        encoded_data = base64.b64encode(test_data).decode("utf-8")
         result = attachment_service.add_attachment(
-            posts[0].id, ATTACHMENT_NAME, test_data.decode(), ATTACHMENT_NAME
+            posts[0].id, ATTACHMENT_NAME, encoded_data, ATTACHMENT_NAME
         )
 
         assert result.bucket == "attachments"
@@ -71,8 +73,9 @@ class TestAttachmentService:
         )
         mocker.patch.object(PostService, "update_post")
 
+        encoded_data = base64.b64encode(test_data).decode("utf-8")
         result = attachment_service.add_attachment(
-            posts[0].id, ATTACHMENT_NAME, test_data.decode(), ATTACHMENT_NAME
+            posts[0].id, ATTACHMENT_NAME, encoded_data, ATTACHMENT_NAME
         )
 
         assert result.bucket == "attachments"
@@ -101,11 +104,9 @@ class TestAttachmentService:
         )
         mocker.patch.object(PostService, "update_post")
 
+        encoded_data = base64.b64encode(test_data).decode("utf-8")
         result = attachment_service.add_attachment(
-            post_with_attachment.id,
-            ATTACHMENT_NAME,
-            test_data.decode(),
-            ATTACHMENT_NAME,
+            post_with_attachment.id, ATTACHMENT_NAME, encoded_data, ATTACHMENT_NAME
         )
 
         assert post_with_attachment.attachments
@@ -136,8 +137,9 @@ class TestAttachmentService:
         )
 
         with pytest.raises(PostNotFoundException) as exc_info:
+            encoded_data = base64.b64encode(test_data).decode("utf-8")
             attachment_service.add_attachment(
-                posts[0].id, ATTACHMENT_NAME, test_data.decode(), ATTACHMENT_NAME
+                posts[0].id, ATTACHMENT_NAME, encoded_data, ATTACHMENT_NAME
             )
 
         assert exc_info.type == PostNotFoundException

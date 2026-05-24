@@ -9,7 +9,7 @@ from httpx import ConnectTimeout, Response
 from respx import MockRouter
 from tests.helpers.utils import generate_jwt_token
 
-from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
+from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts, country_cache
 from app.models.post import Post
 from app.schemas.post_schema import CreatePost
 
@@ -37,6 +37,7 @@ class TestPostsApi:
     @pytest.fixture(autouse=True)
     def setup_function(self, respx_mock: MockRouter):
         banned_hosts.clear()
+        country_cache.clear()
         respx_mock.route(method="GET", url__startswith=COUNTRY_IS_API_BASE_URL).mock(
             Response(
                 status_code=status.HTTP_200_OK,

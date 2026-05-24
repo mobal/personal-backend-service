@@ -37,7 +37,7 @@ class AttachmentService:
         attachment = Attachment(
             id=str(uuid.uuid4()),
             bucket=settings.attachments_bucket_name,
-            content_length=len(base64_data),
+            content_length=len(file_data),
             display_name=display_name,
             mime_type=mime_type,
             name=object_key,

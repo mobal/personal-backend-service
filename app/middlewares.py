@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import httpx
+import pendulum
 from aws_lambda_powertools import Logger
 from fastapi import status
 from fastapi.requests import Request
@@ -14,6 +15,7 @@ from starlette.types import ASGIApp
 
 from app import Settings
 
+COUNTRY_CACHE_TTL = timedelta(hours=1)
 COUNTRY_IS_API_BASE_URL = "https://api.country.is"
 X_CORRELATION_ID = "X-Correlation-ID"
 
@@ -23,6 +25,7 @@ settings = Settings()
 
 banned_hosts: list[str] = []
 clients: dict[str, Any] = {}
+country_cache: dict[str, tuple[bool, datetime]] = {}
 
 
 class ClientValidationMiddleware(BaseHTTPMiddleware):
@@ -39,7 +42,9 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
         ):
             return await call_next(request)
         client_ip = request.client.host
-        is_banned = client_ip in banned_hosts or await self._validate_host(client_ip)
+        is_banned = client_ip in banned_hosts or await self._is_banned_client_ip(
+            client_ip
+        )
         if is_banned:
             if client_ip not in banned_hosts:
                 banned_hosts.append(client_ip)
@@ -49,19 +54,37 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
             )
         return await call_next(request)
 
-    async def _validate_host(self, client_ip: str) -> bool:
-        async with httpx.AsyncClient() as client:
+    async def _is_banned_client_ip(self, client_ip: str) -> bool:
+        if client_ip in country_cache:
+            cached_is_banned, cached_time = country_cache[client_ip]
+            if (pendulum.now() - cached_time) < COUNTRY_CACHE_TTL:
+                logger.debug(f"Using cached country check result for {client_ip}")
+                return cached_is_banned
+
+        async with httpx.AsyncClient(timeout=5.0) as client:
             try:
-                response = await client.get(f"{COUNTRY_IS_API_BASE_URL}/{client_ip}")
+                response = await client.get(
+                    f"{COUNTRY_IS_API_BASE_URL}/{client_ip}",
+                    timeout=5.0,
+                )
                 response.raise_for_status()
-                if response.json()["country"] in self.RESTRICTED_COUNTRY_CODES:
+                country_code = response.json()["country"]
+                if country_code in self.RESTRICTED_COUNTRY_CODES:
                     logger.info(
                         f"Client has restricted "
-                        f"country_code={response.json()['country']} with {client_ip=}"
+                        f"country_code={country_code} with {client_ip=}"
                     )
+                    country_cache[client_ip] = (True, pendulum.now())
                     return True
+                else:
+                    country_cache[client_ip] = (False, pendulum.now())
+                    return False
             except HTTPError as exc:
                 logger.warning(f"HTTP exception for {exc.request.url}")
+            except KeyError:
+                logger.warning(
+                    f"Unexpected response format from country.is API for {client_ip}"
+                )
         return False
 
 
