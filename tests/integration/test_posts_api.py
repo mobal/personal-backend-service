@@ -183,7 +183,7 @@ class TestPostsApi:
     ):
         random_timestamp = random.uniform(
             pendulum.parse("1970-01-01").timestamp(),
-            pendulum.parse("2999-12-31").timestamp(),
+            pendulum.parse("2100-12-31").timestamp(),
         )
         random_date = pendulum.from_timestamp(random_timestamp)
 

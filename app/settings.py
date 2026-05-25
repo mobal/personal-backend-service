@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     ssh_root_path: str
     ssh_username: str
     stage: str
+    log_format: str = "json"
+    log_level: str = "INFO"
 
     @computed_field
     @property
@@ -35,3 +37,14 @@ class Settings(BaseSettings):
         return parameters.get_parameter(
             os.environ.get("SSH_SECRET_SSM_PARAM_NAME"), transform="json", decrypt=True
         )
+
+    @computed_field
+    @property
+    def logging_config(self) -> dict:
+        """Structured logging configuration for aws_lambda_powertools."""
+        return {
+            "log_format": self.log_format,
+            "log_level": self.log_level,
+            "log_stream": f"{self.app_name}-{self.stage}",
+            "sampling_rate": 1.0 if self.debug else 0.1,
+        }

@@ -11,9 +11,18 @@ class PostRepository:
     def __init__(self):
         self._logger = Logger()
         self._table = boto3.resource("dynamodb").Table(f"{settings.stage}-posts")
+        self._ttl_attribute = "ttl_at"
 
     def create_post(self, data: dict):
         self._table.put_item(Item=data)
+
+    def _set_ttl(self, item: dict, ttl_at: str | None) -> dict:
+        """Set or clear TTL attribute on item."""
+        if ttl_at is not None:
+            item[self._ttl_attribute] = ttl_at
+        else:
+            item.pop(self._ttl_attribute, None)
+        return item
 
     def get_all_posts(
         self, filter_expression: ConditionBase, fields: list[str]
@@ -96,15 +105,31 @@ class PostRepository:
         return last_key, response["Items"]
 
     def update_post(
-        self, post_uuid: str, data: dict, condition_expression: ConditionBase
+        self,
+        post_uuid: str,
+        data: dict,
+        condition_expression: ConditionBase,
+        ttl_at: str | None = None,
     ):
         attr_names = {f"#{k}": k for k in data}
         attr_values = {f":{k}": v for k, v in data.items()}
         update_expr = ", ".join(f"#{k}=:{k}" for k in data)
-        self._table.update_item(
-            Key={"id": post_uuid},
-            ConditionExpression=condition_expression,
-            UpdateExpression=f"SET {update_expr}",
-            ExpressionAttributeNames=attr_names,
-            ExpressionAttributeValues=attr_values,
-        )
+        update_kwargs = {
+            "Key": {"id": post_uuid},
+            "ConditionExpression": condition_expression,
+            "UpdateExpression": f"SET {update_expr}",
+            "ExpressionAttributeNames": attr_names,
+            "ExpressionAttributeValues": attr_values,
+        }
+        if ttl_at is not None:
+            update_kwargs["ConditionExpression"] = condition_expression
+            update_kwargs["UpdateExpression"] = f"SET {update_expr}, TTL=:{'ttl_at'}"
+            update_kwargs["ExpressionAttributeValues"] = {
+                **attr_values,
+                ":ttl_at": ttl_at,
+            }
+            update_kwargs["ExpressionAttributeNames"] = {
+                **attr_names,
+                f"#{'ttl_at'}": "ttl_at",
+            }
+        self._table.update_item(**update_kwargs)

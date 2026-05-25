@@ -13,6 +13,14 @@ from app.models.response import (
 from app.schemas.post_schema import CreatePost, UpdatePost
 from app.services.post_service import PostService
 
+# Constants for date validation boundaries
+MIN_YEAR = 1970
+MAX_YEAR = 2100
+MIN_MONTH = 1
+MAX_MONTH = 12
+MIN_DAY = 1
+MAX_DAY = 31
+
 logger = Logger()
 
 jwt_bearer = JWTBearer()
@@ -59,7 +67,11 @@ def get_by_post_path(
     month_int = int(month)
     day_int = int(day)
 
-    if not (1970 <= year_int and 1 <= month_int <= 12 and 1 <= day_int <= 31):
+    if not (
+        MIN_YEAR <= year_int <= MAX_YEAR
+        and MIN_MONTH <= month_int <= MAX_MONTH
+        and MIN_DAY <= day_int <= MAX_DAY
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date"
         )

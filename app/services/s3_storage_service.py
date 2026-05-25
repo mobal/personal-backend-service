@@ -23,6 +23,14 @@ class S3StorageService:
             region_name=settings.aws_region,
             config=self._retry_config,
         )
+        self._multipart_threshold = (
+            8 * 1024 * 1024
+        )  # 8MB threshold for multipart uploads
+        self._s3_client = boto3.client(
+            "s3",
+            region_name=settings.aws_region,
+            config=self._retry_config,
+        )
 
     def create_bucket(self, bucket: str, acl: str = "private") -> dict[str, Any]:
         self._logger.info(f"Creating bucket={bucket} with acl={acl}")
@@ -67,3 +75,64 @@ class S3StorageService:
             f"Uploading object key={key} with acl={acl} to bucket={bucket}"
         )
         return self._s3.Object(bucket_name=bucket, key=key).put(Body=data)
+
+    def put_object_multipart(
+        self,
+        bucket: str,
+        key: str,
+        data: bytes,
+        acl: str = "public-read",
+        part_size: int = 5 * 1024 * 1024,  # 5MB parts
+    ) -> dict[str, Any]:
+        """Upload object using multipart upload for large files."""
+        self._logger.info(
+            f"Uploading object key={key} with acl={acl} to bucket={bucket} using multipart upload"
+        )
+        upload = self._s3_client.create_multipart_upload(
+            Bucket=bucket,
+            Key=key,
+            ACL=acl,
+            ContentType="application/octet-stream",
+        )
+        upload_id = upload["UploadId"]
+
+        parts = []
+        try:
+            for i in range(1, len(data) // part_size + 1):
+                start = (i - 1) * part_size
+                end = start + part_size
+                part_data = data[start:end]
+                part_number = i
+
+                part_response = self._s3_client.upload_part(
+                    Bucket=bucket,
+                    Key=key,
+                    PartNumber=part_number,
+                    UploadId=upload_id,
+                    Body=part_data,
+                )
+                parts.append(
+                    {
+                        "PartNumber": part_number,
+                        "ETag": part_response["ETag"],
+                    }
+                )
+                self._logger.debug(
+                    f"Uploaded part {part_number} of {len(data) // part_size + 1}"
+                )
+
+            complete_response = self._s3_client.complete_multipart_upload(
+                Bucket=bucket,
+                Key=key,
+                UploadId=upload_id,
+                MultipartUpload={"Parts": parts},
+            )
+            return complete_response
+        except ClientError as exc:
+            self._s3_client.abort_multipart_upload(
+                Bucket=bucket,
+                Key=key,
+                UploadId=upload_id,
+            )
+            self._logger.exception(f"Multipart upload failed: {exc}")
+            raise exc
