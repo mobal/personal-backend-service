@@ -14,7 +14,7 @@ post mutations and attachment uploads are protected with HS256 JWT bearer tokens
 - AWS Lambda, API Gateway HTTP API, DynamoDB, S3, SSM Parameter Store.
 - AWS Lambda Powertools for logging and SSM parameter access.
 - `uv` for dependency management.
-- `ruff`, `pytest`, `pytest-cov`, `moto`, `respx`, `bandit`, and `ty` for quality checks.
+- `ruff`, `pytest`, `pytest-cov`, `moto`, `pytest-httpx`, `bandit`, and `ty` for quality checks.
 - Terraform for AWS infrastructure.
 - Docker for Lambda-compatible build artifacts.
 

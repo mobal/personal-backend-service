@@ -5,8 +5,8 @@ import pendulum
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from httpx import ConnectTimeout, Response
-from respx import MockRouter
+from httpx import ConnectTimeout
+from pytest_httpx import HTTPXMock
 from tests.helpers.utils import generate_jwt_token
 
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts, country_cache
@@ -35,17 +35,16 @@ class TestPostsApi:
         )
 
     @pytest.fixture(autouse=True)
-    def setup_function(self, respx_mock: MockRouter):
+    def setup_function(self, httpx_mock: HTTPXMock):
         banned_hosts.clear()
         country_cache.clear()
-        respx_mock.route(method="GET", url__startswith=COUNTRY_IS_API_BASE_URL).mock(
-            Response(
-                status_code=status.HTTP_200_OK,
-                json={
-                    "ip": "8.8.8.8",
-                    "country": "US",
-                },
-            ),
+        httpx_mock.add_response(
+            url=f"{COUNTRY_IS_API_BASE_URL}/testclient",
+            status_code=status.HTTP_200_OK,
+            json={
+                "ip": "8.8.8.8",
+                "country": "US",
+            },
         )
 
     def test_successfully_get_posts(self, posts: list[Post], test_client: TestClient):
@@ -92,38 +91,38 @@ class TestPostsApi:
 
     def test_fail_to_get_post_due_to_invalid_client(
         self,
-        respx_mock: MockRouter,
+        httpx_mock: HTTPXMock,
         test_client: TestClient,
     ):
-        route_mock = respx_mock.route(
-            method="GET",
-            url__startswith=COUNTRY_IS_API_BASE_URL,
-        ).mock(
-            Response(
-                status_code=status.HTTP_200_OK,
-                json={
-                    "ip": "testclient",
-                    "country": "RU",
-                },
-            ),
+        url = f"{COUNTRY_IS_API_BASE_URL}/testclient"
+        httpx_mock.reset()
+        httpx_mock.add_response(
+            url=url,
+            status_code=status.HTTP_200_OK,
+            json={
+                "ip": "testclient",
+                "country": "RU",
+            },
         )
 
         response = test_client.get(f"{BASE_URL}/{str(uuid.uuid4())}")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert response.json() == {"message": "Forbidden"}
-        assert route_mock.called
-        assert route_mock.call_count == 1
+        assert len(httpx_mock.get_requests(url=url)) == 1
 
     def test_successfully_get_post_despite_country_api_unavailability(
         self,
         posts: list[Post],
-        respx_mock: MockRouter,
+        httpx_mock: HTTPXMock,
         test_client: TestClient,
     ):
-        route_mock = respx_mock.route(
-            method="GET", url__startswith=COUNTRY_IS_API_BASE_URL
-        ).mock(side_effect=ConnectTimeout("timeout"))
+        url = f"{COUNTRY_IS_API_BASE_URL}/testclient"
+        httpx_mock.reset()
+        httpx_mock.add_exception(
+            ConnectTimeout("timeout"),
+            url=url,
+        )
 
         response = test_client.get(f"{BASE_URL}/{posts[0].id}")
 
@@ -144,8 +143,7 @@ class TestPostsApi:
             .items()
             <= response.json().items()
         )
-        assert route_mock.called
-        assert route_mock.call_count == 1
+        assert len(httpx_mock.get_requests(url=url)) == 1
 
     def test_successfully_get_archive(self, posts: list[Post], test_client: TestClient):
         response = test_client.get(f"{BASE_URL}/archive")

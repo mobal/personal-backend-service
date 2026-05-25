@@ -3,8 +3,7 @@ import uuid
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from httpx import Response
-from respx import MockRouter
+from pytest_httpx import HTTPXMock
 from tests.helpers.utils import generate_jwt_token
 
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts, country_cache
@@ -22,7 +21,7 @@ class TestAttachmentsApi:
 
     @pytest.fixture(autouse=True)
     def setup_function(
-        self, aws_default_region: str, s3_resource, respx_mock: MockRouter
+        self, aws_default_region: str, s3_resource, httpx_mock: HTTPXMock
     ):
         s3_resource.create_bucket(
             ACL="public-read-write",
@@ -31,14 +30,13 @@ class TestAttachmentsApi:
         )
         banned_hosts.clear()
         country_cache.clear()
-        respx_mock.route(method="GET", url__startswith=COUNTRY_IS_API_BASE_URL).mock(
-            Response(
-                status_code=status.HTTP_200_OK,
-                json={
-                    "ip": "8.8.8.8",
-                    "country": "US",
-                },
-            ),
+        httpx_mock.add_response(
+            url=f"{COUNTRY_IS_API_BASE_URL}/testclient",
+            status_code=status.HTTP_200_OK,
+            json={
+                "ip": "8.8.8.8",
+                "country": "US",
+            },
         )
 
     def test_successfully_add_attachment(
@@ -120,21 +118,19 @@ class TestAttachmentsApi:
 
     def test_fail_to_get_attachment_due_to_invalid_client(
         self,
-        respx_mock: MockRouter,
+        httpx_mock: HTTPXMock,
         post_with_attachment: Post,
         test_client: TestClient,
     ):
-        route_mock = respx_mock.route(
-            method="GET",
-            url__startswith=COUNTRY_IS_API_BASE_URL,
-        ).mock(
-            Response(
-                status_code=status.HTTP_200_OK,
-                json={
-                    "ip": "testclient",
-                    "country": "RU",
-                },
-            ),
+        url = f"{COUNTRY_IS_API_BASE_URL}/testclient"
+        httpx_mock.reset()
+        httpx_mock.add_response(
+            url=url,
+            status_code=status.HTTP_200_OK,
+            json={
+                "ip": "testclient",
+                "country": "RU",
+            },
         )
 
         response = test_client.get(
@@ -143,8 +139,7 @@ class TestAttachmentsApi:
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert response.json() == {"message": "Forbidden"}
-        assert route_mock.called
-        assert route_mock.call_count == 1
+        assert len(httpx_mock.get_requests(url=url)) == 1
 
     def test_fail_to_get_attachment_due_to_not_found(
         self,
