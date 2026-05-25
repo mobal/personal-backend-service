@@ -146,3 +146,35 @@ class PostService:
 
         dates = [pendulum.parse(post["published_at"]) for post in posts]
         return self._sort_dates_and_group_by_month(dates, max_results) if dates else {}
+
+    def get_archive_paginated(
+        self,
+        exclusive_start_key: str | None = None,
+        max_results: int = 100,
+    ) -> dict[str, Any]:
+        """Get archive with pagination support."""
+        posts = self._repo.get_all_posts(
+            FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
+            ["id", "published_at"],
+            exclusive_start_key=exclusive_start_key,
+            max_results=max_results,
+        )
+        if not posts:
+            return {
+                "archive": {},
+                "count": 0,
+                "exclusive_start_key": exclusive_start_key,
+                "last_evaluated_key": None,
+            }
+
+        dates = [pendulum.parse(post["published_at"]) for post in posts]
+        archive = (
+            self._sort_dates_and_group_by_month(dates, max_results) if dates else {}
+        )
+
+        return {
+            "archive": archive,
+            "count": len(posts),
+            "exclusive_start_key": exclusive_start_key,
+            "last_evaluated_key": posts[-1]["id"] if posts else None,
+        }

@@ -12,6 +12,8 @@ from app.models.response import Attachment as AttachmentResponse
 from app.services.post_service import PostService
 from app.services.s3_storage_service import S3StorageService
 
+MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024  # 5MB limit
+
 
 class AttachmentService:
     def __init__(self):
@@ -30,6 +32,13 @@ class AttachmentService:
         object_key = f"/{post.post_path}/{attachment_name}"
 
         file_data = base64.b64decode(base64_data)
+
+        # Validate file size (5MB limit)
+        if len(file_data) > MAX_ATTACHMENT_SIZE:
+            error_msg = f"Attachment {attachment_name} exceeds maximum size of {MAX_ATTACHMENT_SIZE} bytes"
+            self._logger.error(error_msg)
+            raise ValueError(error_msg)
+
         self._storage_service.put_object(
             settings.attachments_bucket_name, object_key, file_data
         )

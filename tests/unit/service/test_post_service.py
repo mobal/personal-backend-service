@@ -202,6 +202,66 @@ class TestPostService:
 
         assert 0 == len(result)
 
+    def test_successfully_get_archive_paginated(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_service: PostService,
+    ):
+        all_posts = [post.model_dump() for post in posts]
+        mocker.patch.object(PostRepository, "get_all_posts", return_value=all_posts)
+
+        result = post_service.get_archive_paginated()
+
+        assert "count" in result
+        assert "last_evaluated_key" in result
+        assert result["count"] == len(all_posts)
+
+    def test_successfully_get_archive_paginated_with_custom_params(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_service: PostService,
+    ):
+        """Test pagination with custom max_results."""
+        all_posts = [post.model_dump() for post in posts]
+        mocker.patch.object(PostRepository, "get_all_posts", return_value=all_posts)
+
+        result = post_service.get_archive_paginated(max_results=50)
+
+        assert result["count"] == len(all_posts)
+
+    def test_successfully_get_archive_paginated_with_exclusive_start_key(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_service: PostService,
+    ):
+        """Test pagination with exclusive_start_key for continuation."""
+        all_posts = [post.model_dump() for post in posts]
+        mocker.patch.object(PostRepository, "get_all_posts", return_value=all_posts)
+
+        first_page = post_service.get_archive_paginated(max_results=2)
+        exclusive_start_key = first_page["last_evaluated_key"]
+
+        second_page = post_service.get_archive_paginated(
+            max_results=2, exclusive_start_key=exclusive_start_key
+        )
+
+        assert second_page["count"] == len(all_posts)
+
+    def test_successfully_get_archive_paginated_empty_result(
+        self,
+        mocker: MockerFixture,
+        post_service: PostService,
+    ):
+        mocker.patch.object(PostRepository, "get_all_posts", return_value=[])
+
+        result = post_service.get_archive_paginated()
+
+        assert result["count"] == 0
+        assert result["last_evaluated_key"] is None
+
     def test_successfully_get_post_by_post_path(
         self,
         mocker: MockerFixture,
