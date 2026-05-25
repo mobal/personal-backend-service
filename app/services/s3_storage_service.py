@@ -98,8 +98,8 @@ class S3StorageService:
 
         parts = []
         try:
-            for i in range(1, len(data) // part_size + 1):
-                start = (i - 1) * part_size
+            total_parts = (len(data) + part_size - 1) // part_size
+            for i, start in enumerate(range(0, len(data), part_size), start=1):
                 end = start + part_size
                 part_data = data[start:end]
                 part_number = i
@@ -117,9 +117,7 @@ class S3StorageService:
                         "ETag": part_response["ETag"],
                     }
                 )
-                self._logger.debug(
-                    f"Uploaded part {part_number} of {len(data) // part_size + 1}"
-                )
+                self._logger.debug(f"Uploaded part {part_number} of {total_parts}")
 
             complete_response = self._s3_client.complete_multipart_upload(
                 Bucket=bucket,

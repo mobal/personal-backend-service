@@ -114,3 +114,53 @@ class TestS3StorageService:
 
         obj = s3_resource.Object(bucket_name=BUCKET_NAME, key=OBJECT_KEY)
         assert obj.get()["Body"].read().decode("utf-8") == OBJECT_BODY
+
+    def test_successfully_put_object_multipart(
+        self,
+        s3_resource,
+        s3_storage_service: S3StorageService,
+    ):
+        part_size = 5 * 1024 * 1024
+        object_body = (b"a" * part_size) + b"last part"
+        object_key = str(uuid.uuid4())
+
+        response = s3_storage_service.put_object_multipart(
+            BUCKET_NAME, object_key, object_body, part_size=part_size
+        )
+
+        obj = s3_resource.Object(bucket_name=BUCKET_NAME, key=object_key)
+        assert response["ResponseMetadata"]["HTTPStatusCode"] == status.HTTP_200_OK
+        assert obj.get()["Body"].read() == object_body
+
+    def test_abort_put_object_multipart_on_client_error(
+        self,
+        s3_storage_service: S3StorageService,
+        mocker,
+    ):
+        upload_id = str(uuid.uuid4())
+        object_key = str(uuid.uuid4())
+        client_error = ClientError(
+            {
+                "Error": {
+                    "Code": "InternalError",
+                    "Message": "Upload failed",
+                },
+            },
+            "UploadPart",
+        )
+        s3_client = mocker.Mock()
+        s3_client.create_multipart_upload.return_value = {"UploadId": upload_id}
+        s3_client.upload_part.side_effect = client_error
+        s3_storage_service._s3_client = s3_client
+
+        with pytest.raises(ClientError) as exc_info:
+            s3_storage_service.put_object_multipart(
+                BUCKET_NAME, object_key, b"failed upload", part_size=5
+            )
+
+        assert exc_info.value == client_error
+        s3_client.abort_multipart_upload.assert_called_once_with(
+            Bucket=BUCKET_NAME,
+            Key=object_key,
+            UploadId=upload_id,
+        )
