@@ -97,8 +97,13 @@ class JWTBearer:
                 **jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
             )
             return True
-        except DecodeError, ExpiredSignatureError:
+        except DecodeError:
             logger.exception("Error occurred during token validation")
+        except ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=ERROR_MESSAGE_NOT_AUTHENTICATED,
+            )
         except Exception:
             logger.exception("Unexpected error during JWT validation")
         return False

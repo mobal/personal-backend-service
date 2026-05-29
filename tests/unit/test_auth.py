@@ -1,6 +1,8 @@
+import uuid
 from unittest.mock import Mock
 
 import jwt
+import pendulum
 import pytest
 from fastapi import HTTPException, status
 from fastapi.requests import Request
@@ -161,6 +163,37 @@ class TestJWTAuth:
 
         assert excinfo.value.status_code == status.HTTP_403_FORBIDDEN
         assert excinfo.value.detail == "Invalid authentication credentials"
+
+    def test_fail_to_authorize_request_due_to_expired_token(
+        self,
+        empty_request: Mock,
+        jwt_bearer: JWTBearer,
+        settings: Settings,
+    ):
+        now = pendulum.now()
+        expired_token = JWTToken(
+            exp=now.subtract(years=1).int_timestamp,
+            iat=now.int_timestamp,
+            iss="https://netcode.hu",
+            jti=str(uuid.uuid4()),
+            sub="test-user-id",
+            user={
+                "id": "test-user-id",
+                "email": "test@example.com",
+                "display_name": "test",
+                "created_at": now.to_iso8601_string(),
+                "deleted_at": None,
+                "updated_at": None,
+            },
+        )
+        bearer_token = generate_bearer_token(expired_token, settings.jwt_secret)
+        empty_request.headers = {"Authorization": f"Bearer {bearer_token}"}
+
+        with pytest.raises(HTTPException) as excinfo:
+            jwt_bearer(empty_request)
+
+        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_successfully_authorize_request(
         self,

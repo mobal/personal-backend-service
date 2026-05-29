@@ -396,3 +396,26 @@ class TestPostsApi:
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_fail_expired_jwt_token_cause_forbidden(
+        self,
+        posts: list[Post],
+        user_dict: dict[str, str | None],
+        jwt_secret_ssm_param_value: str,
+        test_client: TestClient,
+    ):
+        import jwt
+
+        expired_token = jwt.encode(
+            {"sub": user_dict.get("email"), "exp": 0},
+            jwt_secret_ssm_param_value,
+            algorithm="HS256",
+        )
+
+        response = test_client.delete(
+            f"{BASE_URL}/{posts[0].id}",
+            headers={"Authorization": f"Bearer {expired_token}"},
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json()["message"] == ERROR_MESSAGE_NOT_AUTHENTICATED
