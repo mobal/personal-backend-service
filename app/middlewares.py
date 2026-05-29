@@ -103,12 +103,15 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        correlation_id.set(
-            request.headers.get(X_CORRELATION_ID)
-            or request.scope.get("aws.context", {}).aws_request_id
-            if request.scope.get("aws.context")
-            else str(uuid.uuid4())
-        )
+        x_correlation_id = request.headers.get(X_CORRELATION_ID)
+        if not x_correlation_id:
+            aws_context = request.scope.get("aws.context")
+            if aws_context:
+                x_correlation_id = aws_context.aws_request_id
+            else:
+                x_correlation_id = str(uuid.uuid4())
+
+        correlation_id.set(x_correlation_id)
         logger.set_correlation_id(correlation_id.get())
         response = await call_next(request)
         response.headers[X_CORRELATION_ID] = correlation_id.get()
