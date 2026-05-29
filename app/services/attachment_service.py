@@ -29,6 +29,11 @@ class AttachmentService:
 
         post = self._post_service.get_post(post_uuid)
         mime_type = mimetypes.guess_type(attachment_name)[0]
+        if mime_type is None:
+            self._logger.info(
+                f"Unknown MIME type for {attachment_name=}, defaulting to application/octet-stream"
+            )
+            mime_type = "application/octet-stream"
         object_key = f"/{post.post_path}/{attachment_name}"
 
         file_data = base64.b64decode(base64_data)

@@ -14,6 +14,7 @@ from app.services.post_service import PostService
 from app.services.s3_storage_service import S3StorageService
 
 ATTACHMENT_NAME = "lorem.txt"
+UNKNOWN_EXT = "lorem.xyz"
 
 
 class TestAttachmentService:
@@ -229,6 +230,37 @@ class TestAttachmentService:
 
         assert exc_info.type == AttachmentNotFoundException
         post_service.get_post.assert_called_once_with(post_with_attachment.id)
+
+    def test_successfully_add_attachment_with_unknown_mime_type(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+        posts: list[Post],
+        storage_service: StorageService,
+        test_data: bytes,
+    ):
+        mocker.patch.object(PostService, "get_post", return_value=posts[0])
+        mocker.patch.object(
+            StorageService,
+            "put_object",
+            return_value={
+                "ContentLength": len(test_data),
+                "ContentType": "application/octet-stream",
+            },
+        )
+        mocker.patch.object(PostService, "update_post")
+
+        result = attachment_service.add_attachment(
+            posts[0].id, "test.foo", test_data.decode(), "test.foo"
+        )
+
+        assert result.mime_type == "application/octet-stream"
+        post_service.get_post.assert_called_once_with(posts[0].id)
+        storage_service.put_object.assert_called_once()
+        post_service.update_post.assert_called_once_with(
+            posts[0].id, {"attachments": [result.model_dump(exclude_none=True)]}
+        )
 
     def test_fail_to_add_attachment_due_to_file_too_large(
         self,
