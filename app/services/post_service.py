@@ -34,7 +34,6 @@ class PostService:
     def get_post_by_uuid(self, post_uuid: str) -> Post:
         item = self._repo.get_post_by_uuid(post_uuid, FilterExpressions.NOT_DELETED)
         if not item:
-            self._logger.warning(f"Post not found: {post_uuid=}")
             raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
         return Post(**item)
 
@@ -128,7 +127,6 @@ class PostService:
             post_path, FilterExpressions.NOT_DELETED
         )
         if not post:
-            self._logger.warning(f"Post not found: {post_path=}")
             raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
         return self._post_to_response(post)
 
@@ -146,7 +144,6 @@ class PostService:
     def update_post(self, post_uuid: str, data: dict[str, Any]):
         post = self._repo.get_post_by_uuid(post_uuid, FilterExpressions.NOT_DELETED)
         if not post:
-            self._logger.warning(f"Post not found: {post_uuid=}")
             raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
         post.update(data)
         post["updated_at"] = pendulum.now().to_iso8601_string()
