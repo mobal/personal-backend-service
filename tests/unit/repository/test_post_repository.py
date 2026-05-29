@@ -140,7 +140,10 @@ class TestPostRepository:
                 Attr("id").eq(non_existent_id),
             )
 
-        assert exc_info.value.response["Error"]["Code"] == "ConditionalCheckFailedException"
+        assert (
+            exc_info.value.response["Error"]["Code"]
+            == "ConditionalCheckFailedException"
+        )
 
     def test_successfully_get_item_count(
         self, posts: list[Post], post_repository: PostRepository
