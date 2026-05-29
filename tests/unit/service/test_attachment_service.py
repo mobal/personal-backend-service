@@ -161,6 +161,19 @@ class TestAttachmentService:
         assert attachments[0].model_dump().items() <= attachment.model_dump().items()
         post_service.get_post.assert_called_once_with(post_with_attachment.id)
 
+    def test_successfully_get_attachments_when_none(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+        posts: list[Post],
+    ):
+        mocker.patch.object(PostService, "get_post", return_value=posts[0])
+
+        attachments = attachment_service.get_attachments(posts[0].id)
+
+        assert attachments == []
+
     def test_fail_to_get_attachments_due_to_post_not_found(
         self,
         mocker: MockerFixture,
