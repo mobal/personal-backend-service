@@ -6,6 +6,7 @@ import markdown
 import pendulum
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Attr
+from botocore.exceptions import ClientError
 from pendulum import DateTime
 from slugify import slugify
 
@@ -112,11 +113,17 @@ class PostService:
         return Post(**data)
 
     def delete_post(self, post_uuid: str):
-        post = self.get_post_by_uuid(post_uuid)
-        post.deleted_at = pendulum.now().to_iso8601_string()
-        self._repo.update_post(
-            post_uuid, post.model_dump(exclude={"id"}), FilterExpressions.NOT_DELETED
-        )
+        now = pendulum.now().to_iso8601_string()
+        try:
+            self._repo.update_post(
+                post_uuid,
+                {"deleted_at": now, "updated_at": now},
+                Attr("id").exists() & FilterExpressions.NOT_DELETED,
+            )
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
+                raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
+            raise
         self._logger.info(f"Post deleted: {post_uuid=}")
 
     def get_post(self, post_uuid: str) -> PostResponse:
@@ -142,13 +149,17 @@ class PostService:
         )
 
     def update_post(self, post_uuid: str, data: dict[str, Any]):
-        post = self._repo.get_post_by_uuid(post_uuid)
-        if not post or post.get("deleted_at") is not None:
-            raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
-        post.update(data)
-        post["updated_at"] = pendulum.now().to_iso8601_string()
-        post.pop("id")
-        self._repo.update_post(post_uuid, post, FilterExpressions.NOT_DELETED)
+        data["updated_at"] = pendulum.now().to_iso8601_string()
+        try:
+            self._repo.update_post(
+                post_uuid,
+                data,
+                Attr("id").exists() & FilterExpressions.NOT_DELETED,
+            )
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
+                raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
+            raise
         self._logger.info(f"Post updated: {post_uuid=}")
 
     def _sort_dates_and_group_by_month(
