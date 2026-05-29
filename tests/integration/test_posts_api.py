@@ -397,6 +397,39 @@ class TestPostsApi:
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
+    def test_fail_to_delete_post_due_to_empty_token_query_param(
+        self,
+        posts: list[Post],
+        test_client: TestClient,
+    ):
+        response = test_client.delete(
+            f"{BASE_URL}/{posts[0].id}",
+            params={"token": ""},
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert {
+            "status": status.HTTP_403_FORBIDDEN,
+            "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
+        }.items() <= response.json().items()
+
+    def test_fail_to_update_post_due_to_empty_body(
+        self,
+        jwt_secret_ssm_param_value: str,
+        posts: list[Post],
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.put(
+            f"{BASE_URL}/{posts[0].id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json={},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
     def test_fail_expired_jwt_token_cause_forbidden(
         self,
         posts: list[Post],
