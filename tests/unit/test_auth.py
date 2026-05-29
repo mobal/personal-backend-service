@@ -164,6 +164,17 @@ class TestJWTAuth:
         assert excinfo.value.status_code == status.HTTP_403_FORBIDDEN
         assert excinfo.value.detail == "Invalid authentication credentials"
 
+    def test_fail_to_authorize_request_due_to_empty_token_query_param(
+        self, empty_request: Mock, jwt_bearer: JWTBearer
+    ):
+        empty_request.query_params = {"token": ""}
+
+        with pytest.raises(HTTPException) as excinfo:
+            jwt_bearer(empty_request)
+
+        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
+
     def test_fail_to_authorize_request_due_to_expired_token(
         self,
         empty_request: Mock,
