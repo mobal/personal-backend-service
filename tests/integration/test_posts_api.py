@@ -151,6 +151,15 @@ class TestPostsApi:
         assert response.status_code == status.HTTP_200_OK
         assert response.json()[pendulum.now().format("YYYY-MM")] == len(posts)
 
+    def test_successfully_get_empty_archive(self, test_client: TestClient, posts_table):
+        for item in posts_table.scan()["Items"]:
+            posts_table.delete_item(Key={"id": item["id"]})
+
+        response = test_client.get(f"{BASE_URL}/archive")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {}
+
     def test_successfully_get_post_by_post_path(
         self, posts: list[Post], test_client: TestClient
     ):
