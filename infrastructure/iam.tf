@@ -39,6 +39,18 @@ resource "aws_iam_policy" "lambda_policy" {
       {
         Effect   = "Allow"
         Action   = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+        ]
+        Resource = [
+          aws_dynamodb_table.rate_limits.arn,
+        ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = [
           "ec2:DescribeNetworkInterfaces",
           "ec2:CreateNetworkInterface",
           "ec2:DeleteNetworkInterface",

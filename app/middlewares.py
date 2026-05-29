@@ -1,7 +1,6 @@
 import uuid
 from contextvars import ContextVar
 from datetime import datetime, timedelta
-from typing import Any
 
 import httpx
 import pendulum
@@ -14,6 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.types import ASGIApp
 
 from app import Settings
+from app.services.rate_limiter_service import RateLimiterService, RateLimitResult
 
 COUNTRY_CACHE_TTL = timedelta(hours=1)
 COUNTRY_IS_API_BASE_URL = "https://api.country.is"
@@ -24,7 +24,6 @@ logger = Logger()
 settings = Settings()
 
 banned_hosts: list[str] = []
-clients: dict[str, Any] = {}
 country_cache: dict[str, tuple[bool, datetime]] = {}
 
 
@@ -108,10 +107,9 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
 
 
 class RateLimitingMiddleware(BaseHTTPMiddleware):
-    RATE_LIMIT_DURATION = timedelta(seconds=settings.rate_limit_duration_in_seconds)
-
-    def __init__(self, app: ASGIApp):
+    def __init__(self, app: ASGIApp, rate_limiter: RateLimiterService | None = None):
         super().__init__(app)
+        self._rate_limiter = rate_limiter or RateLimiterService()
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
@@ -119,13 +117,19 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         if settings.rate_limiting:
             client_ip = request.client.host if request.client else None
             if client_ip:
-                rate_limited_response = self._check_rate_limit(client_ip)
-                if rate_limited_response:
-                    return rate_limited_response
-                response = await call_next(request)
-                response.headers.update(
-                    self._get_rate_limit_headers(clients[client_ip])
+                result = self._rate_limiter.check_rate_limit(
+                    client_ip, request.url.path
                 )
+                if not result.allowed:
+                    return JSONResponse(
+                        content={
+                            "message": "Rate limit exceeded. Please try again later"
+                        },
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        headers=self._get_rate_limit_headers(result),
+                    )
+                response = await call_next(request)
+                response.headers.update(self._get_rate_limit_headers(result))
                 return response
             else:
                 logger.warning("Missing client information. Skipping rate limiting")
@@ -133,40 +137,10 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
             logger.info("Rate limiting is turned off")
         return await call_next(request)
 
-    def _check_rate_limit(self, client_ip: str) -> JSONResponse | None:
-        client = clients.get(
-            client_ip, {"request_count": 0, "last_request": datetime.min}
-        )
-        if (datetime.now() - client["last_request"]) > self.RATE_LIMIT_DURATION:
-            client["request_count"] = 1
-        else:
-            if client["request_count"] >= settings.rate_limit_requests:
-                logger.warning(
-                    "The client has exceeded the rate limit and has been rate limited",
-                    host=client_ip,
-                )
-                return JSONResponse(
-                    content={"message": "Rate limit exceeded. Please try again later"},
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    headers=self._get_rate_limit_headers(client),
-                )
-            client["request_count"] += 1
-        client["last_request"] = datetime.now()
-        clients[client_ip] = client
-        return None
-
-    def _get_rate_limit_headers(self, client: dict[str, Any]) -> dict[str, Any]:
+    @staticmethod
+    def _get_rate_limit_headers(result: RateLimitResult) -> dict[str, str]:
         return {
-            "X-RateLimit-Limit": str(settings.rate_limit_requests),
-            "X-RateLimit-Remaining": str(
-                settings.rate_limit_requests - client["request_count"]
-            ),
-            "X-RateLimit-Reset": str(
-                int(
-                    (
-                        client["last_request"].replace(second=0, microsecond=0)
-                        + timedelta(minutes=1)
-                    ).timestamp()
-                )
-            ),
+            "X-RateLimit-Limit": str(result.limit),
+            "X-RateLimit-Remaining": str(result.remaining),
+            "X-RateLimit-Reset": str(result.reset_at),
         }

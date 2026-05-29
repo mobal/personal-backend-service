@@ -56,3 +56,25 @@ resource "aws_dynamodb_table" "posts" {
     projection_type = "ALL"
   }
 }
+
+resource "aws_dynamodb_table" "rate_limits" {
+  name         = "${var.stage}-rate-limits"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "client_id"
+  range_key    = "endpoint"
+
+  attribute {
+    name = "client_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "endpoint"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "ttl"
+    enabled        = true
+  }
+}
