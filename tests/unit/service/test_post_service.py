@@ -164,6 +164,31 @@ class TestPostService:
         assert "<strong>bold</strong>" in result.content
         assert "<em>italic</em>" in result.content
 
+    def test_successfully_get_post_sanitizes_xss_from_markdown(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        malicious_content = (
+            "Hello <script>alert('xss')</script> "
+            "<img src=x onerror=alert(1)> "
+            '<a href="javascript:alert(1)">click</a>'
+        )
+        mocker.patch.object(
+            PostRepository,
+            "get_post_by_uuid",
+            return_value=posts[0].model_dump() | {"content": malicious_content},
+        )
+
+        result = post_service.get_post(posts[0].id)
+
+        assert "<script>" not in result.content
+        assert "onerror" not in result.content
+        assert "javascript:" not in result.content
+        assert result.content.count("<") == result.content.count(">")
+
     def test_fail_to_get_post_due_to_not_found_exception(
         self,
         mocker: MockerFixture,
