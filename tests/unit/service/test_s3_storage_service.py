@@ -115,6 +115,33 @@ class TestS3StorageService:
         obj = s3_resource.Object(bucket_name=BUCKET_NAME, key=OBJECT_KEY)
         assert obj.get()["Body"].read().decode("utf-8") == OBJECT_BODY
 
+    def test_fail_to_put_object_due_to_non_existent_bucket(
+        self,
+        s3_storage_service: S3StorageService,
+    ):
+        with pytest.raises(ClientError) as exc_info:
+            s3_storage_service.put_object("non-existent-bucket", "key", b"data")
+
+        assert exc_info.value.response["Error"]["Code"] == "NoSuchBucket"
+
+    def test_fail_to_put_object_due_to_client_error(
+        self,
+        s3_storage_service: S3StorageService,
+        mocker,
+    ):
+        client_error = ClientError(
+            {"Error": {"Code": "InternalError", "Message": "Upload failed"}},
+            "PutObject",
+        )
+        mock_obj = mocker.Mock()
+        mock_obj.put.side_effect = client_error
+        mocker.patch.object(s3_storage_service._s3, "Object", return_value=mock_obj)
+
+        with pytest.raises(ClientError) as exc_info:
+            s3_storage_service.put_object(BUCKET_NAME, "key", b"data")
+
+        assert exc_info.value.response["Error"]["Code"] == "InternalError"
+
     def test_successfully_put_object_multipart(
         self,
         s3_resource,
