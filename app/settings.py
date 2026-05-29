@@ -1,4 +1,5 @@
 import os
+from functools import cached_property
 
 from aws_lambda_powertools.utilities import parameters
 from pydantic import Field, computed_field
@@ -25,21 +26,21 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     @computed_field
-    @property
+    @cached_property
     def jwt_secret(self) -> str:
         return parameters.get_parameter(
             os.environ.get("JWT_SECRET_SSM_PARAM_NAME"), decrypt=True
         )
 
     @computed_field
-    @property
+    @cached_property
     def ssh_secret(self) -> dict:
         return parameters.get_parameter(
             os.environ.get("SSH_SECRET_SSM_PARAM_NAME"), transform="json", decrypt=True
         )
 
     @computed_field
-    @property
+    @cached_property
     def logging_config(self) -> dict:
         """Structured logging configuration for aws_lambda_powertools."""
         return {

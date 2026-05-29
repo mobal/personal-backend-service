@@ -1,6 +1,7 @@
 import uuid
 from typing import Any
 
+import bleach
 import markdown
 import pendulum
 from aws_lambda_powertools import Logger
@@ -38,7 +39,54 @@ class PostService:
         return Post(**item)
 
     def _post_to_response(self, post_data: dict[str, Any]) -> PostResponse:
-        post_data["content"] = markdown.markdown(post_data["content"])
+        html = markdown.markdown(post_data["content"])
+        allowed_tags = bleach.ALLOWED_TAGS | {
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "p",
+            "br",
+            "hr",
+            "ul",
+            "ol",
+            "li",
+            "pre",
+            "code",
+            "blockquote",
+            "table",
+            "thead",
+            "tbody",
+            "tr",
+            "th",
+            "td",
+            "img",
+            "a",
+            "strong",
+            "em",
+            "u",
+            "s",
+            "del",
+            "ins",
+            "sup",
+            "sub",
+            "div",
+            "span",
+        }
+        allowed_attributes = {
+            "a": ["href", "title", "rel"],
+            "img": ["src", "alt", "title", "width", "height"],
+            "*": ["class"],
+        }
+        sanitized = bleach.clean(
+            html,
+            tags=allowed_tags,
+            attributes=allowed_attributes,
+            strip=True,
+        )
+        post_data["content"] = sanitized
         return PostResponse(**post_data)
 
     def create_post(self, data: dict[str, Any]) -> Post:

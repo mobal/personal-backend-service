@@ -1,5 +1,6 @@
 import uuid
 
+import boto3
 import pendulum
 import pytest
 from boto3.dynamodb.conditions import Attr, ConditionBase
@@ -10,6 +11,7 @@ from app.repositories.post_repository import PostRepository
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
+from app.services.rate_limiter_service import RateLimiterService
 from app.services.s3_storage_service import S3StorageService
 from app.services.sshfs_storage_service import SSHFSStorageService
 
@@ -65,3 +67,26 @@ def s3_storage_service() -> S3StorageService:
 @pytest.fixture
 def sshfs_storage_service() -> SSHFSStorageService:
     return SSHFSStorageService()
+
+
+@pytest.fixture
+def initialize_rate_limits_table(aws_default_region: str):
+    client = boto3.client("dynamodb", region_name=aws_default_region)
+    client.create_table(
+        TableName="test-rate-limits",
+        KeySchema=[
+            {"AttributeName": "client_id", "KeyType": "HASH"},
+            {"AttributeName": "endpoint", "KeyType": "RANGE"},
+        ],
+        AttributeDefinitions=[
+            {"AttributeName": "client_id", "AttributeType": "S"},
+            {"AttributeName": "endpoint", "AttributeType": "S"},
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+    yield
+
+
+@pytest.fixture
+def rate_limiter_service(initialize_rate_limits_table) -> RateLimiterService:
+    return RateLimiterService(stage="test")
