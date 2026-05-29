@@ -20,7 +20,7 @@ class PublisherService:
     def publish(self, post_uuid: str) -> None:
         self._logger.info(f"Publishing post with id={post_uuid}")
         post = self._post_service.get_post_by_uuid(post_uuid)
-        if pendulum.parse(post.published_at).is_past():
+        if post.published_at and pendulum.parse(post.published_at).is_past():
             self._write(
                 self._settings.ssh_host,
                 self._settings.ssh_username,

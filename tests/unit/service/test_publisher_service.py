@@ -1,3 +1,8 @@
+import os
+import uuid
+from unittest.mock import MagicMock
+
+import asyncssh
 import pendulum
 import pytest
 from asyncssh import Error as SSHError
@@ -90,3 +95,37 @@ class TestPublisherService:
         assert excinfo.value.detail == ERROR_MESSAGE
         post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         sshfs_storage_service.write.assert_called_once()
+
+    def test_fail_to_publish_due_to_null_published_at(
+        self,
+        mocker: MockerFixture,
+        mock_sshfs: MagicMock,
+        post_service: PostService,
+        publisher_service: PublisherService,
+    ):
+        post = Post(
+            id=str(uuid.uuid4()),
+            title="Test Post",
+            content="Test content",
+            post_path=str(uuid.uuid4()),
+            author="Alice",
+            created_at="2024-01-01",
+            deleted_at=None,
+            published_at=None,
+            slug="test-post",
+            tags=["test"],
+            meta={
+                "category": "test",
+                "description": "Test desc",
+                "language": "en",
+                "keywords": ["k1"],
+                "title": "Test",
+            },
+        )
+
+        mocker.patch.object(PostService, "get_post_by_uuid", return_value=post)
+
+        publisher_service.publish(post.id)
+
+        post_service.get_post_by_uuid.assert_called_once_with(post.id)
+        mock_sshfs.assert_not_called()
