@@ -74,6 +74,28 @@ class TestPostService:
         assert ERROR_MESSAGE_POST_ALREADY_EXISTS == excinfo.value.detail
         post_repository.get_post_by_title.assert_called_once_with(posts[0].title, ANY)
 
+    def test_successfully_create_post_despite_soft_deleted_post_with_same_title(
+        self,
+        mocker: MockerFixture,
+        make_post,
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        mocker.patch.object(PostRepository, "get_post_by_title", return_value=None)
+        mocker.patch.object(PostRepository, "create_post")
+
+        post = make_post()
+        result = post_service.create_post(
+            post.model_dump(
+                include={"author", "title", "content", "tags", "meta", "published_at"}
+            )
+        )
+
+        assert post.title == result.title
+        assert result.is_deleted is False
+        post_repository.get_post_by_title.assert_called_once_with(post.title, ANY)
+        post_repository.create_post.assert_called_once()
+
     def test_successfully_delete_post(
         self,
         mocker: MockerFixture,
