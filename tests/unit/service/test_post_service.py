@@ -110,7 +110,7 @@ class TestPostService:
 
         post_service.delete_post(posts[0].id)
 
-        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id)
         post_repository.update_post.assert_called_once_with(posts[0].id, ANY, ANY)
 
     def test_fail_to_delete_post_due_to_not_found_exception(
@@ -128,7 +128,7 @@ class TestPostService:
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id)
 
     def test_successfully_get_post(
         self,
@@ -144,7 +144,7 @@ class TestPostService:
         result = post_service.get_post(posts[0].id)
 
         assert PostResponse(**result.model_dump()) == result
-        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id)
 
     def test_successfully_get_post_renders_markdown_to_html(
         self,
@@ -204,7 +204,7 @@ class TestPostService:
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id)
 
     def test_successfully_update_post(
         self,
@@ -240,7 +240,7 @@ class TestPostService:
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id)
 
     def test_successfully_get_archive(
         self,
@@ -402,7 +402,7 @@ class TestPostService:
         result = post_service.get_post_by_uuid(posts[0].id)
 
         assert result == posts[0]
-        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id)
 
     def test_fail_to_get_post_by_uuid_not_found(
         self,
@@ -420,4 +420,4 @@ class TestPostService:
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_uuid.assert_called_once_with(invalid_id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(invalid_id)

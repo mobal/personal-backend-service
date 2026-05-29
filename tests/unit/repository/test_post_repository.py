@@ -92,22 +92,20 @@ class TestPostRepository:
 
     def test_successfully_get_post_by_uuid(
         self,
-        filter_expression: ConditionBase,
         posts: list[Post],
         post_repository: PostRepository,
     ):
-        item = post_repository.get_post_by_uuid(posts[0].id, filter_expression)
+        item = post_repository.get_post_by_uuid(posts[0].id)
 
         assert posts[0].model_dump() == item
 
     def test_fail_to_get_post_by_uuid(
         self,
-        filter_expression: ConditionBase,
         post_repository: PostRepository,
     ):
         post_uuid = str(uuid.uuid4())
 
-        assert post_repository.get_post_by_uuid(post_uuid, filter_expression) is None
+        assert post_repository.get_post_by_uuid(post_uuid) is None
 
     def test_successfully_update_post(
         self,

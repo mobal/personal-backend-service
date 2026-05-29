@@ -78,14 +78,9 @@ class PostRepository:
         )
         return response["Items"][0] if response["Items"] else None
 
-    def get_post_by_uuid(
-        self, post_uuid: str, filter_expression: ConditionBase
-    ) -> dict | None:
-        response = self._table.query(
-            KeyConditionExpression=Key("id").eq(post_uuid),
-            FilterExpression=filter_expression,
-        )
-        return response["Items"][0] if response["Items"] else None
+    def get_post_by_uuid(self, post_uuid: str) -> dict | None:
+        response = self._table.get_item(Key={"id": post_uuid})
+        return response.get("Item")
 
     def get_posts(
         self,
