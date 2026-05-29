@@ -1,8 +1,5 @@
-import os
 import uuid
-from unittest.mock import MagicMock
 
-import asyncssh
 import pendulum
 import pytest
 from asyncssh import Error as SSHError
@@ -99,7 +96,6 @@ class TestPublisherService:
     def test_fail_to_publish_due_to_null_published_at(
         self,
         mocker: MockerFixture,
-        mock_sshfs: MagicMock,
         post_service: PostService,
         publisher_service: PublisherService,
     ):
@@ -124,8 +120,9 @@ class TestPublisherService:
         )
 
         mocker.patch.object(PostService, "get_post_by_uuid", return_value=post)
+        mock_write = mocker.patch.object(SSHFSStorageService, "write")
 
         publisher_service.publish(post.id)
 
         post_service.get_post_by_uuid.assert_called_once_with(post.id)
-        mock_sshfs.assert_not_called()
+        mock_write.assert_not_called()

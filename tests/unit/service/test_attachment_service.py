@@ -237,12 +237,12 @@ class TestAttachmentService:
         attachment_service: AttachmentService,
         post_service: PostService,
         posts: list[Post],
-        storage_service: StorageService,
+        s3_storage_service: S3StorageService,
         test_data: bytes,
     ):
         mocker.patch.object(PostService, "get_post", return_value=posts[0])
         mocker.patch.object(
-            StorageService,
+            S3StorageService,
             "put_object",
             return_value={
                 "ContentLength": len(test_data),
@@ -257,7 +257,7 @@ class TestAttachmentService:
 
         assert result.mime_type == "application/octet-stream"
         post_service.get_post.assert_called_once_with(posts[0].id)
-        storage_service.put_object.assert_called_once()
+        s3_storage_service.put_object.assert_called_once()
         post_service.update_post.assert_called_once_with(
             posts[0].id, {"attachments": [result.model_dump(exclude_none=True)]}
         )
