@@ -6,6 +6,7 @@ import httpx
 import pendulum
 from aws_lambda_powertools import Logger
 from fastapi import status
+from fastapi.encoders import jsonable_encoder
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse, Response
 from httpx import HTTPError
@@ -45,10 +46,18 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
             client_ip
         )
         if is_banned:
+            from app.api_handler import ErrorResponse
+
             if client_ip not in banned_hosts:
                 banned_hosts.append(client_ip)
             return JSONResponse(
-                content={"message": "Forbidden"},
+                content=jsonable_encoder(
+                    ErrorResponse(
+                        status=status.HTTP_403_FORBIDDEN,
+                        id=str(uuid.uuid4()),
+                        message="Forbidden",
+                    )
+                ),
                 status_code=status.HTTP_403_FORBIDDEN,
             )
         return await call_next(request)

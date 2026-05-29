@@ -138,7 +138,9 @@ class TestAttachmentsApi:
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.json() == {"message": "Forbidden"}
+        assert response.json()["message"] == "Forbidden"
+        assert response.json()["status"] == status.HTTP_403_FORBIDDEN
+        assert response.json()["id"]
         assert len(httpx_mock.get_requests(url=url)) == 1
 
     def test_fail_to_get_attachment_due_to_not_found(

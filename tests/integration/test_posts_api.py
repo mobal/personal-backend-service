@@ -108,7 +108,9 @@ class TestPostsApi:
         response = test_client.get(f"{BASE_URL}/{str(uuid.uuid4())}")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.json() == {"message": "Forbidden"}
+        assert response.json()["message"] == "Forbidden"
+        assert response.json()["status"] == status.HTTP_403_FORBIDDEN
+        assert response.json()["id"]
         assert len(httpx_mock.get_requests(url=url)) == 1
 
     def test_successfully_get_post_despite_country_api_unavailability(
