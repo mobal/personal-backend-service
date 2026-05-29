@@ -146,6 +146,24 @@ class TestPostService:
         assert PostResponse(**result.model_dump()) == result
         post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
 
+    def test_successfully_get_post_renders_markdown_to_html(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        mocker.patch.object(
+            PostRepository,
+            "get_post_by_uuid",
+            return_value=posts[0].model_dump() | {"content": "**bold** *italic*"},
+        )
+
+        result = post_service.get_post(posts[0].id)
+
+        assert "<strong>bold</strong>" in result.content
+        assert "<em>italic</em>" in result.content
+
     def test_fail_to_get_post_due_to_not_found_exception(
         self,
         mocker: MockerFixture,
