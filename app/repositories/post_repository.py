@@ -109,7 +109,6 @@ class PostRepository:
         post_uuid: str,
         data: dict,
         condition_expression: ConditionBase,
-        ttl_at: str | None = None,
     ):
         attr_names = {f"#{k}": k for k in data}
         attr_values = {f":{k}": v for k, v in data.items()}
@@ -121,15 +120,5 @@ class PostRepository:
             "ExpressionAttributeNames": attr_names,
             "ExpressionAttributeValues": attr_values,
         }
-        if ttl_at is not None:
-            update_kwargs["ConditionExpression"] = condition_expression
-            update_kwargs["UpdateExpression"] = f"SET {update_expr}, TTL=:{'ttl_at'}"
-            update_kwargs["ExpressionAttributeValues"] = {
-                **attr_values,
-                ":ttl_at": ttl_at,
-            }
-            update_kwargs["ExpressionAttributeNames"] = {
-                **attr_names,
-                f"#{'ttl_at'}": "ttl_at",
-            }
+
         self._table.update_item(**update_kwargs)
