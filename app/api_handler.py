@@ -37,6 +37,12 @@ app.add_middleware(RateLimitingMiddleware)
 app.add_middleware(GZipMiddleware)
 app.include_router(api_v1_router)
 
+
+@app.get("/health")
+def health_check() -> dict[str, str]:
+    return {"status": "healthy"}
+
+
 handler = Mangum(app)
 handler = logger.inject_lambda_context(handler, clear_state=True, log_event=True)
 
