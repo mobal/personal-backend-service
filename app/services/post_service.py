@@ -148,12 +148,12 @@ class PostService:
             posts=[PostResponse(**post) for post in posts],
         )
 
-    def update_post(self, post_uuid: str, data: dict[str, Any]):
-        data["updated_at"] = pendulum.now().to_iso8601_string()
+    def update_post(self, post_uuid: str, update_data: dict[str, Any]):
+        update_data["updated_at"] = pendulum.now().to_iso8601_string()
         try:
             self._repo.update_post(
                 post_uuid,
-                data,
+                update_data,
                 Attr("id").exists() & FilterExpressions.NOT_DELETED,
             )
         except ClientError as exc:
