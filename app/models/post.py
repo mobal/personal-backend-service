@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, ConfigDict, computed_field, conlist, constr
 
 from app import settings
