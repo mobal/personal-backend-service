@@ -27,19 +27,16 @@ class PostRepository:
     def get_all_posts(
         self, filter_expression: ConditionBase, fields: list[str]
     ) -> list[dict[str, Any]]:
-        projection = ",".join(fields)
         items = []
-        response = self._table.scan(
-            FilterExpression=filter_expression, ProjectionExpression=projection
-        )
-        items.extend(response["Items"])
-        while "LastEvaluatedKey" in response:
-            response = self._table.scan(
-                ExclusiveStartKey=response["LastEvaluatedKey"],
-                FilterExpression=filter_expression,
-                ProjectionExpression=projection,
+        last_key = None
+        while True:
+            exclusive_start_key = {"id": last_key} if last_key else None
+            last_key, page = self.get_posts(
+                filter_expression, exclusive_start_key, fields
             )
-            items.extend(response["Items"])
+            items.extend(page)
+            if last_key is None:
+                break
         return items
 
     def count_all_posts(self, filter_expression: ConditionBase) -> int:

@@ -293,7 +293,9 @@ class TestPostService:
         post_service: PostService,
     ):
         all_posts = [post.model_dump() for post in posts]
-        mocker.patch.object(PostRepository, "get_all_posts", return_value=all_posts)
+        mocker.patch.object(
+            PostRepository, "get_posts", return_value=(posts[-1].id, all_posts)
+        )
 
         result = post_service.get_archive_paginated()
 
@@ -309,7 +311,7 @@ class TestPostService:
     ):
         """Test pagination with custom max_results."""
         all_posts = [post.model_dump() for post in posts]
-        mocker.patch.object(PostRepository, "get_all_posts", return_value=all_posts)
+        mocker.patch.object(PostRepository, "get_posts", return_value=(None, all_posts))
 
         result = post_service.get_archive_paginated(max_results=50)
 
@@ -323,7 +325,7 @@ class TestPostService:
     ):
         """Test pagination with exclusive_start_key for continuation."""
         all_posts = [post.model_dump() for post in posts]
-        mocker.patch.object(PostRepository, "get_all_posts", return_value=all_posts)
+        mocker.patch.object(PostRepository, "get_posts", return_value=(None, all_posts))
 
         first_page = post_service.get_archive_paginated(max_results=2)
         exclusive_start_key = first_page["last_evaluated_key"]
@@ -339,7 +341,7 @@ class TestPostService:
         mocker: MockerFixture,
         post_service: PostService,
     ):
-        mocker.patch.object(PostRepository, "get_all_posts", return_value=[])
+        mocker.patch.object(PostRepository, "get_posts", return_value=(None, []))
 
         result = post_service.get_archive_paginated()
 

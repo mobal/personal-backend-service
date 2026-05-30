@@ -209,11 +209,10 @@ class PostService:
         max_results: int = 100,
     ) -> dict[str, Any]:
         """Get archive with pagination support."""
-        posts = self._repo.get_all_posts(
+        last_key, posts = self._repo.get_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
+            {"id": exclusive_start_key} if exclusive_start_key else None,
             ["id", "published_at"],
-            exclusive_start_key=exclusive_start_key,
-            max_results=max_results,
         )
         if not posts:
             return {
@@ -232,5 +231,5 @@ class PostService:
             "archive": archive,
             "count": len(posts),
             "exclusive_start_key": exclusive_start_key,
-            "last_evaluated_key": posts[-1]["id"] if posts else None,
+            "last_evaluated_key": last_key,
         }
