@@ -21,7 +21,12 @@ class TestAttachmentsApi:
 
     @pytest.fixture(autouse=True)
     def setup_function(
-        self, aws_default_region: str, s3_resource, httpx_mock: HTTPXMock
+        self,
+        aws_default_region: str,
+        s3_resource,
+        initialize_posts_table,
+        initialize_rate_limits_table,
+        httpx_mock: HTTPXMock,
     ):
         s3_resource.create_bucket(
             ACL="public-read-write",

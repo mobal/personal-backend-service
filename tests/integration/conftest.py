@@ -23,6 +23,6 @@ def initialize_rate_limits_table(aws_default_region: str):
     yield
 
 
-@pytest.fixture
-def test_client(initialize_posts_table, initialize_rate_limits_table) -> TestClient:
+@pytest.fixture(scope="module")
+def test_client() -> TestClient:
     return TestClient(app, raise_server_exceptions=True)

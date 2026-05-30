@@ -35,7 +35,12 @@ class TestPostsApi:
         )
 
     @pytest.fixture(autouse=True)
-    def setup_function(self, httpx_mock: HTTPXMock):
+    def setup_function(
+        self,
+        initialize_posts_table,
+        initialize_rate_limits_table,
+        httpx_mock: HTTPXMock,
+    ):
         banned_hosts.clear()
         country_cache.clear()
         httpx_mock.add_response(
