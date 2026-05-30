@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 
 import boto3
 import pytest
-from moto import mock_aws
 
 from app.services.rate_limiter_service import RateLimiterService
 from app.settings import Settings
@@ -10,26 +9,25 @@ from app.settings import Settings
 
 @pytest.fixture
 def initialize_rate_limits_table(aws_default_region: str, settings: Settings):
-    with mock_aws():
-        resource = boto3.Session().resource(
-            "dynamodb",
-            region_name=aws_default_region,
-            aws_access_key_id=settings.aws_access_key_id,
-            aws_secret_access_key=settings.aws_secret_access_key,
-        )
-        resource.create_table(
-            TableName="test-rate-limits",
-            KeySchema=[
-                {"AttributeName": "client_id", "KeyType": "HASH"},
-                {"AttributeName": "endpoint", "KeyType": "RANGE"},
-            ],
-            AttributeDefinitions=[
-                {"AttributeName": "client_id", "AttributeType": "S"},
-                {"AttributeName": "endpoint", "AttributeType": "S"},
-            ],
-            BillingMode="PAY_PER_REQUEST",
-        )
-        yield
+    resource = boto3.Session().resource(
+        "dynamodb",
+        region_name=aws_default_region,
+        aws_access_key_id=settings.aws_access_key_id,
+        aws_secret_access_key=settings.aws_secret_access_key,
+    )
+    resource.create_table(
+        TableName="test-rate-limits",
+        KeySchema=[
+            {"AttributeName": "client_id", "KeyType": "HASH"},
+            {"AttributeName": "endpoint", "KeyType": "RANGE"},
+        ],
+        AttributeDefinitions=[
+            {"AttributeName": "client_id", "AttributeType": "S"},
+            {"AttributeName": "endpoint", "AttributeType": "S"},
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+    yield
 
 
 @pytest.fixture

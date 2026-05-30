@@ -58,13 +58,12 @@ def aws_default_region() -> str:
 
 @pytest.fixture
 def dynamodb_resource(aws_default_region: str, settings: Settings):
-    with mock_aws():
-        yield boto3.Session().resource(
-            "dynamodb",
-            region_name=aws_default_region,
-            aws_access_key_id=settings.aws_access_key_id,
-            aws_secret_access_key=settings.aws_secret_access_key,
-        )
+    yield boto3.Session().resource(
+        "dynamodb",
+        region_name=aws_default_region,
+        aws_access_key_id=settings.aws_access_key_id,
+        aws_secret_access_key=settings.aws_secret_access_key,
+    )
 
 
 @pytest.fixture
@@ -196,13 +195,12 @@ def posts_table(dynamodb_resource):
 
 @pytest.fixture
 def s3_resource(aws_default_region: str, settings: Settings):
-    with mock_aws():
-        yield boto3.Session().resource(
-            "s3",
-            region_name=aws_default_region,
-            aws_access_key_id=settings.aws_access_key_id,
-            aws_secret_access_key=settings.aws_secret_access_key,
-        )
+    yield boto3.Session().resource(
+        "s3",
+        region_name=aws_default_region,
+        aws_access_key_id=settings.aws_access_key_id,
+        aws_secret_access_key=settings.aws_secret_access_key,
+    )
 
 
 @pytest.fixture
