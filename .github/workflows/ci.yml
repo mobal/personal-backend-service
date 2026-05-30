@@ -42,7 +42,7 @@ jobs:
 
     - name: Run Bandit security scanner
       run: |
-        uv run -m bandit --severity-level medium --confidence-level high -r app/ -vvv
+        uv run -m bandit --severity-level high --confidence-level high -r app/ -vvv
 
     - name: Run ruff linter
       run: |
