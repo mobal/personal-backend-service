@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from decimal import Decimal
 
 import boto3
 import pytest
@@ -139,3 +140,31 @@ class TestRateLimiterService:
         result2 = rate_limiter_service.check_rate_limit(client_id, endpoint)
 
         assert result2.reset_at >= result1.reset_at
+
+    def test_window_expired_resets_counter(
+        self,
+        aws_default_region: str,
+        rate_limiter_service: RateLimiterService,
+    ):
+        client_id = "1.2.3.4"
+        endpoint = "/api/v1/posts"
+
+        # Create initial record
+        rate_limiter_service.check_rate_limit(client_id, endpoint)
+
+        # Manually expire the window by setting window_start far in the past
+        table = boto3.resource("dynamodb", region_name=aws_default_region).Table(
+            "test-rate-limits"
+        )
+        table.update_item(
+            Key={"client_id": client_id, "endpoint": endpoint},
+            UpdateExpression="SET window_start = :past",
+            ExpressionAttributeValues={":past": Decimal("100")},
+        )
+
+        # Next request should reset the window
+        result = rate_limiter_service.check_rate_limit(client_id, endpoint)
+
+        assert result.allowed is True
+        assert result.request_count == 1
+        assert result.remaining == 59

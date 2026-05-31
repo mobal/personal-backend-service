@@ -11,18 +11,9 @@ class PostRepository:
     def __init__(self):
         self._logger = Logger()
         self._table = boto3.resource("dynamodb").Table(f"{settings.stage}-posts")
-        self._ttl_attribute = "ttl_at"
 
     def create_post(self, data: dict):
         self._table.put_item(Item=data)
-
-    def _set_ttl(self, item: dict, ttl_at: str | None) -> dict:
-        """Set or clear TTL attribute on item."""
-        if ttl_at is not None:
-            item[self._ttl_attribute] = ttl_at
-        else:
-            item.pop(self._ttl_attribute, None)
-        return item
 
     def get_all_posts(
         self, filter_expression: ConditionBase, fields: list[str]

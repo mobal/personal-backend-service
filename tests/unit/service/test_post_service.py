@@ -442,3 +442,74 @@ class TestPostService:
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
         post_repository.get_post_by_uuid.assert_called_once_with(invalid_id)
+
+    def test_fail_to_delete_post_due_to_unexpected_client_error(
+        self,
+        mocker: MockerFixture,
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        error_response = {
+            "Error": {
+                "Code": "InternalServerError",
+                "Message": "Something went wrong",
+            }
+        }
+        mocker.patch.object(
+            PostRepository,
+            "update_post",
+            side_effect=ClientError(error_response, "UpdateItem"),
+        )
+
+        with pytest.raises(ClientError) as excinfo:
+            post_service.delete_post("some-uuid")
+
+        assert excinfo.value.response["Error"]["Code"] == "InternalServerError"
+
+    def test_fail_to_update_post_due_to_unexpected_client_error(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        error_response = {
+            "Error": {
+                "Code": "InternalServerError",
+                "Message": "Something went wrong",
+            }
+        }
+        mocker.patch.object(
+            PostRepository,
+            "update_post",
+            side_effect=ClientError(error_response, "UpdateItem"),
+        )
+
+        with pytest.raises(ClientError) as excinfo:
+            post_service.update_post(posts[0].id, {"content": "Updated content"})
+
+        assert excinfo.value.response["Error"]["Code"] == "InternalServerError"
+
+    def test_sort_dates_and_group_by_month_with_multiple_months(
+        self,
+        post_service: PostService,
+    ):
+        dates = [
+            pendulum.parse("2025-01-15T12:00:00"),
+            pendulum.parse("2025-01-20T12:00:00"),
+            pendulum.parse("2025-02-10T12:00:00"),
+            pendulum.parse("2025-02-15T12:00:00"),
+            pendulum.parse("2025-02-20T12:00:00"),
+        ]
+
+        result = post_service._sort_dates_and_group_by_month(dates)
+
+        assert result == {"2025-01": 2, "2025-02": 3}
+
+    def test_sort_dates_and_group_by_month_with_empty_dates(
+        self,
+        post_service: PostService,
+    ):
+        result = post_service._sort_dates_and_group_by_month([])
+
+        assert result == {}

@@ -91,12 +91,7 @@ class PostService:
 
     def create_post(self, data: dict[str, Any]) -> Post:
         now = pendulum.now()
-        if self._repo.get_post_by_title(
-            data["title"],
-            Attr("created_at").between(
-                now.start_of("day").isoformat("T"), now.end_of("day").isoformat("T")
-            ),
-        ):
+        if self._repo.get_post_by_title(data["title"], FilterExpressions.NOT_DELETED):
             raise PostAlreadyExistsException(self.ERROR_POST_EXISTS)
         post_path = f"{now.year}/{now.month}/{now.day}/{slugify(data['title'])}"
         data.update(
