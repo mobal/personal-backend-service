@@ -5,8 +5,8 @@ import pendulum
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from httpx import ConnectTimeout
-from pytest_httpx import HTTPXMock
+from httpx2 import ConnectTimeout
+from pytest_httpx2 import HTTPXMock
 from tests.helpers.utils import generate_jwt_token
 
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts, country_cache

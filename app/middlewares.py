@@ -2,14 +2,14 @@ import uuid
 from contextvars import ContextVar
 from datetime import datetime, timedelta
 
-import httpx
+import httpx2
 import pendulum
 from aws_lambda_powertools import Logger
 from fastapi import status
 from fastapi.encoders import jsonable_encoder
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse, Response
-from httpx import HTTPError
+from httpx2 import HTTPError
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp
 
@@ -69,7 +69,7 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
                 logger.debug(f"Using cached country check result for {client_ip}")
                 return cached_is_banned
 
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx2.AsyncClient(timeout=5.0) as client:
             try:
                 response = await client.get(
                     f"{COUNTRY_IS_API_BASE_URL}/{client_ip}",
