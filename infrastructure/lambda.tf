@@ -14,7 +14,7 @@ resource "aws_lambda_function" "fastapi" {
 
   layers = [
     aws_lambda_layer_version.requirements_lambda_layer.arn,
-    "arn:aws:lambda:${var.aws_region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-${var.architecture}:28"
+    "arn:aws:lambda:${var.aws_region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-${var.architecture}:33"
   ]
 
   environment {
