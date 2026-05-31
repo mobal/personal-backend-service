@@ -22,7 +22,6 @@ class Settings(BaseSettings):
     ssh_root_path: str
     ssh_username: str
     stage: str
-    log_event: bool = False
     log_format: str = "json"
     log_level: str = "INFO"
 
