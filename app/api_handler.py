@@ -44,7 +44,9 @@ def health_check() -> dict[str, str]:
 
 
 handler = Mangum(app)
-handler = logger.inject_lambda_context(handler, clear_state=True, log_event=True)
+handler = logger.inject_lambda_context(
+    handler, clear_state=True, log_event=settings.log_event
+)
 
 
 class ErrorResponse(CamelModel):

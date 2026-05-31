@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     ssh_root_path: str
     ssh_username: str
     stage: str
+    log_event: bool = False
     log_format: str = "json"
     log_level: str = "INFO"
 
@@ -42,7 +43,6 @@ class Settings(BaseSettings):
     @computed_field
     @cached_property
     def logging_config(self) -> dict:
-        """Structured logging configuration for aws_lambda_powertools."""
         return {
             "log_format": self.log_format,
             "log_level": self.log_level,
