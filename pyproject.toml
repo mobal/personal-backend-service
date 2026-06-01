@@ -35,12 +35,12 @@ dev = [
     "pytest-env>=1.2.0",
     "pytest-mock>=3.15.1",
     "pytest-xdist>=3.8.0",
-    "ruff >=0.15.0",
-    "ty >= 0.0.28",
+    "ruff>=0.15.0",
+    "ty>=0.0.28",
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cache-clear --cov-branch --cov-report term --cov=app/ -n 8 -r f"
+addopts = "--cache-clear --cov-branch --cov-report term --cov=app/ -n auto -r f"
 env = [
     "APP_NAME=personal-backend-service",
     "ATTACHMENTS_BUCKET_NAME=attachments",
