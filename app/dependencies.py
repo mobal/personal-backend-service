@@ -40,9 +40,9 @@ def get_post_repository(
 
 
 def get_post_service(
-    repo: Annotated[PostRepository, Depends(get_post_repository)],
+    post_repository: Annotated[PostRepository, Depends(get_post_repository)],
 ) -> PostService:
-    return PostService(post_repository=repo)
+    return PostService(post_repository=post_repository)
 
 
 def get_s3_storage_service(
