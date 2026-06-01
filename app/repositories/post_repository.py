@@ -4,13 +4,22 @@ import boto3
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import ConditionBase, Key
 
-from app import settings
+from app.settings import Settings
 
 
 class PostRepository:
-    def __init__(self):
-        self._logger = Logger()
-        self._table = boto3.resource("dynamodb").Table(f"{settings.stage}-posts")
+    def __init__(
+        self,
+        settings: Settings,
+        table_name: str | None = None,
+        db_resource: boto3.resource | None = None,
+        logger: Logger | None = None,
+    ):
+        self._settings = settings
+        self._logger = logger or Logger()
+        db = db_resource or boto3.resource("dynamodb")
+        resolved_table = table_name or f"{self._settings.stage}-posts"
+        self._table = db.Table(resolved_table)
 
     def create_post(self, data: dict):
         self._table.put_item(Item=data)

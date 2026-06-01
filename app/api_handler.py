@@ -13,7 +13,6 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
 
-from app import settings
 from app.api.v1.api import router as api_v1_router
 from app.middlewares import (
     ClientValidationMiddleware,
@@ -21,6 +20,10 @@ from app.middlewares import (
     RateLimitingMiddleware,
 )
 from app.models.camel_model import CamelModel
+from app.services.rate_limiter_service import RateLimiterService
+from app.settings import Settings
+
+settings = Settings()
 
 if settings.debug:
     set_package_logger()
@@ -30,7 +33,15 @@ logger = Logger()
 app = FastAPI(debug=settings.debug, title="PersonalBackendApplication", version="1.0.0")
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(ClientValidationMiddleware)
-app.add_middleware(RateLimitingMiddleware)
+app.add_middleware(
+    RateLimitingMiddleware,
+    rate_limiter=RateLimiterService(
+        settings=settings,
+        stage=settings.stage,
+        max_requests=settings.rate_limit_requests,
+        window_duration=settings.rate_limit_duration_in_seconds,
+    ),
+)
 app.add_middleware(GZipMiddleware)
 app.include_router(api_v1_router)
 

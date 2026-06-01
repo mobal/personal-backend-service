@@ -13,8 +13,8 @@ from httpx2 import HTTPError
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp
 
-from app import Settings
 from app.services.rate_limiter_service import RateLimiterService, RateLimitResult
+from app.settings import Settings
 
 COUNTRY_CACHE_TTL = timedelta(hours=1)
 COUNTRY_IS_API_BASE_URL = "https://api.country.is"
@@ -121,7 +121,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
 class RateLimitingMiddleware(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, rate_limiter: RateLimiterService | None = None):
         super().__init__(app)
-        self._rate_limiter = rate_limiter or RateLimiterService()
+        self._rate_limiter = rate_limiter
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint

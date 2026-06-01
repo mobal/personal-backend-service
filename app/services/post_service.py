@@ -17,6 +17,7 @@ from app.models.response import (
     Post as PostResponse,
 )
 from app.repositories.post_repository import PostRepository
+from app.settings import Settings
 
 
 class FilterExpressions:
@@ -28,9 +29,13 @@ class PostService:
     ERROR_POST_EXISTS = "There is already a post with this title"
     ERROR_POST_NOT_FOUND = "The requested post was not found"
 
-    def __init__(self):
-        self._logger = Logger()
-        self._repo = PostRepository()
+    def __init__(
+        self,
+        repo: PostRepository | None = None,
+        logger: Logger | None = None,
+    ):
+        self._logger = logger or Logger()
+        self._repo = repo or PostRepository(settings=Settings())
 
     def get_post_by_uuid(self, post_uuid: str) -> Post:
         item = self._repo.get_post_by_uuid(post_uuid)

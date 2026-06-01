@@ -5,21 +5,31 @@ import uuid
 from aws_lambda_powertools import Logger
 from unidecode import unidecode
 
-from app import settings
 from app.exceptions import AttachmentNotFoundException
 from app.models.post import Attachment
 from app.models.response import Attachment as AttachmentResponse
+from app.repositories.post_repository import PostRepository
 from app.services.post_service import PostService
 from app.services.s3_storage_service import S3StorageService
+from app.settings import Settings
 
 MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024  # 5MB limit
 
 
 class AttachmentService:
-    def __init__(self):
-        self._logger = Logger()
-        self._post_service = PostService()
-        self._storage_service = S3StorageService()
+    def __init__(
+        self,
+        settings: Settings,
+        post_service: PostService | None = None,
+        storage_service: S3StorageService | None = None,
+        logger: Logger | None = None,
+    ):
+        self._settings = settings
+        self._logger = logger or Logger()
+        self._post_service = post_service or PostService(
+            repo=PostRepository(settings=settings)
+        )
+        self._storage_service = storage_service or S3StorageService(settings=settings)
 
     def add_attachment(
         self, post_uuid: str, attachment_name: str, base64_data: str, display_name: str
@@ -45,16 +55,17 @@ class AttachmentService:
             raise ValueError(error_msg)
 
         self._storage_service.put_object(
-            settings.attachments_bucket_name, object_key, file_data
+            self._settings.attachments_bucket_name, object_key, file_data
         )
 
         attachment = Attachment(
             id=str(uuid.uuid4()),
-            bucket=settings.attachments_bucket_name,
+            bucket=self._settings.attachments_bucket_name,
             content_length=len(file_data),
             display_name=display_name,
             mime_type=mime_type,
             name=object_key,
+            region=self._settings.aws_region,
         )
 
         updated_attachments = list(post.attachments or []) + [attachment]

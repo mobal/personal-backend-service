@@ -4,7 +4,7 @@ from aws_lambda_powertools import Logger
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from fastapi.responses import Response
 
-from app.jwt_bearer import JWTBearer
+from app.dependencies import get_jwt_bearer, get_post_service
 from app.models.auth import JWTToken
 from app.models.response import (
     Page,
@@ -22,14 +22,14 @@ MAX_DAY = 31
 
 logger = Logger()
 
-jwt_bearer = JWTBearer()
-post_service = PostService()
 router = APIRouter()
 
 
 @router.post("")
 def create_post(
-    create_model: CreatePost, token: Annotated[JWTToken, Depends(jwt_bearer)]
+    create_model: CreatePost,
+    post_service: Annotated[PostService, Depends(get_post_service)],
+    token: Annotated[JWTToken, Depends(get_jwt_bearer)],
 ) -> Response:
     post = post_service.create_post(create_model.model_dump())
     return Response(
@@ -42,18 +42,25 @@ def create_post(
     "/{uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-def delete_post(uuid: str, token: Annotated[JWTToken, Depends(jwt_bearer)]):
+def delete_post(
+    uuid: str,
+    post_service: Annotated[PostService, Depends(get_post_service)],
+    token: Annotated[JWTToken, Depends(get_jwt_bearer)],
+):
     post_service.delete_post(uuid)
 
 
 @router.get("/archive", status_code=status.HTTP_200_OK)
-def get_archive() -> dict[str, Any]:
+def get_archive(
+    post_service: Annotated[PostService, Depends(get_post_service)],
+) -> dict[str, Any]:
     return post_service.get_archive()
 
 
 @router.get("/{year}/{month}/{day}/{slug}", status_code=status.HTTP_200_OK)
 def get_by_post_path(
     slug: str,
+    post_service: Annotated[PostService, Depends(get_post_service)],
     year: str = Annotated[str, Path(pattern=r"^\d{4}$", description="4 digit year")],
     month: str = Annotated[
         str, Path(pattern=r"^(0[1-9]|1[0-2])$", description="2 digit month (01-12)")
@@ -83,7 +90,10 @@ def get_by_post_path(
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
 )
-def get_post_by_uuid(uuid: str) -> PostResponse:
+def get_post_by_uuid(
+    uuid: str,
+    post_service: Annotated[PostService, Depends(get_post_service)],
+) -> PostResponse:
     return post_service.get_post(uuid)
 
 
@@ -92,7 +102,10 @@ def get_post_by_uuid(uuid: str) -> PostResponse:
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
 )
-def get_posts(exclusive_start_key: str | None = None) -> Page:
+def get_posts(
+    post_service: Annotated[PostService, Depends(get_post_service)],
+    exclusive_start_key: str | None = None,
+) -> Page:
     return post_service.get_posts(exclusive_start_key)
 
 
@@ -103,6 +116,7 @@ def get_posts(exclusive_start_key: str | None = None) -> Page:
 def update_post(
     update_model: UpdatePost,
     uuid: str,
-    token: Annotated[JWTToken, Depends(jwt_bearer)],
+    post_service: Annotated[PostService, Depends(get_post_service)],
+    token: Annotated[JWTToken, Depends(get_jwt_bearer)],
 ):
     post_service.update_post(uuid, update_model.model_dump(exclude_none=True))

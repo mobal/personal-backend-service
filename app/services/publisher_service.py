@@ -4,18 +4,27 @@ import pendulum
 from asyncssh import Error as SSHError
 from aws_lambda_powertools import Logger
 
-from app import Settings
 from app.exceptions import PublishException
+from app.repositories.post_repository import PostRepository
 from app.services.post_service import PostService
 from app.services.sshfs_storage_service import SSHFSStorageService
+from app.settings import Settings as _Settings
 
 
 class PublisherService:
-    def __init__(self):
-        self._logger = Logger()
-        self._post_service = PostService()
-        self._settings = Settings()
-        self._sshfs_storage_service = SSHFSStorageService()
+    def __init__(
+        self,
+        post_service: PostService | None = None,
+        storage_service: SSHFSStorageService | None = None,
+        settings: _Settings | None = None,
+        logger: Logger | None = None,
+    ):
+        self._logger = logger or Logger()
+        self._settings = settings or _Settings()
+        self._post_service = post_service or PostService(
+            repo=PostRepository(settings=self._settings)
+        )
+        self._sshfs_storage_service = storage_service or SSHFSStorageService()
 
     def publish(self, post_uuid: str) -> None:
         self._logger.info(f"Publishing post with id={post_uuid}")

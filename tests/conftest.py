@@ -48,6 +48,7 @@ def attachment(test_data: bytes) -> Attachment:
         display_name=file_name,
         mime_type="plain/text",
         name=f"/{now.year}/{now.month}/{now.day}/post_with_attachment/{file_name}",
+        region=os.getenv("AWS_DEFAULT_REGION"),
     )
 
 

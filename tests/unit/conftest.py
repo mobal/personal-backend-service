@@ -14,16 +14,17 @@ from app.services.publisher_service import PublisherService
 from app.services.rate_limiter_service import RateLimiterService
 from app.services.s3_storage_service import S3StorageService
 from app.services.sshfs_storage_service import SSHFSStorageService
+from app.settings import Settings
 
 
 @pytest.fixture
 def attachment_service() -> AttachmentService:
-    return AttachmentService()
+    return AttachmentService(settings=Settings())
 
 
 @pytest.fixture
 def jwt_bearer() -> JWTBearer:
-    return JWTBearer()
+    return JWTBearer(jwt_secret=Settings().jwt_secret)
 
 
 @pytest.fixture
@@ -46,7 +47,7 @@ def jwt_token(user_dict: dict[str, str | None]) -> JWTToken:
 
 @pytest.fixture
 def post_repository(initialize_posts_table) -> PostRepository:
-    return PostRepository()
+    return PostRepository(settings=Settings())
 
 
 @pytest.fixture
@@ -61,7 +62,7 @@ def publisher_service() -> PublisherService:
 
 @pytest.fixture
 def s3_storage_service() -> S3StorageService:
-    return S3StorageService()
+    return S3StorageService(settings=Settings())
 
 
 @pytest.fixture
@@ -89,4 +90,4 @@ def initialize_rate_limits_table(aws_default_region: str):
 
 @pytest.fixture
 def rate_limiter_service(initialize_rate_limits_table) -> RateLimiterService:
-    return RateLimiterService(stage="test")
+    return RateLimiterService(settings=Settings(), stage="test")

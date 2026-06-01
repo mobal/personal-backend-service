@@ -1,6 +1,5 @@
 from pydantic import BaseModel, ConfigDict, computed_field, conlist, constr
 
-from app import settings
 from app.models.camel_model import CamelModel
 
 
@@ -12,6 +11,7 @@ class Attachment(CamelModel):
     display_name: str
     mime_type: str
     name: str
+    region: str
 
     model_config = ConfigDict()
 
@@ -19,7 +19,7 @@ class Attachment(CamelModel):
     @property
     def url(self) -> str:
         return (
-            f"https://{self.bucket}.s3.{settings.aws_region}.amazonaws.com/"
+            f"https://{self.bucket}.s3.{self.region}.amazonaws.com/"
             f"{self.name.lstrip('/')}"
         )
 

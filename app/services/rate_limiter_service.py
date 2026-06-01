@@ -5,7 +5,7 @@ import boto3
 import pendulum
 from aws_lambda_powertools import Logger
 
-from app import settings
+from app.settings import Settings
 
 
 @dataclass
@@ -18,12 +18,24 @@ class RateLimitResult:
 
 
 class RateLimiterService:
-    def __init__(self, stage: str | None = None):
-        self._logger = Logger()
-        self._stage = stage or settings.stage
-        self._table = boto3.resource("dynamodb").Table(f"{self._stage}-rate-limits")
-        self._max_requests = settings.rate_limit_requests
-        self._window_duration = settings.rate_limit_duration_in_seconds
+    def __init__(
+        self,
+        settings: Settings,
+        stage: str | None = None,
+        max_requests: int | None = None,
+        window_duration: int | None = None,
+        db_resource: boto3.resource | None = None,
+        logger: Logger | None = None,
+    ):
+        self._settings = settings
+        self._logger = logger or Logger()
+        self._stage = stage or self._settings.stage
+        db = db_resource or boto3.resource("dynamodb")
+        self._table = db.Table(f"{self._stage}-rate-limits")
+        self._max_requests = max_requests or self._settings.rate_limit_requests
+        self._window_duration = (
+            window_duration or self._settings.rate_limit_duration_in_seconds
+        )
 
     def check_rate_limit(self, client_id: str, endpoint: str) -> RateLimitResult:
         now = pendulum.now().timestamp()

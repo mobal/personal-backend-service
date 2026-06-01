@@ -33,7 +33,7 @@ def initialize_rate_limits_table(aws_default_region: str, settings: Settings):
 
 @pytest.fixture
 def rate_limiter_service(initialize_rate_limits_table) -> RateLimiterService:
-    return RateLimiterService(stage="test")
+    return RateLimiterService(settings=Settings(), stage="test")
 
 
 class TestRateLimiterService:

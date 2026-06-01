@@ -5,14 +5,22 @@ from aws_lambda_powertools import Logger
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
-from app import settings
 from app.exceptions import BucketNotFoundException, ObjectNotFoundException
+from app.settings import Settings
 
 
 class S3StorageService:
-    def __init__(self):
-        self._logger = Logger()
-        self._retry_config = Config(
+    def __init__(
+        self,
+        settings: Settings,
+        region: str | None = None,
+        retry_config: Config | None = None,
+        logger: Logger | None = None,
+    ):
+        self._settings = settings
+        self._logger = logger or Logger()
+        resolved_region = region or self._settings.aws_region
+        self._retry_config = retry_config or Config(
             retries={
                 "max_attempts": 5,
                 "mode": "adaptive",
@@ -20,15 +28,16 @@ class S3StorageService:
         )
         self._s3 = boto3.resource(
             "s3",
-            region_name=settings.aws_region,
+            region_name=resolved_region,
             config=self._retry_config,
         )
+        self._region = resolved_region
         self._multipart_threshold = (
             8 * 1024 * 1024
         )  # 8MB threshold for multipart uploads
         self._s3_client = boto3.client(
             "s3",
-            region_name=settings.aws_region,
+            region_name=resolved_region,
             config=self._retry_config,
         )
 
@@ -37,7 +46,7 @@ class S3StorageService:
         return self._s3.create_bucket(
             ACL=acl,
             Bucket=bucket,
-            CreateBucketConfiguration={"LocationConstraint": settings.aws_region},
+            CreateBucketConfiguration={"LocationConstraint": self._region},
         )
 
     def delete_object(self, bucket: str, key: str) -> dict[str, Any]:

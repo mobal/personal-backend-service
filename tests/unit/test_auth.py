@@ -12,6 +12,7 @@ from app.models.auth import JWTToken
 from app.settings import Settings
 
 NOT_AUTHENTICATED = "Not authenticated"
+TEST_JWT_SECRET = "test-secret"
 
 
 @pytest.fixture
@@ -72,7 +73,7 @@ class TestJWTAuth:
     ):
         empty_request.headers = {"Authorization": "Bearer asdf"}
 
-        jwt_bearer = JWTBearer(auto_error=False)
+        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, auto_error=False)
 
         result = jwt_bearer(empty_request)
         assert result is None
@@ -92,7 +93,7 @@ class TestJWTAuth:
         self, empty_request: Mock
     ):
         empty_request.headers = {"Authorization": "Bearer "}
-        jwt_bearer = JWTBearer(auto_error=False)
+        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, auto_error=False)
 
         assert jwt_bearer(empty_request) is None
 
@@ -125,14 +126,14 @@ class TestJWTAuth:
         empty_request.headers = {
             "Authorization": f"Bear {bearer_token}",
         }
-        jwt_bearer = JWTBearer(auto_error=False)
+        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, auto_error=False)
 
         assert jwt_bearer(empty_request) is None
 
     def test_fail_to_authorize_request_due_to_missing_credentials(
         self, empty_request: Mock
     ):
-        jwt_bearer = JWTBearer()
+        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET)
 
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
@@ -143,7 +144,7 @@ class TestJWTAuth:
     def test_fail_to_authorize_request_due_to_missing_credentials_with_auto_error_false(
         self, empty_request: Mock
     ):
-        jwt_bearer = JWTBearer(auto_error=False)
+        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, auto_error=False)
 
         result = jwt_bearer(empty_request)
 
