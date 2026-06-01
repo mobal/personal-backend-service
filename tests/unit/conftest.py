@@ -18,8 +18,16 @@ from app.settings import Settings
 
 
 @pytest.fixture
-def attachment_service() -> AttachmentService:
-    return AttachmentService(settings=Settings())
+def attachment_service(
+    post_service: PostService,
+    s3_storage_service: S3StorageService,
+    settings: Settings,
+) -> AttachmentService:
+    return AttachmentService(
+        settings=settings,
+        post_service=post_service,
+        storage_service=s3_storage_service,
+    )
 
 
 @pytest.fixture
@@ -46,23 +54,36 @@ def jwt_token(user_dict: dict[str, str | None]) -> JWTToken:
 
 
 @pytest.fixture
-def post_repository(initialize_posts_table) -> PostRepository:
-    return PostRepository(settings=Settings())
+def post_repository(
+    initialize_posts_table, dynamodb_resource, settings: Settings
+) -> PostRepository:
+    return PostRepository(
+        table_name=f"{settings.stage}-posts",
+        db=dynamodb_resource,
+    )
 
 
 @pytest.fixture
-def post_service() -> PostService:
-    return PostService()
+def post_service(post_repository: PostRepository) -> PostService:
+    return PostService(post_repository=post_repository)
 
 
 @pytest.fixture
-def publisher_service() -> PublisherService:
-    return PublisherService()
+def publisher_service(
+    post_service: PostService,
+    sshfs_storage_service: SSHFSStorageService,
+    settings: Settings,
+) -> PublisherService:
+    return PublisherService(
+        post_service=post_service,
+        storage_service=sshfs_storage_service,
+        settings=settings,
+    )
 
 
 @pytest.fixture
-def s3_storage_service() -> S3StorageService:
-    return S3StorageService(settings=Settings())
+def s3_storage_service(aws_default_region: str) -> S3StorageService:
+    return S3StorageService(region=aws_default_region)
 
 
 @pytest.fixture
@@ -89,5 +110,7 @@ def initialize_rate_limits_table(aws_default_region: str):
 
 
 @pytest.fixture
-def rate_limiter_service(initialize_rate_limits_table) -> RateLimiterService:
-    return RateLimiterService(settings=Settings(), stage="test")
+def rate_limiter_service(
+    initialize_rate_limits_table, settings: Settings
+) -> RateLimiterService:
+    return RateLimiterService(settings=settings)

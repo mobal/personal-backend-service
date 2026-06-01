@@ -34,23 +34,21 @@ def get_post_repository(
     db: Annotated[boto3.resource, Depends(get_db_client)],
 ) -> PostRepository:
     return PostRepository(
-        settings=settings,
         table_name=f"{settings.stage}-posts",
-        db_resource=db,
+        db=db,
     )
 
 
 def get_post_service(
     repo: Annotated[PostRepository, Depends(get_post_repository)],
 ) -> PostService:
-    return PostService(repo=repo)
+    return PostService(post_repository=repo)
 
 
 def get_s3_storage_service(
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> S3StorageService:
     return S3StorageService(
-        settings=settings,
         region=settings.aws_region,
     )
 
@@ -89,10 +87,7 @@ def get_rate_limiter_service(
 ) -> RateLimiterService:
     return RateLimiterService(
         settings=settings,
-        stage=settings.stage,
-        max_requests=settings.rate_limit_requests,
-        window_duration=settings.rate_limit_duration_in_seconds,
-        db_resource=db,
+        db=db,
     )
 
 

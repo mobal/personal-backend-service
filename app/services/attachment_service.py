@@ -8,7 +8,6 @@ from unidecode import unidecode
 from app.exceptions import AttachmentNotFoundException
 from app.models.post import Attachment
 from app.models.response import Attachment as AttachmentResponse
-from app.repositories.post_repository import PostRepository
 from app.services.post_service import PostService
 from app.services.s3_storage_service import S3StorageService
 from app.settings import Settings
@@ -20,16 +19,13 @@ class AttachmentService:
     def __init__(
         self,
         settings: Settings,
-        post_service: PostService | None = None,
-        storage_service: S3StorageService | None = None,
-        logger: Logger | None = None,
+        post_service: PostService,
+        storage_service: S3StorageService,
     ):
         self._settings = settings
-        self._logger = logger or Logger()
-        self._post_service = post_service or PostService(
-            repo=PostRepository(settings=settings)
-        )
-        self._storage_service = storage_service or S3StorageService(settings=settings)
+        self._logger = Logger()
+        self._post_service = post_service
+        self._storage_service = storage_service
 
     def add_attachment(
         self, post_uuid: str, attachment_name: str, base64_data: str, display_name: str

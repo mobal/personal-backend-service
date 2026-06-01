@@ -1,25 +1,16 @@
 from typing import Any
 
 import boto3
-from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import ConditionBase, Key
-
-from app.settings import Settings
 
 
 class PostRepository:
     def __init__(
         self,
-        settings: Settings,
-        table_name: str | None = None,
-        db_resource: boto3.resource | None = None,
-        logger: Logger | None = None,
+        table_name: str,
+        db: boto3.resource,
     ):
-        self._settings = settings
-        self._logger = logger or Logger()
-        db = db_resource or boto3.resource("dynamodb")
-        resolved_table = table_name or f"{self._settings.stage}-posts"
-        self._table = db.Table(resolved_table)
+        self._table = db.Table(table_name)
 
     def create_post(self, data: dict):
         self._table.put_item(Item=data)

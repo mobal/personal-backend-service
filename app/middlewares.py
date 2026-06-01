@@ -119,9 +119,9 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
 
 
 class RateLimitingMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: ASGIApp, rate_limiter: RateLimiterService | None = None):
+    def __init__(self, app: ASGIApp, rate_limiter_service: RateLimiterService):
         super().__init__(app)
-        self._rate_limiter = rate_limiter
+        self._rate_limiter = rate_limiter_service
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint

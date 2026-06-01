@@ -17,7 +17,6 @@ from app.models.response import (
     Post as PostResponse,
 )
 from app.repositories.post_repository import PostRepository
-from app.settings import Settings
 
 
 class FilterExpressions:
@@ -31,14 +30,13 @@ class PostService:
 
     def __init__(
         self,
-        repo: PostRepository | None = None,
-        logger: Logger | None = None,
+        post_repository: PostRepository,
     ):
-        self._logger = logger or Logger()
-        self._repo = repo or PostRepository(settings=Settings())
+        self._logger = Logger()
+        self._post_repository = post_repository
 
     def get_post_by_uuid(self, post_uuid: str) -> Post:
-        item = self._repo.get_post_by_uuid(post_uuid)
+        item = self._post_repository.get_post_by_uuid(post_uuid)
         if not item or item.get("deleted_at") is not None:
             raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
         return Post(**item)
@@ -96,7 +94,9 @@ class PostService:
 
     def create_post(self, data: dict[str, Any]) -> Post:
         now = pendulum.now()
-        if self._repo.get_post_by_title(data["title"], FilterExpressions.NOT_DELETED):
+        if self._post_repository.get_post_by_title(
+            data["title"], FilterExpressions.NOT_DELETED
+        ):
             raise PostAlreadyExistsException(self.ERROR_POST_EXISTS)
         post_path = f"{now.year}/{now.month}/{now.day}/{slugify(data['title'])}"
         data.update(
@@ -109,13 +109,13 @@ class PostService:
                 "updated_at": None,
             }
         )
-        self._repo.create_post(data)
+        self._post_repository.create_post(data)
         return Post(**data)
 
     def delete_post(self, post_uuid: str):
         now = pendulum.now().to_iso8601_string()
         try:
-            self._repo.update_post(
+            self._post_repository.update_post(
                 post_uuid,
                 {"deleted_at": now, "updated_at": now},
                 Attr("id").exists() & FilterExpressions.NOT_DELETED,
@@ -130,7 +130,7 @@ class PostService:
         return self._post_to_response(self.get_post_by_uuid(post_uuid).model_dump())
 
     def get_by_post_path(self, post_path: str) -> PostResponse:
-        post = self._repo.get_post_by_post_path(
+        post = self._post_repository.get_post_by_post_path(
             post_path, FilterExpressions.NOT_DELETED
         )
         if not post:
@@ -138,7 +138,7 @@ class PostService:
         return self._post_to_response(post)
 
     def get_posts(self, exclusive_start_key: str | None = None) -> Page:
-        last_key, posts = self._repo.get_posts(
+        last_key, posts = self._post_repository.get_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
             {"id": exclusive_start_key} if exclusive_start_key else None,
             ["id", "title", "meta", "published_at", "updated_at"],
@@ -151,7 +151,7 @@ class PostService:
     def update_post(self, post_uuid: str, update_data: dict[str, Any]):
         update_data["updated_at"] = pendulum.now().to_iso8601_string()
         try:
-            self._repo.update_post(
+            self._post_repository.update_post(
                 post_uuid,
                 update_data,
                 Attr("id").exists() & FilterExpressions.NOT_DELETED,
@@ -193,7 +193,7 @@ class PostService:
         self,
         max_results: int = 100,
     ) -> dict[str, int]:
-        posts = self._repo.get_all_posts(
+        posts = self._post_repository.get_all_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
             ["id", "published_at"],
         )
@@ -209,7 +209,7 @@ class PostService:
         max_results: int = 100,
     ) -> dict[str, Any]:
         """Get archive with pagination support."""
-        last_key, posts = self._repo.get_posts(
+        last_key, posts = self._post_repository.get_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
             {"id": exclusive_start_key} if exclusive_start_key else None,
             ["id", "published_at"],

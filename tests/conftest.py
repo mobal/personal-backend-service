@@ -38,7 +38,7 @@ def settings() -> Settings:
 
 
 @pytest.fixture
-def attachment(test_data: bytes) -> Attachment:
+def attachment(test_data: bytes, aws_default_region: str) -> Attachment:
     now = pendulum.now()
     file_name = "lorem.txt"
     return Attachment(
@@ -48,7 +48,7 @@ def attachment(test_data: bytes) -> Attachment:
         display_name=file_name,
         mime_type="plain/text",
         name=f"/{now.year}/{now.month}/{now.day}/post_with_attachment/{file_name}",
-        region=os.getenv("AWS_DEFAULT_REGION"),
+        region=aws_default_region,
     )
 
 

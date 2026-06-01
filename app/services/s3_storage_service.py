@@ -6,20 +6,15 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from app.exceptions import BucketNotFoundException, ObjectNotFoundException
-from app.settings import Settings
 
 
 class S3StorageService:
     def __init__(
         self,
-        settings: Settings,
-        region: str | None = None,
+        region: str,
         retry_config: Config | None = None,
-        logger: Logger | None = None,
     ):
-        self._settings = settings
-        self._logger = logger or Logger()
-        resolved_region = region or self._settings.aws_region
+        self._logger = Logger()
         self._retry_config = retry_config or Config(
             retries={
                 "max_attempts": 5,
@@ -28,16 +23,16 @@ class S3StorageService:
         )
         self._s3 = boto3.resource(
             "s3",
-            region_name=resolved_region,
+            region_name=region,
             config=self._retry_config,
         )
-        self._region = resolved_region
+        self._region = region
         self._multipart_threshold = (
             8 * 1024 * 1024
         )  # 8MB threshold for multipart uploads
         self._s3_client = boto3.client(
             "s3",
-            region_name=resolved_region,
+            region_name=region,
             config=self._retry_config,
         )
 

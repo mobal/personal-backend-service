@@ -21,21 +21,15 @@ class RateLimiterService:
     def __init__(
         self,
         settings: Settings,
-        stage: str | None = None,
-        max_requests: int | None = None,
-        window_duration: int | None = None,
-        db_resource: boto3.resource | None = None,
-        logger: Logger | None = None,
+        db: boto3.resource | None = None,
     ):
         self._settings = settings
-        self._logger = logger or Logger()
-        self._stage = stage or self._settings.stage
-        db = db_resource or boto3.resource("dynamodb")
-        self._table = db.Table(f"{self._stage}-rate-limits")
-        self._max_requests = max_requests or self._settings.rate_limit_requests
-        self._window_duration = (
-            window_duration or self._settings.rate_limit_duration_in_seconds
+        self._logger = Logger()
+        self._table = (db or boto3.resource("dynamodb")).Table(
+            f"{self._settings.stage}-rate-limits"
         )
+        self._max_requests = self._settings.rate_limit_requests
+        self._window_duration = self._settings.rate_limit_duration_in_seconds
 
     def check_rate_limit(self, client_id: str, endpoint: str) -> RateLimitResult:
         now = pendulum.now().timestamp()

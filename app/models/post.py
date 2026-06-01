@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, computed_field, conlist, constr
+from pydantic import BaseModel, computed_field, conlist, constr
 
 from app.models.camel_model import CamelModel
 
@@ -12,8 +12,6 @@ class Attachment(CamelModel):
     mime_type: str
     name: str
     region: str
-
-    model_config = ConfigDict()
 
     @computed_field
     @property

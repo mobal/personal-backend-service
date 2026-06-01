@@ -35,11 +35,8 @@ app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(ClientValidationMiddleware)
 app.add_middleware(
     RateLimitingMiddleware,
-    rate_limiter=RateLimiterService(
+    rate_limiter_service=RateLimiterService(
         settings=settings,
-        stage=settings.stage,
-        max_requests=settings.rate_limit_requests,
-        window_duration=settings.rate_limit_duration_in_seconds,
     ),
 )
 app.add_middleware(GZipMiddleware)
