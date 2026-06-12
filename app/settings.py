@@ -1,8 +1,12 @@
 import os
+from functools import cached_property
 
 from aws_lambda_powertools.utilities import parameters
+from dotenv import load_dotenv
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings
+
+load_dotenv()
 
 
 class Settings(BaseSettings):
@@ -21,17 +25,29 @@ class Settings(BaseSettings):
     ssh_root_path: str
     ssh_username: str
     stage: str
+    log_format: str = "json"
+    log_level: str = "INFO"
 
     @computed_field
-    @property
+    @cached_property
     def jwt_secret(self) -> str:
         return parameters.get_parameter(
             os.environ.get("JWT_SECRET_SSM_PARAM_NAME"), decrypt=True
         )
 
     @computed_field
-    @property
+    @cached_property
     def ssh_secret(self) -> dict:
         return parameters.get_parameter(
             os.environ.get("SSH_SECRET_SSM_PARAM_NAME"), transform="json", decrypt=True
         )
+
+    @computed_field
+    @cached_property
+    def logging_config(self) -> dict:
+        return {
+            "log_format": self.log_format,
+            "log_level": self.log_level,
+            "log_stream": f"{self.app_name}-{self.stage}",
+            "sampling_rate": 1.0 if self.debug else 0.1,
+        }

@@ -1,6 +1,8 @@
+import uuid
 from unittest.mock import Mock
 
 import jwt
+import pendulum
 import pytest
 from fastapi import HTTPException, status
 from fastapi.requests import Request
@@ -10,6 +12,7 @@ from app.models.auth import JWTToken
 from app.settings import Settings
 
 NOT_AUTHENTICATED = "Not authenticated"
+TEST_JWT_SECRET = "test-secret"
 
 
 @pytest.fixture
@@ -70,7 +73,7 @@ class TestJWTAuth:
     ):
         empty_request.headers = {"Authorization": "Bearer asdf"}
 
-        jwt_bearer = JWTBearer(auto_error=False)
+        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, auto_error=False)
 
         result = jwt_bearer(empty_request)
         assert result is None
@@ -90,7 +93,7 @@ class TestJWTAuth:
         self, empty_request: Mock
     ):
         empty_request.headers = {"Authorization": "Bearer "}
-        jwt_bearer = JWTBearer(auto_error=False)
+        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, auto_error=False)
 
         assert jwt_bearer(empty_request) is None
 
@@ -123,14 +126,14 @@ class TestJWTAuth:
         empty_request.headers = {
             "Authorization": f"Bear {bearer_token}",
         }
-        jwt_bearer = JWTBearer(auto_error=False)
+        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, auto_error=False)
 
         assert jwt_bearer(empty_request) is None
 
     def test_fail_to_authorize_request_due_to_missing_credentials(
         self, empty_request: Mock
     ):
-        jwt_bearer = JWTBearer()
+        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET)
 
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
@@ -141,7 +144,7 @@ class TestJWTAuth:
     def test_fail_to_authorize_request_due_to_missing_credentials_with_auto_error_false(
         self, empty_request: Mock
     ):
-        jwt_bearer = JWTBearer(auto_error=False)
+        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, auto_error=False)
 
         result = jwt_bearer(empty_request)
 
@@ -161,6 +164,48 @@ class TestJWTAuth:
 
         assert excinfo.value.status_code == status.HTTP_403_FORBIDDEN
         assert excinfo.value.detail == "Invalid authentication credentials"
+
+    def test_fail_to_authorize_request_due_to_empty_token_query_param(
+        self, empty_request: Mock, jwt_bearer: JWTBearer
+    ):
+        empty_request.query_params = {"token": ""}
+
+        with pytest.raises(HTTPException) as excinfo:
+            jwt_bearer(empty_request)
+
+        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
+
+    def test_fail_to_authorize_request_due_to_expired_token(
+        self,
+        empty_request: Mock,
+        jwt_bearer: JWTBearer,
+        settings: Settings,
+    ):
+        now = pendulum.now()
+        expired_token = JWTToken(
+            exp=now.subtract(years=1).int_timestamp,
+            iat=now.int_timestamp,
+            iss="https://netcode.hu",
+            jti=str(uuid.uuid4()),
+            sub="test-user-id",
+            user={
+                "id": "test-user-id",
+                "email": "test@example.com",
+                "display_name": "test",
+                "created_at": now.to_iso8601_string(),
+                "deleted_at": None,
+                "updated_at": None,
+            },
+        )
+        bearer_token = generate_bearer_token(expired_token, settings.jwt_secret)
+        empty_request.headers = {"Authorization": f"Bearer {bearer_token}"}
+
+        with pytest.raises(HTTPException) as excinfo:
+            jwt_bearer(empty_request)
+
+        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_successfully_authorize_request(
         self,

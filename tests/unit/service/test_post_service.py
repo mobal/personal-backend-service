@@ -3,6 +3,7 @@ from unittest.mock import ANY
 
 import pendulum
 import pytest
+from botocore.exceptions import ClientError
 from fastapi import status
 from pytest_mock import MockerFixture
 
@@ -10,7 +11,6 @@ from app.exceptions import PostAlreadyExistsException, PostNotFoundException
 from app.models.post import Post
 from app.models.response import Post as PostResponse
 from app.repositories.post_repository import PostRepository
-from app.schemas.post_schema import UpdatePost
 from app.services.post_service import PostService
 
 ERROR_MESSAGE_POST_WAS_NOT_FOUND = "The requested post was not found"
@@ -74,39 +74,68 @@ class TestPostService:
         assert ERROR_MESSAGE_POST_ALREADY_EXISTS == excinfo.value.detail
         post_repository.get_post_by_title.assert_called_once_with(posts[0].title, ANY)
 
-    def test_successfully_delete_post(
+    def test_successfully_create_post_despite_soft_deleted_post_with_same_title(
         self,
         mocker: MockerFixture,
-        posts: list[Post],
+        make_post,
         post_repository: PostRepository,
         post_service: PostService,
     ):
-        mocker.patch.object(
-            PostRepository, "get_post_by_uuid", return_value=posts[0].model_dump()
+        mocker.patch.object(PostRepository, "get_post_by_title", return_value=None)
+        mocker.patch.object(PostRepository, "create_post")
+
+        post = make_post()
+        result = post_service.create_post(
+            post.model_dump(
+                include={"author", "title", "content", "tags", "meta", "published_at"}
+            )
         )
+
+        assert post.title == result.title
+        assert result.is_deleted is False
+        post_repository.get_post_by_title.assert_called_once_with(post.title, ANY)
+        post_repository.create_post.assert_called_once()
+
+    def test_successfully_delete_post(
+        self,
+        mocker: MockerFixture,
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
         mocker.patch.object(PostRepository, "update_post")
 
-        post_service.delete_post(posts[0].id)
+        post_service.delete_post("some-uuid")
 
-        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
-        post_repository.update_post.assert_called_once_with(posts[0].id, ANY, ANY)
+        post_repository.update_post.assert_called_once()
+        args, _ = post_repository.update_post.call_args
+        assert args[0] == "some-uuid"
+        assert args[1] == {"deleted_at": ANY, "updated_at": ANY}
+        assert args[2] is not None
 
     def test_fail_to_delete_post_due_to_not_found_exception(
         self,
         mocker: MockerFixture,
-        posts: list[Post],
         post_repository: PostRepository,
         post_service: PostService,
     ):
-        mocker.patch.object(PostRepository, "get_post_by_uuid", return_value=None)
+        error_response = {
+            "Error": {
+                "Code": "ConditionalCheckFailedException",
+                "Message": "The conditional request failed",
+            }
+        }
+        mocker.patch.object(
+            PostRepository,
+            "update_post",
+            side_effect=ClientError(error_response, "UpdateItem"),
+        )
 
         with pytest.raises(PostNotFoundException) as excinfo:
-            post_service.delete_post(posts[0].id)
+            post_service.delete_post("some-uuid")
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
 
     def test_successfully_get_post(
         self,
@@ -122,7 +151,50 @@ class TestPostService:
         result = post_service.get_post(posts[0].id)
 
         assert PostResponse(**result.model_dump()) == result
-        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id)
+
+    def test_successfully_get_post_renders_markdown_to_html(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        mocker.patch.object(
+            PostRepository,
+            "get_post_by_uuid",
+            return_value=posts[0].model_dump() | {"content": "**bold** *italic*"},
+        )
+
+        result = post_service.get_post(posts[0].id)
+
+        assert "<strong>bold</strong>" in result.content
+        assert "<em>italic</em>" in result.content
+
+    def test_successfully_get_post_sanitizes_xss_from_markdown(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        malicious_content = (
+            "Hello <script>alert('xss')</script> "
+            "<img src=x onerror=alert(1)> "
+            '<a href="javascript:alert(1)">click</a>'
+        )
+        mocker.patch.object(
+            PostRepository,
+            "get_post_by_uuid",
+            return_value=posts[0].model_dump() | {"content": malicious_content},
+        )
+
+        result = post_service.get_post(posts[0].id)
+
+        assert "<script>" not in result.content
+        assert "onerror" not in result.content
+        assert "javascript:" not in result.content
+        assert result.content.count("<") == result.content.count(">")
 
     def test_fail_to_get_post_due_to_not_found_exception(
         self,
@@ -139,7 +211,7 @@ class TestPostService:
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id)
 
     def test_successfully_update_post(
         self,
@@ -148,15 +220,20 @@ class TestPostService:
         post_repository: PostRepository,
         post_service: PostService,
     ) -> None:
-        mocker.patch.object(
-            PostRepository, "get_post_by_uuid", return_value=posts[0].model_dump()
-        )
         mocker.patch.object(PostRepository, "update_post")
 
         post_service.update_post(
             posts[0].id, {"content": "Updated content", "title": "Updated title"}
         )
-        post_repository.update_post.assert_called_once_with(posts[0].id, ANY, ANY)
+        post_repository.update_post.assert_called_once()
+        args, _ = post_repository.update_post.call_args
+        assert args[0] == posts[0].id
+        assert args[1] == {
+            "content": "Updated content",
+            "title": "Updated title",
+            "updated_at": ANY,
+        }
+        assert args[2] is not None
 
     def test_fail_to_update_post_due_post_not_found_exception(
         self,
@@ -165,17 +242,24 @@ class TestPostService:
         post_repository: PostRepository,
         post_service: PostService,
     ):
-        mocker.patch.object(PostRepository, "get_post_by_uuid", return_value=None)
-
-        update_post = UpdatePost(**{"content": "Updated content"})
+        error_response = {
+            "Error": {
+                "Code": "ConditionalCheckFailedException",
+                "Message": "The conditional request failed",
+            }
+        }
+        mocker.patch.object(
+            PostRepository,
+            "update_post",
+            side_effect=ClientError(error_response, "UpdateItem"),
+        )
 
         with pytest.raises(PostNotFoundException) as excinfo:
-            post_service.update_post(posts[0].id, update_post)
+            post_service.update_post(posts[0].id, {"content": "Updated content"})
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
 
     def test_successfully_get_archive(
         self,
@@ -201,6 +285,68 @@ class TestPostService:
         result = post_service.get_archive()
 
         assert 0 == len(result)
+
+    def test_successfully_get_archive_paginated(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_service: PostService,
+    ):
+        all_posts = [post.model_dump() for post in posts]
+        mocker.patch.object(
+            PostRepository, "get_posts", return_value=(posts[-1].id, all_posts)
+        )
+
+        result = post_service.get_archive_paginated()
+
+        assert "count" in result
+        assert "last_evaluated_key" in result
+        assert result["count"] == len(all_posts)
+
+    def test_successfully_get_archive_paginated_with_custom_params(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_service: PostService,
+    ):
+        """Test pagination with custom max_results."""
+        all_posts = [post.model_dump() for post in posts]
+        mocker.patch.object(PostRepository, "get_posts", return_value=(None, all_posts))
+
+        result = post_service.get_archive_paginated(max_results=50)
+
+        assert result["count"] == len(all_posts)
+
+    def test_successfully_get_archive_paginated_with_exclusive_start_key(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_service: PostService,
+    ):
+        """Test pagination with exclusive_start_key for continuation."""
+        all_posts = [post.model_dump() for post in posts]
+        mocker.patch.object(PostRepository, "get_posts", return_value=(None, all_posts))
+
+        first_page = post_service.get_archive_paginated(max_results=2)
+        exclusive_start_key = first_page["last_evaluated_key"]
+
+        second_page = post_service.get_archive_paginated(
+            max_results=2, exclusive_start_key=exclusive_start_key
+        )
+
+        assert second_page["count"] == len(all_posts)
+
+    def test_successfully_get_archive_paginated_empty_result(
+        self,
+        mocker: MockerFixture,
+        post_service: PostService,
+    ):
+        mocker.patch.object(PostRepository, "get_posts", return_value=(None, []))
+
+        result = post_service.get_archive_paginated()
+
+        assert result["count"] == 0
+        assert result["last_evaluated_key"] is None
 
     def test_successfully_get_post_by_post_path(
         self,
@@ -277,7 +423,7 @@ class TestPostService:
         result = post_service.get_post_by_uuid(posts[0].id)
 
         assert result == posts[0]
-        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id)
 
     def test_fail_to_get_post_by_uuid_not_found(
         self,
@@ -295,4 +441,75 @@ class TestPostService:
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_uuid.assert_called_once_with(invalid_id, ANY)
+        post_repository.get_post_by_uuid.assert_called_once_with(invalid_id)
+
+    def test_fail_to_delete_post_due_to_unexpected_client_error(
+        self,
+        mocker: MockerFixture,
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        error_response = {
+            "Error": {
+                "Code": "InternalServerError",
+                "Message": "Something went wrong",
+            }
+        }
+        mocker.patch.object(
+            PostRepository,
+            "update_post",
+            side_effect=ClientError(error_response, "UpdateItem"),
+        )
+
+        with pytest.raises(ClientError) as excinfo:
+            post_service.delete_post("some-uuid")
+
+        assert excinfo.value.response["Error"]["Code"] == "InternalServerError"
+
+    def test_fail_to_update_post_due_to_unexpected_client_error(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_repository: PostRepository,
+        post_service: PostService,
+    ):
+        error_response = {
+            "Error": {
+                "Code": "InternalServerError",
+                "Message": "Something went wrong",
+            }
+        }
+        mocker.patch.object(
+            PostRepository,
+            "update_post",
+            side_effect=ClientError(error_response, "UpdateItem"),
+        )
+
+        with pytest.raises(ClientError) as excinfo:
+            post_service.update_post(posts[0].id, {"content": "Updated content"})
+
+        assert excinfo.value.response["Error"]["Code"] == "InternalServerError"
+
+    def test_sort_dates_and_group_by_month_with_multiple_months(
+        self,
+        post_service: PostService,
+    ):
+        dates = [
+            pendulum.parse("2025-01-15T12:00:00"),
+            pendulum.parse("2025-01-20T12:00:00"),
+            pendulum.parse("2025-02-10T12:00:00"),
+            pendulum.parse("2025-02-15T12:00:00"),
+            pendulum.parse("2025-02-20T12:00:00"),
+        ]
+
+        result = post_service._sort_dates_and_group_by_month(dates)
+
+        assert result == {"2025-01": 2, "2025-02": 3}
+
+    def test_sort_dates_and_group_by_month_with_empty_dates(
+        self,
+        post_service: PostService,
+    ):
+        result = post_service._sort_dates_and_group_by_month([])
+
+        assert result == {}

@@ -1,6 +1,4 @@
-import urllib.parse
-
-from pydantic import BaseModel, ConfigDict, computed_field, conlist, constr
+from pydantic import BaseModel, computed_field, conlist, constr
 
 from app.models.camel_model import CamelModel
 
@@ -13,14 +11,14 @@ class Attachment(CamelModel):
     display_name: str
     mime_type: str
     name: str
-
-    model_config = ConfigDict()
+    region: str
 
     @computed_field
     @property
     def url(self) -> str:
-        return urllib.parse.urljoin(
-            f"https://{self.bucket}.s3.amazonaws.com", self.name
+        return (
+            f"https://{self.bucket}.s3.{self.region}.amazonaws.com/"
+            f"{self.name.lstrip('/')}"
         )
 
 

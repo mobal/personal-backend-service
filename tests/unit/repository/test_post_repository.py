@@ -3,7 +3,9 @@ from collections import Counter
 from random import randint
 
 import pendulum
-from boto3.dynamodb.conditions import ConditionBase
+import pytest
+from boto3.dynamodb.conditions import Attr, ConditionBase
+from botocore.exceptions import ClientError
 
 from app.models.post import Post
 from app.repositories.post_repository import PostRepository
@@ -41,6 +43,16 @@ class TestPostRepository:
 
         assert len(items) == len(posts)
         assert any(post.model_dump() == items[0] for post in posts)
+
+    def test_successfully_get_all_posts_empty_result(
+        self,
+        post_repository: PostRepository,
+    ):
+        items = post_repository.get_all_posts(
+            Attr("id").eq("non-existent"), list(Post.model_fields.keys())
+        )
+
+        assert items == []
 
     def test_successfully_get_all_posts_with_fields_filter(
         self,
@@ -80,22 +92,20 @@ class TestPostRepository:
 
     def test_successfully_get_post_by_uuid(
         self,
-        filter_expression: ConditionBase,
         posts: list[Post],
         post_repository: PostRepository,
     ):
-        item = post_repository.get_post_by_uuid(posts[0].id, filter_expression)
+        item = post_repository.get_post_by_uuid(posts[0].id)
 
         assert posts[0].model_dump() == item
 
     def test_fail_to_get_post_by_uuid(
         self,
-        filter_expression: ConditionBase,
         post_repository: PostRepository,
     ):
         post_uuid = str(uuid.uuid4())
 
-        assert post_repository.get_post_by_uuid(post_uuid, filter_expression) is None
+        assert post_repository.get_post_by_uuid(post_uuid) is None
 
     def test_successfully_update_post(
         self,
@@ -116,6 +126,23 @@ class TestPostRepository:
             <= response["Item"].items()
         )
 
+    def test_fail_to_update_post_due_to_not_found(
+        self,
+        post_repository: PostRepository,
+    ):
+        non_existent_id = str(uuid.uuid4())
+        with pytest.raises(ClientError) as exc_info:
+            post_repository.update_post(
+                non_existent_id,
+                {"content": "test"},
+                Attr("id").eq(non_existent_id),
+            )
+
+        assert (
+            exc_info.value.response["Error"]["Code"]
+            == "ConditionalCheckFailedException"
+        )
+
     def test_successfully_get_item_count(
         self, posts: list[Post], post_repository: PostRepository
     ):
@@ -128,6 +155,12 @@ class TestPostRepository:
         post_repository: PostRepository,
     ):
         assert len(posts) == post_repository.count_all_posts(filter_expression)
+
+    def test_successfully_count_all_posts_empty_result(
+        self,
+        post_repository: PostRepository,
+    ):
+        assert post_repository.count_all_posts(Attr("id").eq("non-existent")) == 0
 
     def test_successfully_count_all_posts_with_using_last_evaluated_key(
         self,
@@ -174,6 +207,28 @@ class TestPostRepository:
 
         assert item == posts[0].model_dump()
 
+    def test_successfully_get_post_by_title_returns_only_one_when_duplicates_exist(
+        self,
+        post_repository: PostRepository,
+        posts_table,
+    ):
+        shared_title = "duplicate-title"
+        first_id = str(uuid.uuid4())
+        second_id = str(uuid.uuid4())
+        posts_table.put_item(
+            Item={"id": first_id, "title": shared_title, "deleted_at": None}
+        )
+        posts_table.put_item(
+            Item={"id": second_id, "title": shared_title, "deleted_at": None}
+        )
+
+        item = post_repository.get_post_by_title(
+            shared_title, Attr("deleted_at").eq(None)
+        )
+
+        assert item is not None
+        assert item["id"] in (first_id, second_id)
+
     def test_successfully_get_posts(
         self,
         filter_expression: ConditionBase,
@@ -186,6 +241,17 @@ class TestPostRepository:
 
         assert last_evaluated_key is None
         assert len(response) == len(posts)
+
+    def test_successfully_get_posts_empty_result(
+        self,
+        post_repository: PostRepository,
+    ):
+        last_evaluated_key, response = post_repository.get_posts(
+            Attr("id").eq("non-existent"), None
+        )
+
+        assert last_evaluated_key is None
+        assert response == []
 
     def test_successfully_get_posts_without_fields(
         self,

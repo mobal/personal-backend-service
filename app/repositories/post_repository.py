@@ -1,16 +1,16 @@
 from typing import Any
 
 import boto3
-from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import ConditionBase, Key
-
-from app import settings
 
 
 class PostRepository:
-    def __init__(self):
-        self._logger = Logger()
-        self._table = boto3.resource("dynamodb").Table(f"{settings.stage}-posts")
+    def __init__(
+        self,
+        table_name: str,
+        db: boto3.resource,
+    ):
+        self._table = db.Table(table_name)
 
     def create_post(self, data: dict):
         self._table.put_item(Item=data)
@@ -18,19 +18,16 @@ class PostRepository:
     def get_all_posts(
         self, filter_expression: ConditionBase, fields: list[str]
     ) -> list[dict[str, Any]]:
-        projection = ",".join(fields)
         items = []
-        response = self._table.scan(
-            FilterExpression=filter_expression, ProjectionExpression=projection
-        )
-        items.extend(response["Items"])
-        while "LastEvaluatedKey" in response:
-            response = self._table.scan(
-                ExclusiveStartKey=response["LastEvaluatedKey"],
-                FilterExpression=filter_expression,
-                ProjectionExpression=projection,
+        last_key = None
+        while True:
+            exclusive_start_key = {"id": last_key} if last_key else None
+            last_key, page = self.get_posts(
+                filter_expression, exclusive_start_key, fields
             )
-            items.extend(response["Items"])
+            items.extend(page)
+            if last_key is None:
+                break
         return items
 
     def count_all_posts(self, filter_expression: ConditionBase) -> int:
@@ -69,14 +66,9 @@ class PostRepository:
         )
         return response["Items"][0] if response["Items"] else None
 
-    def get_post_by_uuid(
-        self, post_uuid: str, filter_expression: ConditionBase
-    ) -> dict | None:
-        response = self._table.query(
-            KeyConditionExpression=Key("id").eq(post_uuid),
-            FilterExpression=filter_expression,
-        )
-        return response["Items"][0] if response["Items"] else None
+    def get_post_by_uuid(self, post_uuid: str) -> dict | None:
+        response = self._table.get_item(Key={"id": post_uuid})
+        return response.get("Item")
 
     def get_posts(
         self,
@@ -96,15 +88,20 @@ class PostRepository:
         return last_key, response["Items"]
 
     def update_post(
-        self, post_uuid: str, data: dict, condition_expression: ConditionBase
+        self,
+        post_uuid: str,
+        data: dict,
+        condition_expression: ConditionBase,
     ):
         attr_names = {f"#{k}": k for k in data}
         attr_values = {f":{k}": v for k, v in data.items()}
         update_expr = ", ".join(f"#{k}=:{k}" for k in data)
-        self._table.update_item(
-            Key={"id": post_uuid},
-            ConditionExpression=condition_expression,
-            UpdateExpression=f"SET {update_expr}",
-            ExpressionAttributeNames=attr_names,
-            ExpressionAttributeValues=attr_values,
-        )
+        update_kwargs = {
+            "Key": {"id": post_uuid},
+            "ConditionExpression": condition_expression,
+            "UpdateExpression": f"SET {update_expr}",
+            "ExpressionAttributeNames": attr_names,
+            "ExpressionAttributeValues": attr_values,
+        }
+
+        self._table.update_item(**update_kwargs)

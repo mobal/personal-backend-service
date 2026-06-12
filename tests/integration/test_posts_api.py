@@ -5,11 +5,11 @@ import pendulum
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from httpx import ConnectTimeout, Response
-from respx import MockRouter
+from httpx2 import ConnectTimeout
+from pytest_httpx2 import HTTPXMock
 from tests.helpers.utils import generate_jwt_token
 
-from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
+from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts, country_cache
 from app.models.post import Post
 from app.schemas.post_schema import CreatePost
 
@@ -35,16 +35,21 @@ class TestPostsApi:
         )
 
     @pytest.fixture(autouse=True)
-    def setup_function(self, respx_mock: MockRouter):
+    def setup_function(
+        self,
+        initialize_posts_table,
+        initialize_rate_limits_table,
+        httpx_mock: HTTPXMock,
+    ):
         banned_hosts.clear()
-        respx_mock.route(method="GET", url__startswith=COUNTRY_IS_API_BASE_URL).mock(
-            Response(
-                status_code=status.HTTP_200_OK,
-                json={
-                    "ip": "8.8.8.8",
-                    "country": "US",
-                },
-            ),
+        country_cache.clear()
+        httpx_mock.add_response(
+            url=f"{COUNTRY_IS_API_BASE_URL}/testclient",
+            status_code=status.HTTP_200_OK,
+            json={
+                "ip": "8.8.8.8",
+                "country": "US",
+            },
         )
 
     def test_successfully_get_posts(self, posts: list[Post], test_client: TestClient):
@@ -91,38 +96,40 @@ class TestPostsApi:
 
     def test_fail_to_get_post_due_to_invalid_client(
         self,
-        respx_mock: MockRouter,
+        httpx_mock: HTTPXMock,
         test_client: TestClient,
     ):
-        route_mock = respx_mock.route(
-            method="GET",
-            url__startswith=COUNTRY_IS_API_BASE_URL,
-        ).mock(
-            Response(
-                status_code=status.HTTP_200_OK,
-                json={
-                    "ip": "testclient",
-                    "country": "RU",
-                },
-            ),
+        url = f"{COUNTRY_IS_API_BASE_URL}/testclient"
+        httpx_mock.reset()
+        httpx_mock.add_response(
+            url=url,
+            status_code=status.HTTP_200_OK,
+            json={
+                "ip": "testclient",
+                "country": "RU",
+            },
         )
 
         response = test_client.get(f"{BASE_URL}/{str(uuid.uuid4())}")
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.json() == {"message": "Forbidden"}
-        assert route_mock.called
-        assert route_mock.call_count == 1
+        assert response.json()["message"] == "Forbidden"
+        assert response.json()["status"] == status.HTTP_403_FORBIDDEN
+        assert response.json()["id"]
+        assert len(httpx_mock.get_requests(url=url)) == 1
 
     def test_successfully_get_post_despite_country_api_unavailability(
         self,
         posts: list[Post],
-        respx_mock: MockRouter,
+        httpx_mock: HTTPXMock,
         test_client: TestClient,
     ):
-        route_mock = respx_mock.route(
-            method="GET", url__startswith=COUNTRY_IS_API_BASE_URL
-        ).mock(side_effect=ConnectTimeout("timeout"))
+        url = f"{COUNTRY_IS_API_BASE_URL}/testclient"
+        httpx_mock.reset()
+        httpx_mock.add_exception(
+            ConnectTimeout("timeout"),
+            url=url,
+        )
 
         response = test_client.get(f"{BASE_URL}/{posts[0].id}")
 
@@ -143,14 +150,22 @@ class TestPostsApi:
             .items()
             <= response.json().items()
         )
-        assert route_mock.called
-        assert route_mock.call_count == 1
+        assert len(httpx_mock.get_requests(url=url)) == 1
 
     def test_successfully_get_archive(self, posts: list[Post], test_client: TestClient):
         response = test_client.get(f"{BASE_URL}/archive")
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json()[pendulum.now().format("YYYY-MM")] == len(posts)
+
+    def test_successfully_get_empty_archive(self, test_client: TestClient, posts_table):
+        for item in posts_table.scan()["Items"]:
+            posts_table.delete_item(Key={"id": item["id"]})
+
+        response = test_client.get(f"{BASE_URL}/archive")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == {}
 
     def test_successfully_get_post_by_post_path(
         self, posts: list[Post], test_client: TestClient
@@ -182,7 +197,7 @@ class TestPostsApi:
     ):
         random_timestamp = random.uniform(
             pendulum.parse("1970-01-01").timestamp(),
-            pendulum.parse("2999-12-31").timestamp(),
+            pendulum.parse("2100-12-31").timestamp(),
         )
         random_date = pendulum.from_timestamp(random_timestamp)
 
@@ -197,10 +212,11 @@ class TestPostsApi:
 
     def test_fail_to_delete_post_due_to_not_found(
         self,
+        jwt_secret_ssm_param_value: str,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.delete(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -227,11 +243,12 @@ class TestPostsApi:
 
     def test_successfully_delete_post(
         self,
+        jwt_secret_ssm_param_value: str,
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.delete(
             f"{BASE_URL}/{posts[0].id}",
@@ -242,10 +259,11 @@ class TestPostsApi:
 
     def test_fail_to_create_post_due_to_bad_request(
         self,
+        jwt_secret_ssm_param_value: str,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             BASE_URL, headers={"Authorization": f"Bearer {jwt_token}"}, json={}
@@ -279,10 +297,11 @@ class TestPostsApi:
     def test_successfully_create_post(
         self,
         create_post: CreatePost,
+        jwt_secret_ssm_param_value: str,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             BASE_URL,
@@ -295,11 +314,12 @@ class TestPostsApi:
 
     def test_fail_to_create_post_due_to_already_exists_by_title(
         self,
+        jwt_secret_ssm_param_value: str,
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             BASE_URL,
@@ -312,10 +332,11 @@ class TestPostsApi:
     def test_fail_to_update_post_due_to_not_found(
         self,
         create_post: CreatePost,
+        jwt_secret_ssm_param_value: str,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.put(
             f"{BASE_URL}/{str(uuid.uuid4())}",
@@ -331,11 +352,12 @@ class TestPostsApi:
 
     def test_fail_to_update_post_due_to_bad_request(
         self,
+        jwt_secret_ssm_param_value: str,
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.put(
             f"{BASE_URL}/{posts[0].id}",
@@ -376,11 +398,12 @@ class TestPostsApi:
 
     def test_successfully_update_post(
         self,
+        jwt_secret_ssm_param_value: str,
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.put(
             f"{BASE_URL}/{posts[0].id}",
@@ -389,3 +412,59 @@ class TestPostsApi:
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_fail_to_delete_post_due_to_empty_token_query_param(
+        self,
+        posts: list[Post],
+        test_client: TestClient,
+    ):
+        response = test_client.delete(
+            f"{BASE_URL}/{posts[0].id}",
+            params={"token": ""},
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert {
+            "status": status.HTTP_403_FORBIDDEN,
+            "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
+        }.items() <= response.json().items()
+
+    def test_fail_to_update_post_due_to_empty_body(
+        self,
+        jwt_secret_ssm_param_value: str,
+        posts: list[Post],
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.put(
+            f"{BASE_URL}/{posts[0].id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json={},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_fail_expired_jwt_token_cause_forbidden(
+        self,
+        posts: list[Post],
+        user_dict: dict[str, str | None],
+        jwt_secret_ssm_param_value: str,
+        test_client: TestClient,
+    ):
+        import jwt
+
+        expired_token = jwt.encode(
+            {"sub": user_dict.get("email"), "exp": 0},
+            jwt_secret_ssm_param_value,
+            algorithm="HS256",
+        )
+
+        response = test_client.delete(
+            f"{BASE_URL}/{posts[0].id}",
+            headers={"Authorization": f"Bearer {expired_token}"},
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.json()["message"] == ERROR_MESSAGE_NOT_AUTHENTICATED

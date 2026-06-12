@@ -1,48 +1,20 @@
-data "archive_file" "lambda_zip" {
-  type = "zip"
-  source_dir = path.module
-  output_path = "${path.module}/lambda.zip"
-  excludes = [
-    ".git",
-    ".github",
-    ".idea",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".terraform",
-    ".venv",
-    ".vscode",
-    "htmlcov",
-    "python",
-    ".coverage",
-    ".env",
-    "lambda.zip",
-    "requirements.txt",
-    "requirements.zip",
-    "terraform.tfstate",
-    "terraform.tfstate.backup",
-    "terraform.tfvars",
-  ]
-}
-
 resource "aws_lambda_function" "fastapi" {
-  filename         = data.archive_file.lambda_zip.output_path
   function_name    = "${local.app_name}-fastapi"
   role             = aws_iam_role.lambda_role.arn
+  runtime          = "python3.14"
   handler          = "app.api_handler.handler"
-  runtime          = "python3.13"
-  timeout          = 15
-  memory_size      = 768
 
-  snap_start {
-    apply_on         = "PublishedVersions"
-  }
+  s3_bucket        = var.artifacts_bucket
+  s3_key           = "${var.app_name}/api-${var.lambda_hash}.zip"
 
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  source_code_hash = base64encode(var.lambda_hash)
+
+  timeout     = var.timeout
+  memory_size = var.memory_size
 
   layers = [
     aws_lambda_layer_version.requirements_lambda_layer.arn,
-    "arn:aws:lambda:${var.aws_region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python313-${var.architecture}:16"
+    "arn:aws:lambda:${var.aws_region}:017000801446:layer:AWSLambdaPowertoolsPythonV3-python314-${var.architecture}:33"
   ]
 
   environment {
@@ -70,48 +42,5 @@ resource "aws_lambda_function" "fastapi" {
   depends_on = [
     aws_iam_role_policy_attachment.lambda_policy_attachment,
     aws_lambda_layer_version.requirements_lambda_layer,
-    aws_s3_bucket.attachments,
   ]
-}
-
-resource "terraform_data" "requirements_lambda_layer" {
-  triggers_replace = {
-    requirements = filebase64sha256("${path.module}/uv.lock")
-  }
-
-  provisioner "local-exec" {
-    command = <<EOT
-      DOCKER_DEFAULT_PLATFORM=linux/amd64 docker run --rm -v ${abspath(path.module)}:/workspace -w /workspace public.ecr.aws/sam/build-python3.12 bash -c "
-      export UV_INSTALL_DIR=/tmp/uv
-      mkdir -p \$UV_INSTALL_DIR
-      curl -Ls https://astral.sh/uv/install.sh | sh
-      export PATH=\$UV_INSTALL_DIR:\$PATH
-      uv sync --no-dev
-      uv export --locked --no-dev --format requirements.txt > requirements.txt
-      pip install -r requirements.txt -t python/lib/python3.13/site-packages --platform manylinux2014_${var.architecture} --python-version 3.13 --only-binary=:all:
-      zip -r requirements.zip python
-      "
-    EOT
-  }
-}
-
-resource "aws_s3_bucket" "requirements_lambda_layer" {
-  bucket_prefix = "lambda-layers-${var.stage}"
-}
-
-resource "aws_s3_object" "requirements_lambda_layer" {
-  bucket     = aws_s3_bucket.requirements_lambda_layer.id
-  key        = "lambda_layers/${local.app_name}-requirements/requirements.zip"
-  source     = "${path.module}/requirements.zip"
-  depends_on = [terraform_data.requirements_lambda_layer]
-}
-
-resource "aws_lambda_layer_version" "requirements_lambda_layer" {
-  compatible_architectures = [var.architecture]
-  compatible_runtimes      = ["python3.13"]
-  depends_on               = [aws_s3_object.requirements_lambda_layer]
-  layer_name               = "${local.app_name}-requirements"
-  s3_bucket                = aws_s3_bucket.requirements_lambda_layer.id
-  s3_key                   = aws_s3_object.requirements_lambda_layer.key
-  skip_destroy             = true
 }

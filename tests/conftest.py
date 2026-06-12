@@ -1,4 +1,5 @@
 import base64
+import os
 import uuid
 from random import randint
 
@@ -11,19 +12,21 @@ from app.models.post import Attachment, Post
 from app.settings import Settings
 
 
-def pytest_configure():
-    pytest.aws_default_region = "eu-central-1"
-    pytest.jwt_secret_ssm_param_name = "/dev/secrets/secret"
-    pytest.jwt_secret_ssm_param_value = "94k9yz00rw"
-
-
 @pytest.fixture(autouse=True)
-def setup():
+def setup(monkeypatch):
     with mock_aws():
-        ssm_client = boto3.client("ssm")
+        monkeypatch.setenv(
+            "JWT_SECRET_SSM_PARAM_NAME", os.getenv("JWT_SECRET_SSM_PARAM_NAME")
+        )
+        ssm_client = boto3.client(
+            "ssm",
+            region_name=os.getenv("AWS_REGION_NAME"),
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+        )
         ssm_client.put_parameter(
-            Name=pytest.jwt_secret_ssm_param_name,
-            Value=pytest.jwt_secret_ssm_param_value,
+            Name=os.getenv("JWT_SECRET_SSM_PARAM_NAME"),
+            Value=os.getenv("JWT_SECRET_SSM_PARAM_VALUE"),
             Type="SecureString",
         )
         yield
@@ -35,7 +38,7 @@ def settings() -> Settings:
 
 
 @pytest.fixture
-def attachment(test_data: bytes) -> Attachment:
+def attachment(test_data: bytes, aws_default_region: str) -> Attachment:
     now = pendulum.now()
     file_name = "lorem.txt"
     return Attachment(
@@ -45,18 +48,23 @@ def attachment(test_data: bytes) -> Attachment:
         display_name=file_name,
         mime_type="plain/text",
         name=f"/{now.year}/{now.month}/{now.day}/post_with_attachment/{file_name}",
+        region=aws_default_region,
     )
 
 
 @pytest.fixture
-def dynamodb_resource(settings: Settings):
-    with mock_aws():
-        yield boto3.Session().resource(
-            "dynamodb",
-            region_name="eu-central-1",
-            aws_access_key_id=settings.aws_access_key_id,
-            aws_secret_access_key=settings.aws_secret_access_key,
-        )
+def aws_default_region() -> str:
+    return os.getenv("AWS_DEFAULT_REGION")
+
+
+@pytest.fixture
+def dynamodb_resource(aws_default_region: str, settings: Settings):
+    yield boto3.Session().resource(
+        "dynamodb",
+        region_name=aws_default_region,
+        aws_access_key_id=settings.aws_access_key_id,
+        aws_secret_access_key=settings.aws_secret_access_key,
+    )
 
 
 @pytest.fixture
@@ -133,6 +141,11 @@ def initialize_posts_table(
 
 
 @pytest.fixture
+def jwt_secret_ssm_param_value() -> str:
+    return os.getenv("JWT_SECRET_SSM_PARAM_VALUE")
+
+
+@pytest.fixture
 def make_post(faker):
     def make() -> Post:
         now = pendulum.now()
@@ -182,14 +195,13 @@ def posts_table(dynamodb_resource):
 
 
 @pytest.fixture
-def s3_resource(settings: Settings):
-    with mock_aws():
-        yield boto3.Session().resource(
-            "s3",
-            region_name="eu-central-1",
-            aws_access_key_id=settings.aws_access_key_id,
-            aws_secret_access_key=settings.aws_secret_access_key,
-        )
+def s3_resource(aws_default_region: str, settings: Settings):
+    yield boto3.Session().resource(
+        "s3",
+        region_name=aws_default_region,
+        aws_access_key_id=settings.aws_access_key_id,
+        aws_secret_access_key=settings.aws_secret_access_key,
+    )
 
 
 @pytest.fixture

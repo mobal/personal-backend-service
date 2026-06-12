@@ -3,12 +3,10 @@ import uuid
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from httpx import Response
-from mypy_boto3_cloudformation import ServiceResource
-from respx import MockRouter
+from pytest_httpx2 import HTTPXMock
 from tests.helpers.utils import generate_jwt_token
 
-from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts
+from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts, country_cache
 from app.models.post import Attachment, Post
 from app.schemas.attachment_schema import CreateAttachment
 
@@ -22,21 +20,28 @@ class TestAttachmentsApi:
         )
 
     @pytest.fixture(autouse=True)
-    def setup_function(self, s3_resource: ServiceResource, respx_mock: MockRouter):
+    def setup_function(
+        self,
+        aws_default_region: str,
+        s3_resource,
+        initialize_posts_table,
+        initialize_rate_limits_table,
+        httpx_mock: HTTPXMock,
+    ):
         s3_resource.create_bucket(
             ACL="public-read-write",
             Bucket="attachments",
-            CreateBucketConfiguration={"LocationConstraint": pytest.aws_default_region},
+            CreateBucketConfiguration={"LocationConstraint": aws_default_region},
         )
         banned_hosts.clear()
-        respx_mock.route(method="GET", url__startswith=COUNTRY_IS_API_BASE_URL).mock(
-            Response(
-                status_code=status.HTTP_200_OK,
-                json={
-                    "ip": "8.8.8.8",
-                    "country": "US",
-                },
-            ),
+        country_cache.clear()
+        httpx_mock.add_response(
+            url=f"{COUNTRY_IS_API_BASE_URL}/testclient",
+            status_code=status.HTTP_200_OK,
+            json={
+                "ip": "8.8.8.8",
+                "country": "US",
+            },
         )
 
     def test_successfully_add_attachment(
@@ -46,8 +51,9 @@ class TestAttachmentsApi:
         posts: list[Post],
         test_client: TestClient,
         user_dict: dict[str, str | None],
+        jwt_secret_ssm_param_value: str,
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             f"/api/v1/posts/{posts[0].id}/attachments",
@@ -60,11 +66,12 @@ class TestAttachmentsApi:
 
     def test_fail_to_add_attachment_due_to_bad_request(
         self,
+        jwt_secret_ssm_param_value: str,
         post_with_attachment: Post,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
-        jwt_token, _ = generate_jwt_token(pytest.jwt_secret_ssm_param_value, user_dict)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
 
         response = test_client.post(
             f"/api/v1/posts/{post_with_attachment.id}/attachments",
@@ -116,21 +123,19 @@ class TestAttachmentsApi:
 
     def test_fail_to_get_attachment_due_to_invalid_client(
         self,
-        respx_mock: MockRouter,
+        httpx_mock: HTTPXMock,
         post_with_attachment: Post,
         test_client: TestClient,
     ):
-        route_mock = respx_mock.route(
-            method="GET",
-            url__startswith=COUNTRY_IS_API_BASE_URL,
-        ).mock(
-            Response(
-                status_code=status.HTTP_200_OK,
-                json={
-                    "ip": "testclient",
-                    "country": "RU",
-                },
-            ),
+        url = f"{COUNTRY_IS_API_BASE_URL}/testclient"
+        httpx_mock.reset()
+        httpx_mock.add_response(
+            url=url,
+            status_code=status.HTTP_200_OK,
+            json={
+                "ip": "testclient",
+                "country": "RU",
+            },
         )
 
         response = test_client.get(
@@ -138,9 +143,10 @@ class TestAttachmentsApi:
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.json() == {"message": "Forbidden"}
-        assert route_mock.called
-        assert route_mock.call_count == 1
+        assert response.json()["message"] == "Forbidden"
+        assert response.json()["status"] == status.HTTP_403_FORBIDDEN
+        assert response.json()["id"]
+        assert len(httpx_mock.get_requests(url=url)) == 1
 
     def test_fail_to_get_attachment_due_to_not_found(
         self,

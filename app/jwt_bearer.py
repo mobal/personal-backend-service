@@ -8,7 +8,6 @@ from fastapi.security.http import (
 from fastapi.security.utils import get_authorization_scheme_param
 from jwt import DecodeError, ExpiredSignatureError
 
-from app import settings
 from app.models.auth import JWTToken
 
 logger = Logger(utc=True)
@@ -72,7 +71,8 @@ class HTTPBearer(FastAPIHTTPBearer):
 
 
 class JWTBearer:
-    def __init__(self, auto_error: bool = True):
+    def __init__(self, jwt_secret: str, auto_error: bool = True):
+        self._jwt_secret = jwt_secret
         self._auto_error = auto_error
 
     def __call__(self, request: Request) -> JWTToken | None:
@@ -94,11 +94,16 @@ class JWTBearer:
     def _validate_token(self, token: str) -> bool:
         try:
             self.decoded_token = JWTToken(
-                **jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+                **jwt.decode(token, self._jwt_secret, algorithms=["HS256"])
             )
             return True
-        except (DecodeError, ExpiredSignatureError):
+        except DecodeError:
             logger.exception("Error occurred during token validation")
+        except ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=ERROR_MESSAGE_NOT_AUTHENTICATED,
+            )
         except Exception:
             logger.exception("Unexpected error during JWT validation")
         return False

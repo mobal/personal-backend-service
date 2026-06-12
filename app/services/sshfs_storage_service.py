@@ -22,7 +22,7 @@ class SSHFSStorageService:
         try:
             with self._fs(host, username, password) as fs:
                 fs.rm(path)
-        except (SSHError, OSError):
+        except SSHError, OSError:
             self._logger.exception("Failed to delete file", extra={"path": path})
             raise
 
@@ -31,7 +31,7 @@ class SSHFSStorageService:
             with self._fs(host, username, password) as fs:
                 with fs.open(path, "rb") as f:
                     return f.read()
-        except (SSHError, OSError):
+        except SSHError, OSError:
             self._logger.exception("Failed to download file", extra={"path": path})
             raise
 
@@ -39,7 +39,7 @@ class SSHFSStorageService:
         try:
             with self._fs(host, username, password) as fs:
                 return fs.exists(path)
-        except (SSHError, OSError):
+        except SSHError, OSError:
             self._logger.exception(
                 "Failed to check file existence", extra={"path": path}
             )
@@ -49,7 +49,7 @@ class SSHFSStorageService:
         try:
             with self._fs(host, username, password) as fs:
                 return fs.ls(path)
-        except (SSHError, OSError):
+        except SSHError, OSError:
             self._logger.exception("Failed to list files", extra={"path": path})
             raise
 
@@ -58,6 +58,6 @@ class SSHFSStorageService:
             with self._fs(host, username, password) as fs:
                 with fs.open(path, "wb") as f:
                     f.write(data)
-        except (SSHError, OSError):
+        except SSHError, OSError:
             self._logger.exception("Failed to write file", extra={"path": path})
             raise
