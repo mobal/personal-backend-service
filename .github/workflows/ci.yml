@@ -22,17 +22,17 @@ jobs:
     continue-on-error: false
     steps:
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version-file: ".python-version"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v10.0.1
       with:
         cache-dependency-glob: "uv.lock"
         enable-cache: true
@@ -71,3 +71,42 @@ jobs:
           -Dsonar.tests=tests/
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  newman:
+    name: Docker end-to-end (Newman)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Docker tests are the last gate: only run them when the static checks and
+    # the unit/integration suite passed (they are the slowest and least
+    # diagnostic step).
+    needs: build-and-test
+    steps:
+
+    - uses: actions/checkout@v7
+
+    - name: Build application image
+      run: docker compose build
+
+    - name: Start LocalStack
+      run: docker compose up -d --wait --wait-timeout 120 localstack
+
+    - name: Seed AWS resources
+      run: |
+        docker compose run --rm --no-deps app sh -c \
+          "uv sync --frozen && uv run python -m scripts.init_localstack"
+
+    - name: Start application
+      run: docker compose up -d --wait --wait-timeout 180 app
+
+    - name: Run Postman collection with Newman
+      run: |
+        docker run --rm --network "$(docker inspect "$(docker compose ps -q app)" --format '{{range $name, $config := .NetworkSettings.Networks}}{{$name}}{{end}}')" \
+          -v "$PWD/postman:/postman:ro" \
+          postman/newman:latest run /postman/personal_backend_service.postman_collection.json \
+          --env-var baseUrl=http://app:8080 \
+          --ignore-redirects
+
+    - name: Clean up containers
+      if: always()
+      run: docker compose down -v --remove-orphans || true
+
