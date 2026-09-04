@@ -39,11 +39,11 @@ class TestPostsApi:
         self,
         initialize_posts_table,
         initialize_rate_limits_table,
-        httpx_mock: HTTPXMock,
+        httpx2_mock: HTTPXMock,
     ):
         banned_hosts.clear()
         country_cache.clear()
-        httpx_mock.add_response(
+        httpx2_mock.add_response(
             url=f"{COUNTRY_IS_API_BASE_URL}/testclient",
             status_code=status.HTTP_200_OK,
             json={
@@ -96,12 +96,12 @@ class TestPostsApi:
 
     def test_fail_to_get_post_due_to_invalid_client(
         self,
-        httpx_mock: HTTPXMock,
+        httpx2_mock: HTTPXMock,
         test_client: TestClient,
     ):
         url = f"{COUNTRY_IS_API_BASE_URL}/testclient"
-        httpx_mock.reset()
-        httpx_mock.add_response(
+        httpx2_mock.reset()
+        httpx2_mock.add_response(
             url=url,
             status_code=status.HTTP_200_OK,
             json={
@@ -116,17 +116,17 @@ class TestPostsApi:
         assert response.json()["message"] == "Forbidden"
         assert response.json()["status"] == status.HTTP_403_FORBIDDEN
         assert response.json()["id"]
-        assert len(httpx_mock.get_requests(url=url)) == 1
+        assert len(httpx2_mock.get_requests(url=url)) == 1
 
     def test_successfully_get_post_despite_country_api_unavailability(
         self,
         posts: list[Post],
-        httpx_mock: HTTPXMock,
+        httpx2_mock: HTTPXMock,
         test_client: TestClient,
     ):
         url = f"{COUNTRY_IS_API_BASE_URL}/testclient"
-        httpx_mock.reset()
-        httpx_mock.add_exception(
+        httpx2_mock.reset()
+        httpx2_mock.add_exception(
             ConnectTimeout("timeout"),
             url=url,
         )
@@ -150,7 +150,7 @@ class TestPostsApi:
             .items()
             <= response.json().items()
         )
-        assert len(httpx_mock.get_requests(url=url)) == 1
+        assert len(httpx2_mock.get_requests(url=url)) == 1
 
     def test_successfully_get_archive(self, posts: list[Post], test_client: TestClient):
         response = test_client.get(f"{BASE_URL}/archive")
