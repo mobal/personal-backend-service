@@ -40,11 +40,6 @@ variable "lambda_hash" {
   type = string
 }
 
-variable "log_level" {
-  default = "INFO"
-  type    = string
-}
-
 variable "memory_size" {
   default = 768
   type    = number
@@ -79,6 +74,16 @@ variable "ssh_root_path" {
 
 variable "ssh_username" {
   type = string
+}
+
+variable "powertools_logger_log_level" {
+  default = "INFO"
+  type    = string
+}
+
+variable "powertools_logger_log_event" {
+  default = false
+  type    = bool
 }
 
 variable "power_tools_service_name" {
