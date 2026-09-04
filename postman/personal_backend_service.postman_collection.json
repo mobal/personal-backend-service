@@ -1,0 +1,1226 @@
+{
+  "info": {
+    "name": "Personal Backend Service",
+    "description": "End-to-end API collection for the personal-backend-service (serverless blog API).\n\n## Variables\n\n| Variable | Default | Description |\n|----------|---------|-------------|\n| `baseUrl` | `http://localhost:8080` | Local app base URL. Set to the deployed API Gateway URL when testing a deployed environment. |\n| `jwtSecret` | *(e2e sample from `.env.example`)* | Shared HS256 signing secret — the value behind `JWT_SECRET_SSM_PARAM_NAME`. |\n| `jwtSubject` | `postman-e2e` | `sub` claim of the minted tokens. |\n| `accessToken` | *(empty)* | Latest minted token — set by the collection-level prerequest script. |\n| `expiredToken` | *(empty)* | Token with `exp` in the past — minted by the \"Delete post — expired token\" prerequest script. |\n| `postTitle` / `updatedTitle` / `postId` | *(empty)* | State of the post created by the \"Posts\" folder. |\n| `attachmentPostTitle` / `attachmentPostId` / `attachmentId` | *(empty)* | State of the fixture post and attachment exercised by the \"Attachments\" folder. |\n| `unknownPostId` / `unknownAttachmentId` / `unknownSlug` | *(empty)* | Random ids for the not-found lookups, set by the prerequest scripts. |\n| `todayYear` / `todayMonth` / `todayDay` | *(empty)* | Current UTC date, zero-padded, for the date-path lookup. |\n\n## Notes\n\n- The wire format is camelCase (Pydantic `to_camel` aliases) although the internal models are snake_case.\n- Errors use the envelope `{ status, id, message }`; request-validation failures (422) add an `errors` array.\n- Routes live under `/api/v1`. Writes require an HS256 JWT bearer — via the `Authorization` header or the `token` query parameter; reads are public.\n- The service never issues tokens (the auth-service does in production): the collection-level prerequest script mints a fresh token whenever a request references `{{accessToken}}` and the stored one is missing or about to expire. Requests exercising auth failure paths (empty bearer, expired token) opt out by not referencing the variable.\n- Titles are unique per run (a `Date.now()` suffix) and fixture posts are soft-deleted at the end of each folder, so the collection is safe to re-run against a populated database.\n- Requires the environment seeded by `scripts/init_localstack.py`: the `{stage}-posts` and `{stage}-rate-limits` DynamoDB tables, the SSM parameter behind `JWT_SECRET_SSM_PARAM_NAME`, and the attachments S3 bucket.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Liveness probe — no authentication required. Returns {\"status\": \"healthy\"}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 200', () => pm.response.to.have.status(200));",
+                  "pm.test('reports healthy status', () => {",
+                  "  pm.expect(pm.response.json()).to.eql({ status: 'healthy' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Posts",
+      "item": [
+        {
+          "name": "Create post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"author\": \"Postman E2E\",\n  \"title\": \"{{postTitle}}\",\n  \"content\": \"**Hello** from the Postman e2e collection.\",\n  \"tags\": [\"e2e\", \"postman\"],\n  \"meta\": {\n    \"category\": \"e2e\",\n    \"description\": \"Post created by the Postman e2e collection.\",\n    \"language\": \"en\",\n    \"keywords\": [\"postman\", \"e2e\"],\n    \"title\": \"Postman e2e post\"\n  },\n  \"publishedAt\": \"2024-02-03T12:00:00+00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Creates a post (JWT required). The prerequest script picks a unique title per run, and `publishedAt` is fixed in the past so the list and archive endpoints serve it. The test script stores the post id from the `Location` header."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Unique title per run so reruns against a populated database do not 409.",
+                  "pm.collectionVariables.set('postTitle', 'Postman e2e post ' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 201', () => pm.response.to.have.status(201));",
+                  "const location = pm.response.headers.get('Location');",
+                  "pm.test('returns the Location header of the new post', () => {",
+                  "  pm.expect(location).to.be.a('string').and.not.empty;",
+                  "  pm.expect(location.split('/')[3]).to.eql('posts');",
+                  "});",
+                  "if (location) {",
+                  "  pm.collectionVariables.set('postId', location.split('/')[4]);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Create post — duplicate title",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"author\": \"Postman E2E\",\n  \"title\": \"{{postTitle}}\",\n  \"content\": \"**Hello** from the Postman e2e collection.\",\n  \"tags\": [\"e2e\", \"postman\"],\n  \"meta\": {\n    \"category\": \"e2e\",\n    \"description\": \"Post created by the Postman e2e collection.\",\n    \"language\": \"en\",\n    \"keywords\": [\"postman\", \"e2e\"],\n    \"title\": \"Postman e2e post\"\n  },\n  \"publishedAt\": \"2024-02-03T12:00:00+00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Replays the title of the post just created: the title uniqueness check must reject a second, non-deleted post with the same title."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 409', () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test('reports the duplicate title', () => {",
+                  "  pm.expect(body.status).to.eql(409);",
+                  "  pm.expect(body.message).to.eql('There is already a post with this title');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Create post — invalid payload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "An empty body misses the required fields (author, title, content, tags, meta) and must fail with the 422 validation envelope."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('returns the validation error envelope', () => {",
+                  "  pm.expect(body.status).to.eql(422);",
+                  "  pm.expect(body.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.errors).to.be.an('array').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Create post — missing bearer token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer "
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"author\": \"Postman E2E\",\n  \"title\": \"{{postTitle}}\",\n  \"content\": \"**Hello** from the Postman e2e collection.\",\n  \"tags\": [\"e2e\", \"postman\"],\n  \"meta\": {\n    \"category\": \"e2e\",\n    \"description\": \"Post created by the Postman e2e collection.\",\n    \"language\": \"en\",\n    \"keywords\": [\"postman\", \"e2e\"],\n    \"title\": \"Postman e2e post\"\n  },\n  \"publishedAt\": \"2024-02-03T12:00:00+00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "An empty bearer token must be rejected with 403 \"Not authenticated\" before the body is validated. Does not reference `{{accessToken}}`, so no token is minted."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 403', () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test('reports the request as unauthenticated', () => {",
+                  "  pm.expect(body.status).to.eql(403);",
+                  "  pm.expect(body.message).to.eql('Not authenticated');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List posts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts"
+              ]
+            },
+            "description": "Lists published posts (public) as a page of camelCase summaries. The post created above is published, so it must be listed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('returns a page of camelCase post summaries', () => {",
+                  "  pm.expect(body).to.have.property('posts');",
+                  "  pm.expect(body.posts).to.be.an('array');",
+                  "  if (body.posts.length > 0) {",
+                  "    pm.expect(body.posts[0]).to.have.property('id');",
+                  "    pm.expect(body.posts[0]).to.have.property('title');",
+                  "  }",
+                  "});",
+                  "pm.test('includes the created published post', () => {",
+                  "  const createdId = pm.collectionVariables.get('postId');",
+                  "  pm.expect(body.posts.some((post) => post.id === createdId)).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get archive",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/archive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "archive"
+              ]
+            },
+            "description": "Returns published-post counts grouped by `YYYY-MM` (public). The created post was published with `publishedAt: 2024-02-03`, so the `2024-02` bucket must count at least one post."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 200', () => pm.response.to.have.status(200));",
+                  "pm.test('groups the created post under its published month', () => {",
+                  "  const archive = pm.response.json();",
+                  "  pm.expect(archive).to.have.property('2024-02');",
+                  "  pm.expect(archive['2024-02']).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get post by uuid",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{postId}}"
+              ]
+            },
+            "description": "Fetches the full post by uuid (public). The markdown `content` is served as sanitized HTML, and `slug` / `postPath` are derived at creation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('returns the created post', () => {",
+                  "  pm.expect(body.id).to.eql(pm.collectionVariables.get('postId'));",
+                  "  pm.expect(body.author).to.eql('Postman E2E');",
+                  "  pm.expect(body.title).to.eql(pm.collectionVariables.get('postTitle'));",
+                  "  pm.expect(body.tags).to.eql(['e2e', 'postman']);",
+                  "  pm.expect(body.publishedAt).to.eql('2024-02-03T12:00:00+00:00');",
+                  "  pm.expect(body.meta.category).to.eql('e2e');",
+                  "});",
+                  "pm.test('derives a slug and a post path', () => {",
+                  "  pm.expect(body.slug).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.postPath).to.match(/^\\d{4}\\/\\d{1,2}\\/\\d{1,2}\\//);",
+                  "});",
+                  "pm.test('serves the content as sanitized HTML', () => {",
+                  "  pm.expect(body.content).to.include('<strong>Hello</strong>');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get post by uuid — not found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{unknownPostId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{unknownPostId}}"
+              ]
+            },
+            "description": "An unknown uuid must yield the 404 envelope with \"The requested post was not found\". The prerequest script picks a random uuid."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('unknownPostId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 404', () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test('reports the post as not found', () => {",
+                  "  pm.expect(body.status).to.eql(404);",
+                  "  pm.expect(body.message).to.eql('The requested post was not found');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get post by post path — not found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{todayYear}}/{{todayMonth}}/{{todayDay}}/{{unknownSlug}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{todayYear}}",
+                "{{todayMonth}}",
+                "{{todayDay}}",
+                "{{unknownSlug}}"
+              ]
+            },
+            "description": "Date-path lookups (`/{year}/{month}/{day}/{slug}`) accept zero-padded segments only. The prerequest script pins the padded current UTC date and a random slug, which cannot exist, so this deterministically returns 404."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const now = new Date();",
+                  "const pad = (value) => String(value).padStart(2, '0');",
+                  "pm.collectionVariables.set('todayYear', String(now.getUTCFullYear()));",
+                  "pm.collectionVariables.set('todayMonth', pad(now.getUTCMonth() + 1));",
+                  "pm.collectionVariables.set('todayDay', pad(now.getUTCDate()));",
+                  "pm.collectionVariables.set('unknownSlug', pm.variables.replaceIn('e2e-slug-{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 404', () => pm.response.to.have.status(404));",
+                  "pm.test('reports the post as not found', () => {",
+                  "  pm.expect(pm.response.json().message).to.eql('The requested post was not found');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Update post",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{postId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{updatedTitle}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Partial update (JWT required) — only the title is changed here. Returns 204; the follow-up GET proves the change and the `updatedAt` stamp. Note the slug and post path are not recomputed on update."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('updatedTitle', 'Updated ' + (pm.collectionVariables.get('postTitle') || 'post'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get post by uuid — after update",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{postId}}"
+              ]
+            },
+            "description": "Re-reads the post after the PUT: the title must reflect the update and `updatedAt` must be set."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('reflects the updated title', () => {",
+                  "  pm.expect(body.title).to.eql(pm.collectionVariables.get('updatedTitle'));",
+                  "});",
+                  "pm.test('stamps the update timestamp', () => {",
+                  "  pm.expect(body.updatedAt).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Delete post — missing bearer token",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer "
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{postId}}"
+              ]
+            },
+            "description": "Deleting without credentials must be rejected with 403 \"Not authenticated\" before the post is touched. Does not reference `{{accessToken}}`, so no token is minted."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 403', () => pm.response.to.have.status(403));",
+                  "pm.test('reports the request as unauthenticated', () => {",
+                  "  pm.expect(pm.response.json().message).to.eql('Not authenticated');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Delete post — expired token",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{expiredToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{postId}}"
+              ]
+            },
+            "description": "A correctly signed token whose `exp` is in the past must be rejected as unauthenticated. The prerequest script mints it on the fly into `expiredToken`; the request does not reference `{{accessToken}}`, so the collection signer leaves it alone."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Mint an HS256 JWT that is already expired (exp/iat in the past).",
+                  "const cjs = require('crypto-js');",
+                  "const nowSec = Math.floor(Date.now() / 1000);",
+                  "const subject = pm.collectionVariables.get('jwtSubject') || 'postman-e2e';",
+                  "const b64url = (value) => cjs.enc.Base64.stringify(",
+                  "  cjs.enc.Utf8.parse(JSON.stringify(value))",
+                  ").replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');",
+                  "const header = { alg: 'HS256', typ: 'JWT' };",
+                  "const payload = {",
+                  "  exp: nowSec - 3600,",
+                  "  iat: nowSec - 7200,",
+                  "  iss: 'auth-service',",
+                  "  jti: pm.variables.replaceIn('{{$guid}}'),",
+                  "  sub: subject,",
+                  "  user: { id: subject, email: 'postman-e2e@example.com', display_name: 'Postman E2E' },",
+                  "};",
+                  "const signingInput = b64url(header) + '.' + b64url(payload);",
+                  "const signature = cjs.enc.Base64.stringify(",
+                  "  cjs.HmacSHA256(signingInput, pm.collectionVariables.get('jwtSecret'))",
+                  ").replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');",
+                  "pm.collectionVariables.set('expiredToken', signingInput + '.' + signature);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 403', () => pm.response.to.have.status(403));",
+                  "pm.test('rejects the expired token as unauthenticated', () => {",
+                  "  pm.expect(pm.response.json().message).to.eql('Not authenticated');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Delete post — token via query parameter",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{postId}}?token={{accessToken}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{postId}}"
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}"
+                }
+              ]
+            },
+            "description": "The bearer JWT is also accepted as a `token` query parameter. This request deletes the post for real (204); the post id is then soft-deleted."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Delete post — again (soft-deleted)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{postId}}"
+              ]
+            },
+            "description": "Deletion is a soft delete guarded by a conditional write: deleting the same post again must fail the condition and surface as 404. Deleting at the end of the folder also keeps repeated runs clean."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 404', () => pm.response.to.have.status(404));",
+                  "pm.test('reports the post as not found', () => {",
+                  "  pm.expect(pm.response.json().message).to.eql('The requested post was not found');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Attachments",
+      "item": [
+        {
+          "name": "Create post — attachment fixture",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"author\": \"Postman E2E\",\n  \"title\": \"{{attachmentPostTitle}}\",\n  \"content\": \"Post hosting the attachment for the e2e collection.\",\n  \"tags\": [\"e2e\"],\n  \"meta\": {\n    \"category\": \"e2e\",\n    \"description\": \"Attachment fixture created by the Postman e2e collection.\",\n    \"language\": \"en\",\n    \"keywords\": [\"attachment\", \"e2e\"],\n    \"title\": \"Attachment fixture\"\n  },\n  \"publishedAt\": \"2024-03-04T12:00:00+00:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Creates a dedicated post (unique title per run) to attach files to; the folder deletes it again at the end. The test script stores the post id from the `Location` header."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('attachmentPostTitle', 'Attachment fixture ' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 201', () => pm.response.to.have.status(201));",
+                  "const location = pm.response.headers.get('Location');",
+                  "pm.test('returns the Location header of the new post', () => {",
+                  "  pm.expect(location).to.be.a('string').and.not.empty;",
+                  "});",
+                  "if (location) {",
+                  "  pm.collectionVariables.set('attachmentPostId', location.split('/')[4]);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Add attachment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{attachmentPostId}}/attachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{attachmentPostId}}",
+                "attachments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"lorem.txt\",\n  \"data\": \"TG9yZW0gaXBzdW0gb2RvciBhbWV0LCBjb25zZWN0ZXR1ZXIgYWRpcGlzY2luZyBlbGl0Lg==\",\n  \"displayName\": \"lorem.txt\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Uploads a small base64 file to S3 and embeds its metadata into the post (JWT required). The `data` decodes to 52 bytes of text; the MIME type is guessed from the file name (`text/plain`). The test script stores the attachment id from the `Location` header."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 201', () => pm.response.to.have.status(201));",
+                  "const location = pm.response.headers.get('Location');",
+                  "pm.test('returns the Location header of the new attachment', () => {",
+                  "  pm.expect(location).to.be.a('string').and.not.empty;",
+                  "  pm.expect(location.split('/')[3]).to.eql('posts');",
+                  "  pm.expect(location.split('/')[5]).to.eql('attachments');",
+                  "});",
+                  "if (location) {",
+                  "  pm.collectionVariables.set('attachmentId', location.split('/')[6]);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Add attachment — invalid payload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{attachmentPostId}}/attachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{attachmentPostId}}",
+                "attachments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "An empty body misses the required `name` and `data` fields and must fail with the 422 validation envelope."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 422', () => pm.response.to.have.status(422));",
+                  "const body = pm.response.json();",
+                  "pm.test('returns the validation error envelope', () => {",
+                  "  pm.expect(body.status).to.eql(422);",
+                  "  pm.expect(body.id).to.be.a('string').and.not.empty;",
+                  "  pm.expect(body.errors).to.be.an('array').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get attachments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{attachmentPostId}}/attachments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{attachmentPostId}}",
+                "attachments"
+              ]
+            },
+            "description": "Lists the attachment metadata embedded in the post (public). The attachment added above must be part of the list."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 200', () => pm.response.to.have.status(200));",
+                  "const attachments = pm.response.json();",
+                  "pm.test('includes the added attachment', () => {",
+                  "  pm.expect(attachments).to.be.an('array');",
+                  "  pm.expect(attachments.some((a) => a.id === pm.collectionVariables.get('attachmentId'))).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get attachment by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{attachmentPostId}}/attachments/{{attachmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{attachmentPostId}}",
+                "attachments",
+                "{{attachmentId}}"
+              ]
+            },
+            "description": "Fetches one attachment's metadata (public): camelCase fields, the content length computed from the decoded bytes, and the public S3 URL."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('returns the attachment metadata', () => {",
+                  "  pm.expect(body.id).to.eql(pm.collectionVariables.get('attachmentId'));",
+                  "  pm.expect(body.displayName).to.eql('lorem.txt');",
+                  "  pm.expect(body.mimeType).to.eql('text/plain');",
+                  "  pm.expect(body.url.startsWith('https://')).to.be.true;",
+                  "});",
+                  "pm.test('reports the decoded content length', () => {",
+                  "  // The base64 `data` sent by \"Add attachment\" decodes to 52 bytes.",
+                  "  pm.expect(body.contentLength).to.eql(52);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get attachment by id — not found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{attachmentPostId}}/attachments/{{unknownAttachmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{attachmentPostId}}",
+                "attachments",
+                "{{unknownAttachmentId}}"
+              ]
+            },
+            "description": "An attachment uuid not embedded in the post must yield the 404 envelope. The prerequest script picks a random uuid."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('unknownAttachmentId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 404', () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test('reports the attachment as not found', () => {",
+                  "  pm.expect(body.status).to.eql(404);",
+                  "  pm.expect(body.message).to.include('was not found');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Delete attachment fixture post",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{attachmentPostId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{attachmentPostId}}"
+              ]
+            },
+            "description": "Soft-deletes the fixture post so repeated full-collection runs stay clean. The object stays in S3 — there is no attachment delete endpoint."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "jwtSecret",
+      "value": "9f4a2c8e1b7d0f3a6e5c9b2a4d7f0e1c3f8a9c7e2b1d0f5a6e4c8b9a2d7f0e1c",
+      "type": "string"
+    },
+    {
+      "key": "jwtSubject",
+      "value": "postman-e2e",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expiredToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "postTitle",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "updatedTitle",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "postId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "unknownPostId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "todayYear",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "todayMonth",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "todayDay",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "unknownSlug",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attachmentPostTitle",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attachmentPostId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attachmentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "unknownAttachmentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// The service does not issue tokens: it only validates HS256 JWTs signed",
+          "// with the shared secret (issued by the auth-service in production).",
+          "// Whenever a request references the {{accessToken}} placeholder we mint a",
+          "// fresh token on the fly so every request is self-contained. Requests",
+          "// exercising auth failure paths (empty/expired bearer) opt out by not",
+          "// referencing the variable. A manually provided token that is still",
+          "// valid is left untouched.",
+          "const wantsToken = (pm.request.headers.get('Authorization') || '').includes('{{accessToken}}')",
+          "  || (pm.request.url.query && pm.request.url.query.toString().includes('{{accessToken}}'));",
+          "const nowSec = Math.floor(Date.now() / 1000);",
+          "const subject = pm.collectionVariables.get('jwtSubject') || 'postman-e2e';",
+          "const cjs = require('crypto-js');",
+          "const b64url = (value) => cjs.enc.Base64.stringify(",
+          "  cjs.enc.Utf8.parse(JSON.stringify(value))",
+          ").replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');",
+          "const tokenValid = (token) => {",
+          "  try {",
+          "    let payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');",
+          "    payload += '='.repeat((4 - payload.length % 4) % 4);",
+          "    const claims = JSON.parse(cjs.enc.Utf8.stringify(cjs.enc.Base64.parse(payload)));",
+          "    return claims.exp > nowSec + 60;",
+          "  } catch (error) {",
+          "    return false;",
+          "  }",
+          "};",
+          "const sign = (lifetimeSeconds) => {",
+          "  const header = { alg: 'HS256', typ: 'JWT' };",
+          "  const payload = {",
+          "    exp: nowSec + lifetimeSeconds,",
+          "    iat: nowSec,",
+          "    iss: 'auth-service',",
+          "    jti: pm.variables.replaceIn('{{$guid}}'),",
+          "    sub: subject,",
+          "    user: { id: subject, email: 'postman-e2e@example.com', display_name: 'Postman E2E' },",
+          "  };",
+          "  const signingInput = b64url(header) + '.' + b64url(payload);",
+          "  const signature = cjs.enc.Base64.stringify(",
+          "    cjs.HmacSHA256(signingInput, pm.collectionVariables.get('jwtSecret'))",
+          "  ).replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');",
+          "  return signingInput + '.' + signature;",
+          "};",
+          "if (wantsToken && !tokenValid(pm.collectionVariables.get('accessToken'))) {",
+          "  pm.collectionVariables.set('accessToken', sign(3600));",
+          "}"
+        ]
+      }
+    }
+  ]
+}

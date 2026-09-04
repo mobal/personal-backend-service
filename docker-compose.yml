@@ -1,0 +1,50 @@
+services:
+  localstack:
+    # pinned: the `latest`/2026.x images require a license token since 2026;
+    # 4.14.0 is the newest community edition (matches auth-service)
+    image: localstack/localstack:4.14.0
+    environment:
+      SERVICES: ssm,dynamodb,s3
+      DEFAULT_REGION: eu-central-1
+    healthcheck:
+      # 4.14.0 reports core services as "running" once they have served
+      # traffic; accept both that and the boot-time "available" state.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health | grep -Eq '\"dynamodb\": \"(available|running)\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  app:
+    build: .
+    # The runtime image intentionally excludes dev dependencies (aws-lambda-
+    # powertools ships in the Lambda layer in production); sync the full lock
+    # here so the app and the seed script can run in the container.
+    command: >
+      sh -c "uv sync --frozen &&
+             uv run uvicorn app.api_handler:app --host 0.0.0.0 --port 8080"
+    environment:
+      APP_NAME: personal-backend-service
+      STAGE: e2e
+      ATTACHMENTS_BUCKET_NAME: attachments
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: eu-central-1
+      AWS_ENDPOINT_URL: http://localstack:4566
+      DEBUG: "true"
+      DEFAULT_TIMEZONE: Europe/Budapest
+      JWT_SECRET_SSM_PARAM_NAME: /e2e/secrets/jwt
+      RATE_LIMIT_DURATION_IN_SECONDS: "60"
+      RATE_LIMIT_REQUESTS: "60"
+      RATE_LIMITING: "true"
+      SSH_HOST: localhost
+      SSH_PASSWORD: ci
+      SSH_USERNAME: ci
+      SSH_ROOT_PATH: /root
+    depends_on:
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
