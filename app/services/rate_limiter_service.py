@@ -1,8 +1,8 @@
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import boto3
-import pendulum
 from aws_lambda_powertools import Logger
 
 from app.settings import Settings
@@ -32,7 +32,7 @@ class RateLimiterService:
         self._window_duration = self._settings.rate_limit_duration_in_seconds
 
     def check_rate_limit(self, client_id: str, endpoint: str) -> RateLimitResult:
-        now = pendulum.now().timestamp()
+        now = datetime.now(UTC).timestamp()
         now_dec = Decimal(str(now))
         window_end = now + self._window_duration
         ttl_dec = Decimal(str(int(window_end)))

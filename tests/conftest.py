@@ -1,10 +1,10 @@
 import base64
 import os
 import uuid
+from datetime import UTC, datetime
 from random import randint
 
 import boto3
-import pendulum
 import pytest
 from moto import mock_aws
 
@@ -39,7 +39,7 @@ def settings() -> Settings:
 
 @pytest.fixture
 def attachment(test_data: bytes, aws_default_region: str) -> Attachment:
-    now = pendulum.now()
+    now = datetime.now(UTC)
     file_name = "lorem.txt"
     return Attachment(
         id=str(uuid.uuid4()),
@@ -148,16 +148,16 @@ def jwt_secret_ssm_param_value() -> str:
 @pytest.fixture
 def make_post(faker):
     def make() -> Post:
-        now = pendulum.now()
+        now = datetime.now(UTC)
         slug = faker.slug()
         return Post(
             id=str(uuid.uuid4()),
             author=faker.name(),
             content=faker.text(),
-            post_path=f"{now.format('YYYY/MM/DD')}/{slug}",
-            created_at=now.to_iso8601_string(),
+            post_path=f"{now.strftime('%Y/%m/%d')}/{slug}",
+            created_at=now.isoformat(),
             deleted_at=None,
-            published_at=now.to_iso8601_string(),
+            published_at=now.isoformat(),
             slug=slug,
             tags=faker.words(randint(1, 6)),
             title=faker.sentence(),
@@ -215,7 +215,7 @@ def user_dict() -> dict[str, str | None]:
         "id": str(uuid.uuid4()),
         "email": "info@netcode.hu",
         "display_name": "root",
-        "created_at": pendulum.now().to_iso8601_string(),
+        "created_at": datetime.now(UTC).isoformat(),
         "deleted_at": None,
         "updated_at": None,
     }

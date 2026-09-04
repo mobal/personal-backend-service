@@ -1,7 +1,7 @@
 import random
 import uuid
+from datetime import UTC, datetime
 
-import pendulum
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
@@ -156,7 +156,7 @@ class TestPostsApi:
         response = test_client.get(f"{BASE_URL}/archive")
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.json()[pendulum.now().format("YYYY-MM")] == len(posts)
+        assert response.json()[datetime.now(UTC).strftime("%Y-%m")] == len(posts)
 
     def test_successfully_get_empty_archive(self, test_client: TestClient, posts_table):
         for item in posts_table.scan()["Items"]:
@@ -170,9 +170,9 @@ class TestPostsApi:
     def test_successfully_get_post_by_post_path(
         self, posts: list[Post], test_client: TestClient
     ):
-        now = pendulum.now()
+        now = datetime.now(UTC)
         response = test_client.get(
-            f"{BASE_URL}/{now.format('YYYY/MM/DD')}/{posts[0].slug}"
+            f"{BASE_URL}/{now.strftime('%Y/%m/%d')}/{posts[0].slug}"
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -196,13 +196,13 @@ class TestPostsApi:
         self, test_client: TestClient
     ):
         random_timestamp = random.uniform(
-            pendulum.parse("1970-01-01").timestamp(),
-            pendulum.parse("2100-12-31").timestamp(),
+            datetime(1970, 1, 1, tzinfo=UTC).timestamp(),
+            datetime(2100, 12, 31, tzinfo=UTC).timestamp(),
         )
-        random_date = pendulum.from_timestamp(random_timestamp)
+        random_date = datetime.fromtimestamp(random_timestamp, UTC)
 
         response = test_client.get(
-            f"{BASE_URL}/{random_date.format('YYYY/MM/DD')}/slug"
+            f"{BASE_URL}/{random_date.strftime('%Y/%m/%d')}/slug"
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
         assert {

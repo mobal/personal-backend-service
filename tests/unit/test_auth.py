@@ -1,8 +1,8 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 
 import jwt
-import pendulum
 import pytest
 from fastapi import HTTPException, status
 from fastapi.requests import Request
@@ -182,10 +182,10 @@ class TestJWTAuth:
         jwt_bearer: JWTBearer,
         settings: Settings,
     ):
-        now = pendulum.now()
+        now = datetime.now(UTC)
         expired_token = JWTToken(
-            exp=now.subtract(years=1).int_timestamp,
-            iat=now.int_timestamp,
+            exp=int((now - timedelta(days=365)).timestamp()),
+            iat=int(now.timestamp()),
             iss="https://netcode.hu",
             jti=str(uuid.uuid4()),
             sub="test-user-id",
@@ -193,7 +193,7 @@ class TestJWTAuth:
                 "id": "test-user-id",
                 "email": "test@example.com",
                 "display_name": "test",
-                "created_at": now.to_iso8601_string(),
+                "created_at": now.isoformat(),
                 "deleted_at": None,
                 "updated_at": None,
             },

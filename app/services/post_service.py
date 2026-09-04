@@ -1,13 +1,12 @@
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 import bleach
 import markdown
-import pendulum
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Attr
 from botocore.exceptions import ClientError
-from pendulum import DateTime
 from slugify import slugify
 
 from app.exceptions import PostAlreadyExistsException, PostNotFoundException
@@ -93,7 +92,7 @@ class PostService:
         return PostResponse(**post_data)
 
     def create_post(self, data: dict[str, Any]) -> Post:
-        now = pendulum.now()
+        now = datetime.now(UTC)
         if self._post_repository.get_post_by_title(
             data["title"], FilterExpressions.NOT_DELETED
         ):
@@ -103,7 +102,7 @@ class PostService:
             {
                 "id": str(uuid.uuid4()),
                 "post_path": post_path,
-                "created_at": now.to_iso8601_string(),
+                "created_at": now.isoformat(),
                 "deleted_at": None,
                 "slug": slugify(data["title"]),
                 "updated_at": None,
@@ -113,7 +112,7 @@ class PostService:
         return Post(**data)
 
     def delete_post(self, post_uuid: str):
-        now = pendulum.now().to_iso8601_string()
+        now = datetime.now(UTC).isoformat()
         try:
             self._post_repository.update_post(
                 post_uuid,
@@ -149,7 +148,7 @@ class PostService:
         )
 
     def update_post(self, post_uuid: str, update_data: dict[str, Any]):
-        update_data["updated_at"] = pendulum.now().to_iso8601_string()
+        update_data["updated_at"] = datetime.now(UTC).isoformat()
         try:
             self._post_repository.update_post(
                 post_uuid,
@@ -163,7 +162,7 @@ class PostService:
         self._logger.info(f"Post updated: {post_uuid=}")
 
     def _sort_dates_and_group_by_month(
-        self, dates: list[DateTime], max_results: int = 100
+        self, dates: list[datetime], max_results: int = 100
     ) -> dict[str, int]:
         sorted_dates = sorted(dates)
         archive = {}
@@ -200,7 +199,7 @@ class PostService:
         if not posts:
             return {}
 
-        dates = [pendulum.parse(post["published_at"]) for post in posts]
+        dates = [datetime.fromisoformat(post["published_at"]) for post in posts]
         return self._sort_dates_and_group_by_month(dates, max_results) if dates else {}
 
     def get_archive_paginated(
@@ -222,7 +221,7 @@ class PostService:
                 "last_evaluated_key": None,
             }
 
-        dates = [pendulum.parse(post["published_at"]) for post in posts]
+        dates = [datetime.fromisoformat(post["published_at"]) for post in posts]
         archive = (
             self._sort_dates_and_group_by_month(dates, max_results) if dates else {}
         )

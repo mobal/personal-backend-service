@@ -1,20 +1,20 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import jwt
-import pendulum
 
 
 def generate_jwt_token(
     jwt_secret: str, user_dict: dict[str, str | None], exp: int = 1
 ) -> tuple[str, str]:
-    iat = pendulum.now()
-    exp = iat.add(hours=exp)
+    iat = datetime.now(UTC)
+    exp = iat + timedelta(hours=exp)
     token_id = str(uuid.uuid4())
     return (
         jwt.encode(
             {
-                "exp": exp.int_timestamp,
-                "iat": iat.int_timestamp,
+                "exp": int(exp.timestamp()),
+                "iat": int(iat.timestamp()),
                 "jti": token_id,
                 "sub": user_dict["id"],
                 "user": user_dict,

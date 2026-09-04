@@ -1,7 +1,7 @@
 import uuid
+from datetime import datetime
 from unittest.mock import ANY
 
-import pendulum
 import pytest
 from botocore.exceptions import ClientError
 from fastapi import status
@@ -273,7 +273,10 @@ class TestPostService:
 
         result = post_service.get_archive()
 
-        assert result.get(pendulum.parse(posts[0].published_at).format("YYYY-MM")) == 1
+        assert (
+            result.get(datetime.fromisoformat(posts[0].published_at).strftime("%Y-%m"))
+            == 1
+        )
 
     def test_successfully_get_archive_and_return_none(
         self,
@@ -359,7 +362,7 @@ class TestPostService:
             PostRepository, "get_post_by_post_path", return_value=posts[0].model_dump()
         )
 
-        dt = pendulum.parse(posts[0].published_at)
+        dt = datetime.fromisoformat(posts[0].published_at)
         post_path = f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}"
         result = post_service.get_by_post_path(post_path)
 
@@ -376,7 +379,7 @@ class TestPostService:
     ):
         mocker.patch.object(PostRepository, "get_post_by_post_path", return_value=None)
 
-        dt = pendulum.parse(posts[0].published_at)
+        dt = datetime.fromisoformat(posts[0].published_at)
         post_path = f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}"
         with pytest.raises(PostNotFoundException) as excinfo:
             post_service.get_by_post_path(post_path)
@@ -495,11 +498,11 @@ class TestPostService:
         post_service: PostService,
     ):
         dates = [
-            pendulum.parse("2025-01-15T12:00:00"),
-            pendulum.parse("2025-01-20T12:00:00"),
-            pendulum.parse("2025-02-10T12:00:00"),
-            pendulum.parse("2025-02-15T12:00:00"),
-            pendulum.parse("2025-02-20T12:00:00"),
+            datetime.fromisoformat("2025-01-15T12:00:00"),
+            datetime.fromisoformat("2025-01-20T12:00:00"),
+            datetime.fromisoformat("2025-02-10T12:00:00"),
+            datetime.fromisoformat("2025-02-15T12:00:00"),
+            datetime.fromisoformat("2025-02-20T12:00:00"),
         ]
 
         result = post_service._sort_dates_and_group_by_month(dates)

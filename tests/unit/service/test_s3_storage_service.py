@@ -1,6 +1,6 @@
 import uuid
+from datetime import UTC, datetime
 
-import pendulum
 import pytest
 from botocore.exceptions import ClientError
 from fastapi import status
@@ -161,7 +161,7 @@ class TestS3StorageService:
         s3_resource,
         s3_storage_service: S3StorageService,
     ):
-        object_body = pendulum.now().to_iso8601_string()
+        object_body = datetime.now(UTC).isoformat()
         object_key = str(uuid.uuid4())
 
         s3_storage_service.put_object(

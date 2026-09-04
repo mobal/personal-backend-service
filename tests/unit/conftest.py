@@ -1,7 +1,7 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import boto3
-import pendulum
 import pytest
 from boto3.dynamodb.conditions import Attr, ConditionBase
 
@@ -42,10 +42,10 @@ def filter_expression() -> ConditionBase:
 
 @pytest.fixture
 def jwt_token(user_dict: dict[str, str | None]) -> JWTToken:
-    now = pendulum.now()
+    now = datetime.now(UTC)
     return JWTToken(
-        exp=now.add(years=1).int_timestamp,
-        iat=now.int_timestamp,
+        exp=int((now + timedelta(days=365)).timestamp()),
+        iat=int(now.timestamp()),
         iss="https://netcode.hu",
         jti=str(uuid.uuid4()),
         sub=user_dict["id"],

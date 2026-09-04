@@ -13,7 +13,6 @@ dependencies = [
     "httpx2-pytest>=1.0.1",
     "mangum>=0.21.0",
     "markdown>=3.7",
-    "pendulum>=3.2.0",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
     "pyjwt>=2.10.1",

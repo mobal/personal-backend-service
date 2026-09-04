@@ -1,8 +1,8 @@
 import uuid
 from collections import Counter
+from datetime import UTC, datetime
 from random import randint
 
-import pendulum
 import pytest
 from boto3.dynamodb.conditions import Attr, ConditionBase
 from botocore.exceptions import ClientError
@@ -114,8 +114,8 @@ class TestPostRepository:
         post_repository: PostRepository,
         posts_table,
     ):
-        now = pendulum.now()
-        data = {"content": "Updated content", "updated_at": now.to_iso8601_string()}
+        now = datetime.now(UTC)
+        data = {"content": "Updated content", "updated_at": now.isoformat()}
 
         post_repository.update_post(posts[0].id, data, filter_expression)
 

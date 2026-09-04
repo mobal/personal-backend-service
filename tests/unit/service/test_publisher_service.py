@@ -1,6 +1,6 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 
-import pendulum
 import pytest
 from asyncssh import Error as SSHError
 from fastapi import status
@@ -40,7 +40,7 @@ class TestPublisherService:
         publisher_service: PublisherService,
         sshfs_storage_service: SSHFSStorageService,
     ):
-        posts[0].published_at = pendulum.now().add(days=1).to_iso8601_string()
+        posts[0].published_at = (datetime.now(UTC) + timedelta(days=1)).isoformat()
         mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
         mocker.patch.object(SSHFSStorageService, "write")
 

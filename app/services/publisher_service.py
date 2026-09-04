@@ -1,6 +1,6 @@
 import os
+from datetime import UTC, datetime
 
-import pendulum
 from asyncssh import Error as SSHError
 from aws_lambda_powertools import Logger
 
@@ -25,7 +25,9 @@ class PublisherService:
     def publish(self, post_uuid: str) -> None:
         self._logger.info(f"Publishing post with id={post_uuid}")
         post = self._post_service.get_post_by_uuid(post_uuid)
-        if post.published_at and pendulum.parse(post.published_at).is_past():
+        if post.published_at and datetime.fromisoformat(
+            post.published_at
+        ) < datetime.now(UTC):
             self._write(
                 self._settings.ssh_host,
                 self._settings.ssh_username,

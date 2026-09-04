@@ -1,9 +1,8 @@
 import uuid
 from contextvars import ContextVar
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import httpx2
-import pendulum
 from aws_lambda_powertools import Logger
 from fastapi import status
 from fastapi.encoders import jsonable_encoder
@@ -65,7 +64,7 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
     async def _is_banned_client_ip(self, client_ip: str) -> bool:
         if client_ip in country_cache:
             cached_is_banned, cached_time = country_cache[client_ip]
-            if (pendulum.now() - cached_time) < COUNTRY_CACHE_TTL:
+            if (datetime.now(UTC) - cached_time) < COUNTRY_CACHE_TTL:
                 logger.debug(f"Using cached country check result for {client_ip}")
                 return cached_is_banned
 
@@ -82,10 +81,10 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
                         f"Client has restricted "
                         f"country_code={country_code} with {client_ip=}"
                     )
-                    country_cache[client_ip] = (True, pendulum.now())
+                    country_cache[client_ip] = (True, datetime.now(UTC))
                     return True
                 else:
-                    country_cache[client_ip] = (False, pendulum.now())
+                    country_cache[client_ip] = (False, datetime.now(UTC))
                     return False
             except HTTPError as exc:
                 logger.warning(f"HTTP exception for {exc.request.url}")
