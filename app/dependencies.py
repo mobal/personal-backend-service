@@ -3,6 +3,8 @@ from typing import Annotated
 
 import boto3
 from fastapi import Depends, Request
+from fastapi.security import HTTPBearer
+from fastapi.security.http import HTTPAuthorizationCredentials
 
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken
@@ -91,9 +93,24 @@ def get_rate_limiter_service(
     )
 
 
+# auto_error=False: this scheme only advertises the security requirement in
+# OpenAPI; JWTBearer below does the actual parsing/validation and raises 403.
+_bearer_security = HTTPBearer(
+    auto_error=False,
+    bearerFormat="JWT",
+    description=(
+        "JWT (HS256) for this service, sent as `Authorization: Bearer "
+        "<token>` or as the `?token=<token>` query parameter."
+    ),
+)
+
+
 def get_jwt_bearer(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
+    _security: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(_bearer_security)
+    ] = None,
 ) -> JWTToken:
     """FastAPI dependency that validates JWT and returns the decoded token."""
     bearer = JWTBearer(jwt_secret=settings.jwt_secret)

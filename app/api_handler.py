@@ -28,7 +28,53 @@ if settings.debug:
 
 logger = Logger()
 
-app = FastAPI(debug=settings.debug, title="PersonalBackendApplication", version="1.0.0")
+OPENAPI_TAGS = [
+    {
+        "name": "posts",
+        "description": (
+            "Markdown blog posts. Read endpoints are public; create, update "
+            "and delete require a valid JWT."
+        ),
+    },
+    {
+        "name": "attachments",
+        "description": (
+            "Attachments nested under a post (`/posts/{postUuid}/attachments`). "
+            "Adding an attachment requires a valid JWT."
+        ),
+    },
+    {
+        "name": "system",
+        "description": "Operational endpoints that are not part of the v1 API.",
+    },
+]
+
+app = FastAPI(
+    debug=settings.debug,
+    title="Personal Backend Service",
+    summary="Serverless personal blog backend",
+    description=(
+        "REST API for the personal blog: posts are stored as Markdown in "
+        "DynamoDB and rendered to HTML on read, attachments live in S3 with "
+        "public-read access, and published posts are pushed to a remote "
+        "server over SFTP.\n\n"
+        "Conventions:\n\n"
+        "- All v1 routes are prefixed with `/api/v1` and exchange JSON in "
+        "camelCase.\n"
+        "- Mutating and deleting a resource requires a JWT (HS256), sent as "
+        "`Authorization: Bearer <token>` or as `?token=<token>`.\n"
+        "- Every error response uses the same envelope "
+        "`{status, id, message}` (validation errors add an `errors` list).\n"
+        "- The response of every request carries an `X-Correlation-ID` "
+        "header.\n"
+    ),
+    version="1.0.0",
+    license_info={
+        "name": "Apache-2.0",
+        "identifier": "Apache-2.0",
+    },
+    openapi_tags=OPENAPI_TAGS,
+)
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(ClientValidationMiddleware)
 app.add_middleware(
@@ -41,7 +87,15 @@ app.add_middleware(GZipMiddleware)
 app.include_router(api_v1_router)
 
 
-@app.get("/health")
+@app.get(
+    "/health",
+    tags=["system"],
+    summary="Liveness probe",
+    description=(
+        'Returns HTTP 200 with `{"status": "healthy"}` while the app is '
+        "up. Used by container healthchecks and load balancer target groups."
+    ),
+)
 def health_check() -> dict[str, str]:
     return {"status": "healthy"}
 
