@@ -37,12 +37,13 @@ A production-grade personal blog backend. Posts are stored in **DynamoDB**, rend
 | Object Storage | S3 (public-read attachments) |
 | Auth | JWT (HS256, header or query param) |
 | Markdown | python-markdown |
-| Date/Time | Pendulum |
+| Date/Time | Python stdlib `datetime` |
 | Validation | Pydantic v2 (camelCase alias) |
-| Linter | pycodestyle |
-| Type Checking | mypy |
+| API Docs | OpenAPI 3.1 (auto-generated) |
+| Lint / Format | Ruff |
+| Type Checking | ty |
 | Security | Bandit |
-| CI | GitHub Actions + SonarCloud |
+| CI | GitHub Actions (pytest, SonarQube, Newman e2e) |
 | Deployment | Terraform (AWS) |
 
 ---
@@ -94,6 +95,47 @@ All routes are prefixed with `/api/v1`.
 | DELETE | `/posts/{uuid}` | JWT | Soft-delete post |
 | GET | `/posts/archive` | No | Archive grouped by year-month |
 | GET | `/posts/{year}/{month}/{day}/{slug}` | No | Get post by date path + slug |
+
+---
+
+## API Documentation (OpenAPI)
+
+The FastAPI app serves an auto-generated OpenAPI 3.1 document describing
+every endpoint:
+
+| Path | What |
+|---|---|
+| `/openapi.json` | Machine-readable schema (JSON) |
+| `/docs` | Interactive Swagger UI |
+| `/redoc` | ReDoc UI |
+
+The schema is enriched with:
+
+- **App metadata** - title, version, Apache-2.0 license and the API
+  conventions (camelCase JSON, error envelope, correlation header) in the
+  top-level `description`.
+- **Tag groups** - `posts`, `attachments`, and `system` (`/health`).
+- **Authentication** - protected operations declare the `HTTPBearer`
+  security scheme (`Authorization: Bearer <token>` or `?token=<token>`),
+  documented under `components.securitySchemes`.
+- **Error responses** - every possible `4xx` references the
+  `ErrorResponse` / `ValidationErrorResponse` schemas, matching the real
+  error body instead of a generic framework model.
+- **Descriptions & examples** - per-operation summaries, path/query
+  parameter examples, and full-body request examples on `CreatePost`,
+  `UpdatePost` and `CreateAttachment`.
+
+To inspect or export the schema while developing:
+
+```bash
+uv run uvicorn app.api_handler:app --port 8080   # terminal 1
+curl -s http://localhost:8080/openapi.json | jq . > openapi.json
+```
+
+The paths above are served wherever the app runs - local uvicorn as well as
+the Lambda/API Gateway deployment.
+
+---
 
 ### Attachments
 
@@ -210,25 +252,34 @@ Lambda layer is built inside a Docker container (`public.ecr.aws/sam/build-pytho
 
 ## CI/CD Pipeline (GitHub Actions)
 
-`.github/workflows/workflow.yml` runs on every push:
+`.github/workflows/ci.yml` runs on every push. The `build-and-test` job
+mirrors the Makefile targets; the `newman` job (last gate, needs
+`build-and-test`) replays the Docker end-to-end suite.
 
 ```mermaid
 flowchart LR
-    A["Checkout"] --> B["Cache .venv"]
-    B --> C["Setup Python 3.14"]
-    C --> D["Install uv"]
-    D --> E["uv sync --locked"]
-    E --> F["pycodestyle"]
-    E --> G["Bandit"]
-    E --> H["pytest + coverage XML"]
-    H --> I["SonarCloud scan"]
+    A["Checkout"] --> B["Setup Python 3.14"]
+    B --> C["Install uv"]
+    C --> D["uv sync --locked"]
+    D --> E["Bandit"]
+    E --> F["ruff check + format"]
+    F --> G["pytest + coverage XML"]
+    G --> H["SonarQube scan"]
+    H --> I["docker compose e2e (Newman)"]
 ```
 
-Stages:
-- **pycodestyle** (strict mode, ignores E501/W503)
+Stages (`build-and-test`):
 - **Bandit** (high severity, high confidence)
-- **pytest** (branch coverage, HTML + XML report)
-- **SonarCloud** (coverage upload, Python analysis)
+- **ruff** (lint + format check)
+- **pytest** (branch coverage; XML report uploaded to Codecov/SonarQube)
+- **SonarQube** (Python analysis + coverage)
+
+Docker end-to-end (`newman` job):
+- Builds the app image and starts LocalStack (DynamoDB, SSM, S3),
+  seeded by `scripts/init_localstack.py`
+- Starts the app gated on LocalStack's healthcheck and runs the Postman
+  collection with Newman (`/health`, post CRUD, archive, auth failures,
+  attachments)
 
 ---
 
@@ -251,10 +302,13 @@ pytest tests/unit
 pytest tests/integration
 
 # Lint
-uv run pycodestyle --ignore=E501,W503 app/ tests/
+uv run ruff check app/ tests/
+
+# Format
+uv run ruff format --check app/ tests/
 
 # Type check
-uv run mypy app/ --explicit-package-bases
+uv run ty check
 
 # Security scan
 uv run bandit --severity-level high --confidence-level high -r app/
@@ -266,61 +320,15 @@ uv run bandit --severity-level high --confidence-level high -r app/
 
 | Target | Description |
 |---|---|
-| `all` | black + pycodestyle + sort + test |
-| `black` | Format code |
-| `flake` | Remove unused imports/variables |
+| `all` | bandit + format + lint + test |
+| `build` | Build Lambda deployment package + layer (Docker) |
+| `format` | `ruff format app/ tests/` |
 | `install` | `uv sync` |
-| `mypy` | Type checking |
-| `pycodestyle` | Lint |
-| `serve` | `uvicorn app.api_handler:app` |
-| `sort` | isort |
-| `test` | pytest with 90% coverage floor |
-| `unit-test` | Tests unit only |
-| `integration-test` | Tests integration only |
+| `lint` | `ruff check app/ tests/ --fix` |
+| `test` | pytest with branch coverage (DynamoDB/SSM/S3 via moto) |
+| `tflint` | Terraform lint (`infrastructure/`) |
 | `bandit` | Security scan |
-| `upgrade` | `uv sync --upgrade` |
-
-```makefile
-all: black flake pycodestyle sort test
-
-black:
-	uv run -m black --verbose ./
-
-flake:
-	uv run -m autoflake --in-place --recursive \
-	  --remove-all-unused-imports --remove-unused-variables \
-	  app/*.py tests/*.py
-
-install:
-	uv sync
-
-mypy:
-	uv run -m mypy app/ --explicit-package-bases
-
-pycodestyle:
-	uv run -m pycodestyle --ignore=E501,W503 app/ tests/
-
-serve:
-	uv run -m uvicorn app.api_handler:app
-
-sort:
-	uv run -m isort --atomic app/ tests/
-
-test:
-	uv run -m pytest --cov-fail-under=90
-
-unit-test:
-	uv run -m pytest tests/unit
-
-integration-test:
-	uv run -m pytest tests/integration
-
-bandit:
-	uv run -m bandit --severity-level high --confidence-level high -r app/ -vvv
-
-upgrade:
-	uv sync --upgrade
-```
+| `ty` | Static type check |
 
 ---
 
@@ -329,35 +337,38 @@ upgrade:
 ```
 app/
 ├── api_handler.py          # FastAPI app, Mangum handler, error handlers
-├── settings.py             # Pydantic Settings (23 env vars)
-├── jwt_bearer.py           # JWT auth (Bearer header + query param fallback)
-├── middlewares.py          # Correlation ID, geo-block, rate limiting
+├── dependencies.py         # DI providers (services, repositories, JWT)
+├── settings.py             # Pydantic settings (env vars + SSM secrets)
+├── jwt_bearer.py           # JWT auth (Bearer header + token query param)
+├── middlewares.py          # Correlation ID, geo-block (country.is), rate limiting
 ├── exceptions.py           # PostNotFoundException, AttachmentNotFoundException, etc.
 ├── api/
 │   └── v1/
-│       ├── api.py          # Router mount
+│       ├── api.py          # /api/v1 router mount (posts, attachments)
 │       └── routers/
-│           ├── posts_router.py        # 7 post endpoints
-│           └── attachments_router.py  # 3 attachment endpoints
+│           ├── posts_router.py        # 7 post endpoints (OpenAPI annotated)
+│           └── attachments_router.py  # 3 attachment endpoints (OpenAPI annotated)
 ├── models/
 │   ├── auth.py             # JWTToken model
 │   ├── post.py             # Post, Attachment, Meta models
-│   ├── response.py         # Post + Page response models
+│   ├── response.py         # API envelope models (Post, Page, ErrorResponse)
 │   └── camel_model.py      # CamelCase alias generator
 ├── schemas/
-│   ├── post_schema.py      # CreatePost, UpdatePost
-│   └── attachment_schema.py # CreateAttachment
+│   ├── post_schema.py      # CreatePost, UpdatePost (descriptions + examples)
+│   └── attachment_schema.py # CreateAttachment (descriptions + examples)
 ├── services/
-│   ├── post_service.py     # Business logic (CRUD, archive, markdown)
-│   ├── attachment_service.py # S3 upload + post attachment link
-│   ├── publisher_service.py  # SFTP publish via SSHFS
-│   └── storage_service.py    # S3 CRUD wrapper
+│   ├── post_service.py         # Business logic (CRUD, archive, markdown)
+│   ├── attachment_service.py   # S3 upload + post attachment link
+│   ├── publisher_service.py    # SFTP publish via SSHFS
+│   ├── rate_limiter_service.py # Per-IP sliding-window rate limiting
+│   ├── s3_storage_service.py   # S3 CRUD wrapper
+│   └── sshfs_storage_service.py# SSHFS storage wrapper
 └── repositories/
     └── post_repository.py  # DynamoDB data access
 
 tests/
 ├── unit/
-│   ├── service/            # Unit tests for each service
+│   ├── service/            # Unit tests per service
 │   ├── repository/         # PostRepository tests
 │   └── test_auth.py        # JWT auth tests
 └── integration/
@@ -366,7 +377,9 @@ tests/
 
 terraform/*.tf              # Infra: API Gateway, Lambda, DynamoDB, S3, IAM
 
-.github/workflows/          # CI: pycodestyle, Bandit, pytest, SonarCloud
+.github/workflows/ci.yml    # CI: Bandit, Ruff, pytest, SonarQube, Newman e2e
+postman/                    # Newman e2e collection
+scripts/                    # LocalStack seeding, Lambda build/packaging
 ```
 
 ---
