@@ -1,6 +1,4 @@
 import uuid
-from collections.abc import Sequence
-from typing import Any
 
 import uvicorn
 from aws_lambda_powertools import Logger
@@ -19,7 +17,7 @@ from app.middlewares import (
     CorrelationIdMiddleware,
     RateLimitingMiddleware,
 )
-from app.models.camel_model import CamelModel
+from app.models.response import ErrorResponse, ValidationErrorResponse
 from app.services.rate_limiter_service import RateLimiterService
 from app.settings import Settings
 
@@ -50,16 +48,6 @@ def health_check() -> dict[str, str]:
 
 handler = Mangum(app)
 handler = logger.inject_lambda_context(handler, clear_state=True)
-
-
-class ErrorResponse(CamelModel):
-    status: int
-    id: uuid.UUID
-    message: str
-
-
-class ValidationErrorResponse(ErrorResponse):
-    errors: Sequence[Any]
 
 
 @app.exception_handler(BotoCoreError)

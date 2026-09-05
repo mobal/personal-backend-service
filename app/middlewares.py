@@ -12,6 +12,7 @@ from httpx2 import HTTPError
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp
 
+from app.models.response import ErrorResponse
 from app.services.rate_limiter_service import RateLimiterService, RateLimitResult
 from app.settings import Settings
 
@@ -45,8 +46,6 @@ class ClientValidationMiddleware(BaseHTTPMiddleware):
             client_ip
         )
         if is_banned:
-            from app.api_handler import ErrorResponse
-
             if client_ip not in banned_hosts:
                 banned_hosts.append(client_ip)
             return JSONResponse(

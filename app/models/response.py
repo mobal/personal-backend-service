@@ -1,3 +1,7 @@
+import uuid
+from collections.abc import Sequence
+from typing import Any
+
 from app.models.camel_model import CamelModel
 from app.models.post import Meta
 
@@ -28,3 +32,17 @@ class Post(CamelModel):
 class Page(CamelModel):
     exclusive_start_key: str | None = None
     posts: list[Post]
+
+
+class ErrorResponse(CamelModel):
+    """Standard error envelope returned by all error handlers."""
+
+    status: int
+    id: uuid.UUID
+    message: str
+
+
+class ValidationErrorResponse(ErrorResponse):
+    """Error envelope for request validation failures (HTTP 422)."""
+
+    errors: Sequence[Any]
