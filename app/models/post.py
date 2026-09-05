@@ -1,4 +1,6 @@
-from pydantic import BaseModel, computed_field, conlist, constr
+from typing import Annotated
+
+from pydantic import BaseModel, Field, computed_field, conlist, constr
 
 from app.models.camel_model import CamelModel
 
@@ -23,11 +25,41 @@ class Attachment(CamelModel):
 
 
 class Meta(BaseModel):
-    category: str
-    description: str
-    language: str
-    keywords: conlist(item_type=str, min_length=1)
-    title: str
+    category: Annotated[
+        str,
+        Field(
+            description="Section of the blog the post belongs to",
+            examples=["tech"],
+        ),
+    ]
+    description: Annotated[
+        str,
+        Field(
+            description="One-paragraph summary of the post, used in listings and feeds",
+            examples=["Working notes on the Analytical Engine."],
+        ),
+    ]
+    language: Annotated[
+        str,
+        Field(
+            description="Language of the post",
+            examples=["en"],
+        ),
+    ]
+    keywords: Annotated[
+        conlist(item_type=str, min_length=1),
+        Field(
+            description="Search keywords describing the post",
+            examples=[["engine", "notes"]],
+        ),
+    ]
+    title: Annotated[
+        str,
+        Field(
+            description="SEO title of the page; may differ from the post title",
+            examples=["Notes on the Analytical Engine"],
+        ),
+    ]
 
 
 class Post(CamelModel):
