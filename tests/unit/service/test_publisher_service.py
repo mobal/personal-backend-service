@@ -26,11 +26,16 @@ class TestPublisherService:
     ):
         mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
         mocker.patch.object(SSHFSStorageService, "write")
+        update_state = mocker.patch.object(PostService, "update_publish_state")
 
         publisher_service.publish(posts[0].id)
 
         post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         sshfs_storage_service.write.assert_called_once()
+        assert [call.args[1] for call in update_state.call_args_list] == [
+            "publishing",
+            "published",
+        ]
 
     def test_publish_future_post(
         self,
@@ -43,11 +48,13 @@ class TestPublisherService:
         posts[0].published_at = (datetime.now(UTC) + timedelta(days=1)).isoformat()
         mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
         mocker.patch.object(SSHFSStorageService, "write")
+        update_state = mocker.patch.object(PostService, "update_publish_state")
 
         publisher_service.publish(posts[0].id)
 
         post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         sshfs_storage_service.write.assert_not_called()
+        update_state.assert_not_called()
 
     def test_fail_to_publish_due_to_ssh_error(
         self,
@@ -61,6 +68,7 @@ class TestPublisherService:
         mocker.patch.object(
             SSHFSStorageService, "write", side_effect=SSHError(1, ERROR_MESSAGE)
         )
+        update_state = mocker.patch.object(PostService, "update_publish_state")
 
         with pytest.raises(PublishException) as excinfo:
             publisher_service.publish(posts[0].id)
@@ -70,6 +78,10 @@ class TestPublisherService:
         assert excinfo.value.detail == ERROR_MESSAGE
         post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         sshfs_storage_service.write.assert_called_once()
+        assert [call.args[1] for call in update_state.call_args_list] == [
+            "publishing",
+            "failed",
+        ]
 
     def test_fail_to_publish_due_to_os_error(
         self,
@@ -83,6 +95,7 @@ class TestPublisherService:
         mocker.patch.object(
             SSHFSStorageService, "write", side_effect=OSError(ERROR_MESSAGE)
         )
+        update_state = mocker.patch.object(PostService, "update_publish_state")
 
         with pytest.raises(PublishException) as excinfo:
             publisher_service.publish(posts[0].id)
@@ -92,6 +105,10 @@ class TestPublisherService:
         assert excinfo.value.detail == ERROR_MESSAGE
         post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         sshfs_storage_service.write.assert_called_once()
+        assert [call.args[1] for call in update_state.call_args_list] == [
+            "publishing",
+            "failed",
+        ]
 
     def test_fail_to_publish_due_to_null_published_at(
         self,
@@ -121,8 +138,10 @@ class TestPublisherService:
 
         mocker.patch.object(PostService, "get_post_by_uuid", return_value=post)
         mock_write = mocker.patch.object(SSHFSStorageService, "write")
+        update_state = mocker.patch.object(PostService, "update_publish_state")
 
         publisher_service.publish(post.id)
 
         post_service.get_post_by_uuid.assert_called_once_with(post.id)
         mock_write.assert_not_called()
+        update_state.assert_not_called()

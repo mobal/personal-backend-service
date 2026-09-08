@@ -28,13 +28,22 @@ class PublisherService:
         if post.published_at and datetime.fromisoformat(
             post.published_at
         ) < datetime.now(UTC):
-            self._write(
-                self._settings.ssh_host,
-                self._settings.ssh_username,
-                self._settings.ssh_password,
-                post.content.encode("utf-8"),
-                f"{post.id}.md",
-            )
+            attempted_at = datetime.now(UTC).isoformat()
+            self._post_service.update_publish_state(post.id, "publishing", attempted_at)
+            try:
+                self._write(
+                    self._settings.ssh_host,
+                    self._settings.ssh_username,
+                    self._settings.ssh_password,
+                    post.content.encode("utf-8"),
+                    f"{post.id}.md",
+                )
+            except PublishException as exc:
+                self._post_service.update_publish_state(
+                    post.id, "failed", attempted_at, str(exc.detail)
+                )
+                raise
+            self._post_service.update_publish_state(post.id, "published", attempted_at)
 
     def _write(self, host: str, username: str, password: str, data: bytes, path: str):
         abs_path = os.path.join(self._settings.ssh_root_path, path)
