@@ -159,6 +159,9 @@ class PostService:
         )
 
     def update_post(self, post_uuid: str, update_data: dict[str, Any]):
+        if "title" in update_data:
+            self._prepare_title_update(post_uuid, update_data)
+
         update_data["updated_at"] = datetime.now(UTC).isoformat()
         try:
             self._post_repository.update_post(
@@ -171,6 +174,51 @@ class PostService:
                 raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
             raise
         self._logger.info(f"Post updated: {post_uuid=}")
+
+    def _prepare_title_update(self, post_uuid: str, update_data: dict[str, Any]):
+        current = self._post_repository.get_post_by_uuid(post_uuid)
+        if not current or current.get("deleted_at") is not None:
+            raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
+
+        if update_data["title"] == current.get("title"):
+            return
+
+        duplicate = self._post_repository.get_post_by_title(
+            update_data["title"], FilterExpressions.NOT_DELETED
+        )
+        if duplicate and duplicate.get("id") != post_uuid:
+            raise PostAlreadyExistsException(self.ERROR_POST_EXISTS)
+
+        slug = slugify(update_data["title"])
+        created_at = datetime.fromisoformat(current["created_at"])
+        update_data["slug"] = slug
+        update_data["post_path"] = (
+            f"{created_at.year}/{created_at.month}/{created_at.day}/{slug}"
+        )
+
+    def update_publish_state(
+        self,
+        post_uuid: str,
+        status: str,
+        attempted_at: str,
+        error: str | None = None,
+    ):
+        now = datetime.now(UTC).isoformat()
+        try:
+            self._post_repository.update_post(
+                post_uuid,
+                {
+                    "publish_status": status,
+                    "publish_attempted_at": attempted_at,
+                    "publish_error": error,
+                    "updated_at": now,
+                },
+                Attr("id").exists() & FilterExpressions.NOT_DELETED,
+            )
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
+                raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
+            raise
 
     def _sort_dates_and_group_by_month(
         self, dates: list[datetime], max_results: int = 100

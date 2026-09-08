@@ -252,6 +252,10 @@ class TestPostService:
         assert args[1] == {
             "content": "Updated content",
             "title": "Updated title",
+            "slug": "updated-title",
+            "post_path": f"{datetime.fromisoformat(posts[0].created_at).year}/"
+            f"{datetime.fromisoformat(posts[0].created_at).month}/"
+            f"{datetime.fromisoformat(posts[0].created_at).day}/updated-title",
             "updated_at": ANY,
         }
         assert args[2] is not None
