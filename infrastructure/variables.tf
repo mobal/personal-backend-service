@@ -87,7 +87,7 @@ variable "powertools_logger_log_event" {
   type    = bool
 }
 
-variable "power_tools_service_name" {
+variable "powertools_service_name" {
   default = "personal-backend-service"
   type    = string
 }
