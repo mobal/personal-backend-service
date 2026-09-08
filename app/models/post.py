@@ -71,6 +71,9 @@ class Post(CamelModel):
     created_at: str
     deleted_at: str | None = None
     published_at: str | None = None
+    publish_status: str | None = Field(default=None, exclude=True)
+    publish_attempted_at: str | None = Field(default=None, exclude=True)
+    publish_error: str | None = Field(default=None, exclude=True)
     updated_at: str | None = None
     slug: str
     tags: conlist(item_type=str, min_length=1)

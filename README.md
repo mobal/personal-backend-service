@@ -219,6 +219,11 @@ sequenceDiagram
     end
 ```
 
+Each due publish attempt records `publishStatus` (`publishing`, `published`,
+or `failed`), `publishAttemptedAt`, and `publishError` on the DynamoDB item.
+The remote filename is deterministic (`{post.id}.md`), so retrying a failed
+publish safely overwrites the same document instead of creating duplicates.
+
 `POST /api/v1/posts/{uuid}/publish` is the explicit authenticated publish
 trigger. Updating `publishedAt` controls public visibility; it does not itself
 perform the remote write. A scheduler or deployment workflow can call this
@@ -485,13 +490,7 @@ scripts/                    # LocalStack seeding, Lambda build/packaging
 
 ## Release review
 
-The remaining release review item is:
-
-1. **High — publish delivery is not acknowledged in DynamoDB.** A failed or
-   repeated remote write has no delivery state, retry policy, or idempotency
-   record. Add operational retry/alerting before treating remote publication
-   as reliable.
-
-These remaining findings were checked against `posts_router.py`,
-`post_service.py`, `publisher_service.py`, `dependencies.py`, and
-`infrastructure/iam.tf`.
+The previously identified publish blockers and high-priority metadata and
+delivery findings are implemented. Before launch, verify the remote SSH
+credentials, blog-server permissions, and an operational retry schedule for
+posts whose `publishStatus` is `failed`.
