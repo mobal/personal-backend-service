@@ -4,7 +4,7 @@ from aws_lambda_powertools import Logger
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from fastapi.responses import Response
 
-from app.dependencies import get_jwt_bearer, get_post_service
+from app.dependencies import get_jwt_bearer, get_post_service, get_publisher_service
 from app.models.auth import JWTToken
 from app.models.response import (
     ErrorResponse,
@@ -14,6 +14,7 @@ from app.models.response import (
 )
 from app.schemas.post_schema import CreatePost, UpdatePost
 from app.services.post_service import PostService
+from app.services.publisher_service import PublisherService
 
 MIN_YEAR = 1970
 MAX_YEAR = 2100
@@ -95,6 +96,25 @@ def delete_post(
     token: Annotated[JWTToken, Depends(get_jwt_bearer)],
 ):
     post_service.delete_post(uuid)
+
+
+@router.post(
+    "/{uuid}/publish",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**RESPONSE_403, **RESPONSE_404},
+    summary="Publish a post to the remote blog server",
+    description=(
+        "Writes the raw Markdown to the configured remote blog server when "
+        "the post has a publication timestamp in the past. Requires a valid JWT."
+    ),
+    response_description="Published — no content",
+)
+def publish_post(
+    uuid: Annotated[str, POST_UUID],
+    publisher_service: Annotated[PublisherService, Depends(get_publisher_service)],
+    token: Annotated[JWTToken, Depends(get_jwt_bearer)],
+):
+    publisher_service.publish(uuid)
 
 
 @router.get(
@@ -229,4 +249,4 @@ def update_post(
     post_service: Annotated[PostService, Depends(get_post_service)],
     token: Annotated[JWTToken, Depends(get_jwt_bearer)],
 ):
-    post_service.update_post(uuid, update_model.model_dump(exclude_none=True))
+    post_service.update_post(uuid, update_model.model_dump(exclude_unset=True))
