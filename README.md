@@ -92,6 +92,7 @@ All routes are prefixed with `/api/v1`.
 | GET | `/posts` | No | List published posts (paginated) |
 | GET | `/posts/{uuid}` | No | Get post by UUID |
 | PUT | `/posts/{uuid}` | JWT | Update post |
+| POST | `/posts/{uuid}/publish` | JWT | Write post Markdown to the remote blog server |
 | DELETE | `/posts/{uuid}` | JWT | Soft-delete post |
 | GET | `/posts/archive` | No | Archive grouped by year-month |
 | GET | `/posts/{year}/{month}/{day}/{slug}` | No | Get post by date path + slug |
@@ -146,6 +147,91 @@ Nested under posts: `/posts/{postUuid}/attachments`
 | POST | `` | JWT | Add attachment (base64) |
 | GET | `` | No | List attachments |
 | GET | `/{attachmentUuid}` | No | Get attachment metadata |
+
+## Posting and publishing
+
+Posting and publishing are separate operations. A post is first saved as a
+Markdown document in DynamoDB. The optional `publishedAt` field is then used
+to decide whether it belongs in public results, while the publisher sends the
+raw Markdown to the blog server over SSHFS/SFTP.
+
+```mermaid
+flowchart LR
+    A["Author"] -->|POST /api/v1/posts\nJWT required| B["Draft post\nDynamoDB"]
+    B -->|PUT /api/v1/posts/{uuid}\nset publishedAt| C["Scheduled post"]
+    C -->|when publishedAt is in the past| D["PublisherService"]
+    D -->|write {post.id}.md| E["Remote blog server\nSSHFS/SFTP"]
+    B -->|public API reads| F["FastAPI\nHTML-rendered Markdown"]
+    C -->|public API reads| F
+```
+
+### Create a post
+
+`POST /api/v1/posts` requires a JWT and creates a DynamoDB item. Omit
+`publishedAt` (or send `null`) for a draft. The response is `201 Created` with
+the new UUID in the `Location` header and no response body.
+
+```bash
+curl -i -X POST "$API_URL/api/v1/posts" \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  --data @post.json
+```
+
+The request body uses camelCase JSON. The Markdown remains unrendered in
+storage; reads convert it to sanitized HTML.
+
+### Schedule or publish a post
+
+`PUT /api/v1/posts/{uuid}` is a partial update. Set `publishedAt` to an ISO
+8601 timestamp to schedule a post, or to a timestamp in the past to make it
+eligible for publishing:
+
+```bash
+curl -i -X PUT "$API_URL/api/v1/posts/$POST_ID" \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  --data '{"publishedAt":"2026-09-12T09:00:00+00:00"}'
+```
+
+The implemented `PublisherService.publish(post_id)` performs this final
+step:
+
+```mermaid
+sequenceDiagram
+    participant T as Trigger (not wired)
+    participant P as PublisherService
+    participant D as DynamoDB
+    participant R as Remote blog server
+
+    T->>P: publish(post UUID)
+    P->>D: load post
+    D-->>P: raw Markdown + publishedAt
+    alt publishedAt is in the past
+        P->>R: write SSH_ROOT_PATH/{uuid}.md
+        R-->>P: success or SSH/OSError
+    else draft or future schedule
+        P-->>T: no file written
+    end
+```
+
+`POST /api/v1/posts/{uuid}/publish` is the explicit authenticated publish
+trigger. Updating `publishedAt` controls public visibility; it does not itself
+perform the remote write. A scheduler or deployment workflow can call this
+endpoint for due posts if automatic publication is required.
+
+### Publishing status and public-read behavior
+
+| Operation | Current behavior |
+|---|---|
+| `GET /posts` | Includes non-deleted posts whose `publishedAt` is in the past |
+| `GET /posts/archive` | Groups non-deleted posts whose `publishedAt` is in the past |
+| Date/slug and UUID reads | Return only non-deleted posts whose `publishedAt` is in the past |
+| Remote publication | Writes raw Markdown through the authenticated publish endpoint |
+
+The API treats a post as public only when its publication timestamp is due.
+Sending `publishedAt: null` through `PUT /posts/{uuid}` returns it to draft
+status.
 
 ---
 
@@ -346,7 +432,7 @@ app/
 │   └── v1/
 │       ├── api.py          # /api/v1 router mount (posts, attachments)
 │       └── routers/
-│           ├── posts_router.py        # 7 post endpoints (OpenAPI annotated)
+│           ├── posts_router.py        # 8 post endpoints (OpenAPI annotated)
 │           └── attachments_router.py  # 3 attachment endpoints (OpenAPI annotated)
 ├── models/
 │   ├── auth.py             # JWTToken model
@@ -392,3 +478,20 @@ scripts/                    # LocalStack seeding, Lambda build/packaging
 - **Soft-delete** - `deleted_at` timestamp; deleted posts are filtered out via DynamoDB `FilterExpression`.
 - **SFTP publisher** - `PublisherService` uses `sshfs` to write `.md` files to a remote server after their `published_at` is in the past.
 - **JWT from SSM** - The JWT secret is fetched from AWS SSM Parameter Store at runtime, not stored in env.
+
+## Release review
+
+The remaining release review items are:
+
+1. **High — publication metadata can become inconsistent.** Updating a title
+   does not regenerate `slug` or `post_path`, and `publishedAt` is accepted as
+   an arbitrary string even though the publisher parses it as ISO 8601. URL
+   paths should either be regenerated deliberately or documented as immutable.
+2. **High — publish delivery is not acknowledged in DynamoDB.** A failed or
+   repeated remote write has no delivery state, retry policy, or idempotency
+   record. Add operational retry/alerting before treating remote publication
+   as reliable.
+
+These remaining findings were checked against `posts_router.py`,
+`post_service.py`, `publisher_service.py`, `dependencies.py`, and
+`infrastructure/iam.tf`.

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import ANY
 
 import pytest
@@ -212,6 +212,27 @@ class TestPostService:
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
         post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id)
+
+    def test_fail_to_get_unpublished_post(
+        self, mocker, posts, post_repository, post_service
+    ):
+        unpublished = posts[0].model_dump() | {"published_at": None}
+        mocker.patch.object(
+            PostRepository, "get_post_by_uuid", return_value=unpublished
+        )
+
+        with pytest.raises(PostNotFoundException):
+            post_service.get_post(posts[0].id)
+
+    def test_fail_to_get_future_post(
+        self, mocker, posts, post_repository, post_service
+    ):
+        future = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+        scheduled = posts[0].model_dump() | {"published_at": future}
+        mocker.patch.object(PostRepository, "get_post_by_uuid", return_value=scheduled)
+
+        with pytest.raises(PostNotFoundException):
+            post_service.get_post(posts[0].id)
 
     def test_successfully_update_post(
         self,

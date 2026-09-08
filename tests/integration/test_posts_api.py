@@ -1,6 +1,6 @@
 import random
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi import status
@@ -12,6 +12,7 @@ from tests.helpers.utils import generate_jwt_token
 from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts, country_cache
 from app.models.post import Post
 from app.schemas.post_schema import CreatePost
+from app.services.publisher_service import PublisherService
 
 BASE_URL = "/api/v1/posts"
 ERROR_MESSAGE_INTERNAL_SERVER_ERROR = "Internal Server Error"
@@ -70,6 +71,20 @@ class TestPostsApi:
             "status": status.HTTP_404_NOT_FOUND,
             "message": ERROR_MESSAGE_NOT_FOUND,
         }.items() <= response.json().items()
+
+    def test_fail_to_get_future_post_by_uuid(
+        self, posts: list[Post], test_client: TestClient, posts_table
+    ):
+        future = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+        posts_table.update_item(
+            Key={"id": posts[0].id},
+            UpdateExpression="SET published_at = :published_at",
+            ExpressionAttributeValues={":published_at": future},
+        )
+
+        response = test_client.get(f"{BASE_URL}/{posts[0].id}")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_successfully_get_post_by_uuid(
         self, posts: list[Post], test_client: TestClient
@@ -412,6 +427,46 @@ class TestPostsApi:
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_successfully_unpublish_post(
+        self,
+        jwt_secret_ssm_param_value: str,
+        posts: list[Post],
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.put(
+            f"{BASE_URL}/{posts[0].id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json={"publishedAt": None},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert (
+            test_client.get(f"{BASE_URL}/{posts[0].id}").status_code
+            == status.HTTP_404_NOT_FOUND
+        )
+
+    def test_successfully_publish_post(
+        self,
+        mocker,
+        jwt_secret_ssm_param_value: str,
+        posts: list[Post],
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+        publish = mocker.patch.object(PublisherService, "publish")
+
+        response = test_client.post(
+            f"{BASE_URL}/{posts[0].id}/publish",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        publish.assert_called_once_with(posts[0].id)
 
     def test_fail_to_delete_post_due_to_empty_token_query_param(
         self,

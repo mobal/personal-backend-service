@@ -1,6 +1,7 @@
+from datetime import UTC, datetime
 from typing import Annotated
 
-from pydantic import ConfigDict, Field, conlist, constr
+from pydantic import ConfigDict, Field, conlist, constr, field_validator
 
 from app.models.camel_model import CamelModel
 from app.models.post import Meta
@@ -67,6 +68,16 @@ class CreatePost(CamelModel):
         ),
     ]
 
+    @field_validator("published_at")
+    @classmethod
+    def validate_published_at(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        parsed = datetime.fromisoformat(value)
+        if parsed.tzinfo is None:
+            raise ValueError("publishedAt must include a timezone")
+        return parsed.astimezone(UTC).isoformat()
+
     model_config = ConfigDict(
         extra="ignore",
         json_schema_extra={"examples": [CreatePostExample["value"]]},
@@ -115,6 +126,16 @@ class UpdatePost(CamelModel):
             examples=["2026-09-06T09:00:00+00:00"],
         ),
     ] = None
+
+    @field_validator("published_at")
+    @classmethod
+    def validate_published_at(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        parsed = datetime.fromisoformat(value)
+        if parsed.tzinfo is None:
+            raise ValueError("publishedAt must include a timezone")
+        return parsed.astimezone(UTC).isoformat()
 
     model_config = ConfigDict(
         extra="ignore",

@@ -20,7 +20,10 @@ from app.repositories.post_repository import PostRepository
 
 class FilterExpressions:
     NOT_DELETED = Attr("deleted_at").eq(None) | Attr("deleted_at").not_exists()
-    PUBLISHED = Attr("published_at").ne(None)
+
+    @staticmethod
+    def published() -> Any:
+        return Attr("published_at").lte(datetime.now(UTC).isoformat())
 
 
 class PostService:
@@ -126,11 +129,19 @@ class PostService:
         self._logger.info(f"Post deleted: {post_uuid=}")
 
     def get_post(self, post_uuid: str) -> PostResponse:
-        return self._post_to_response(self.get_post_by_uuid(post_uuid).model_dump())
+        post = self._post_repository.get_post_by_uuid(post_uuid)
+        if (
+            not post
+            or post.get("deleted_at") is not None
+            or not post.get("published_at")
+            or datetime.fromisoformat(post["published_at"]) > datetime.now(UTC)
+        ):
+            raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
+        return self._post_to_response(post)
 
     def get_by_post_path(self, post_path: str) -> PostResponse:
         post = self._post_repository.get_post_by_post_path(
-            post_path, FilterExpressions.NOT_DELETED
+            post_path, FilterExpressions.NOT_DELETED & FilterExpressions.published()
         )
         if not post:
             raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
@@ -138,7 +149,7 @@ class PostService:
 
     def get_posts(self, exclusive_start_key: str | None = None) -> Page:
         last_key, posts = self._post_repository.get_posts(
-            FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
+            FilterExpressions.NOT_DELETED & FilterExpressions.published(),
             {"id": exclusive_start_key} if exclusive_start_key else None,
             ["id", "title", "meta", "published_at", "updated_at"],
         )
@@ -193,7 +204,7 @@ class PostService:
         max_results: int = 100,
     ) -> dict[str, int]:
         posts = self._post_repository.get_all_posts(
-            FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
+            FilterExpressions.NOT_DELETED & FilterExpressions.published(),
             ["id", "published_at"],
         )
         if not posts:
@@ -209,7 +220,7 @@ class PostService:
     ) -> dict[str, Any]:
         """Get archive with pagination support."""
         last_key, posts = self._post_repository.get_posts(
-            FilterExpressions.NOT_DELETED & FilterExpressions.PUBLISHED,
+            FilterExpressions.NOT_DELETED & FilterExpressions.published(),
             {"id": exclusive_start_key} if exclusive_start_key else None,
             ["id", "published_at"],
         )
