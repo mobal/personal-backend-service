@@ -504,7 +504,7 @@
                 }
               }
             },
-            "description": "Partial update (JWT required) — only the title is changed here. Returns 204; the follow-up GET proves the change and the `updatedAt` stamp. Note the slug and post path are not recomputed on update."
+            "description": "Partial update (JWT required) — only the title is changed here. Returns 204; the follow-up GET proves the change and the `updatedAt` stamp. The slug and date-based post path are recomputed from the original creation date."
           },
           "event": [
             {
@@ -557,6 +557,125 @@
                   "});",
                   "pm.test('stamps the update timestamp', () => {",
                   "  pm.expect(body.updatedAt).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Publish post — missing bearer token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer "
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{postId}}/publish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{postId}}",
+                "publish"
+              ]
+            },
+            "description": "The publish endpoint is protected by JWT. The collection checks the authentication boundary without contacting the remote SSH blog server."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 403', () => pm.response.to.have.status(403));",
+                  "pm.test('reports the request as unauthenticated', () => {",
+                  "  pm.expect(pm.response.json().message).to.eql('Not authenticated');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Unpublish post",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{postId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"publishedAt\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Explicit null clears publishedAt and returns the post to draft status."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get post — unpublished",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/posts/{{postId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "posts",
+                "{{postId}}"
+              ]
+            },
+            "description": "Unpublished posts are hidden from public UUID reads."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('responds with 404', () => pm.response.to.have.status(404));",
+                  "pm.test('reports the post as not found', () => {",
+                  "  pm.expect(pm.response.json().message).to.eql('The requested post was not found');",
                   "});"
                 ]
               }
