@@ -66,6 +66,7 @@ variable "ssh_host" {
 
 variable "ssh_password" {
   type = string
+  sensitive = true
 }
 
 variable "ssh_root_path" {
