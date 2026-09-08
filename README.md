@@ -181,6 +181,10 @@ curl -i -X POST "$API_URL/api/v1/posts" \
 The request body uses camelCase JSON. The Markdown remains unrendered in
 storage; reads convert it to sanitized HTML.
 
+Changing a title also regenerates the slug and date-based `postPath` from the
+original creation date. Clients should treat the resulting public URL as
+changed after a title update.
+
 ### Schedule or publish a post
 
 `PUT /api/v1/posts/{uuid}` is a partial update. Set `publishedAt` to an ISO
@@ -481,13 +485,9 @@ scripts/                    # LocalStack seeding, Lambda build/packaging
 
 ## Release review
 
-The remaining release review items are:
+The remaining release review item is:
 
-1. **High — publication metadata can become inconsistent.** Updating a title
-   does not regenerate `slug` or `post_path`, and `publishedAt` is accepted as
-   an arbitrary string even though the publisher parses it as ISO 8601. URL
-   paths should either be regenerated deliberately or documented as immutable.
-2. **High — publish delivery is not acknowledged in DynamoDB.** A failed or
+1. **High — publish delivery is not acknowledged in DynamoDB.** A failed or
    repeated remote write has no delivery state, retry policy, or idempotency
    record. Add operational retry/alerting before treating remote publication
    as reliable.
