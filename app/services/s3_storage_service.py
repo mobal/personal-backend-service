@@ -78,7 +78,7 @@ class S3StorageService:
         self._logger.info(
             f"Uploading object key={key} with acl={acl} to bucket={bucket}"
         )
-        return self._s3.Object(bucket_name=bucket, key=key).put(Body=data)
+        return self._s3.Object(bucket_name=bucket, key=key).put(Body=data, ACL=acl)
 
     def put_object_multipart(
         self,

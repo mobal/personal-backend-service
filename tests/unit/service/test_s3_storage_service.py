@@ -168,8 +168,14 @@ class TestS3StorageService:
             BUCKET_NAME, object_key, object_body.encode("utf-8")
         )
 
-        obj = s3_resource.Object(bucket_name=BUCKET_NAME, key=OBJECT_KEY)
-        assert obj.get()["Body"].read().decode("utf-8") == OBJECT_BODY
+        obj = s3_resource.Object(bucket_name=BUCKET_NAME, key=object_key)
+        assert obj.get()["Body"].read().decode("utf-8") == object_body
+        assert any(
+            grant["Permission"] == "READ"
+            for grant in obj.Acl().grants
+            if grant["Grantee"].get("URI")
+            == "http://acs.amazonaws.com/groups/global/AllUsers"
+        )
 
     def test_fail_to_put_object_due_to_non_existent_bucket(
         self,
