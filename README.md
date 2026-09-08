@@ -157,12 +157,12 @@ raw Markdown to the blog server over SSHFS/SFTP.
 
 ```mermaid
 flowchart LR
-    A["Author"] -->|POST /api/v1/posts\nJWT required| B["Draft post\nDynamoDB"]
-    B -->|PUT /api/v1/posts/{uuid}\nset publishedAt| C["Scheduled post"]
-    C -->|when publishedAt is in the past| D["PublisherService"]
-    D -->|write {post.id}.md| E["Remote blog server\nSSHFS/SFTP"]
-    B -->|public API reads| F["FastAPI\nHTML-rendered Markdown"]
-    C -->|public API reads| F
+    A["Author"] -->|"POST /api/v1/posts\nJWT required"| B["Draft post\nDynamoDB"]
+    B -->|"PUT /api/v1/posts/{uuid}\nset publishedAt"| C["Scheduled post"]
+    C -->|"when publishedAt is in the past"| D["PublisherService"]
+    D -->|"write {post.id}.md"| E["Remote blog server\nSSHFS/SFTP"]
+    B -->|"public API reads"| F["FastAPI\nHTML-rendered Markdown"]
+    C -->|"public API reads"| F
 ```
 
 ### Create a post
