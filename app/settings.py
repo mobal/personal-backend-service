@@ -30,6 +30,11 @@ class Settings(BaseSettings):
 
     @computed_field
     @cached_property
+    def jwt_audience(self) -> str:
+        return f"https://{self.stage}-{self.app_name}"
+
+    @computed_field
+    @cached_property
     def jwt_secret(self) -> str:
         return parameters.get_parameter(
             os.environ.get("JWT_SECRET_SSM_PARAM_NAME"), decrypt=True

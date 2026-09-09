@@ -71,8 +71,9 @@ class HTTPBearer(FastAPIHTTPBearer):
 
 
 class JWTBearer:
-    def __init__(self, jwt_secret: str, auto_error: bool = True):
+    def __init__(self, jwt_secret: str, audience: str, auto_error: bool = True):
         self._jwt_secret = jwt_secret
+        self._audience = audience
         self._auto_error = auto_error
 
     def __call__(self, request: Request) -> JWTToken | None:
@@ -94,7 +95,12 @@ class JWTBearer:
     def _validate_token(self, token: str) -> bool:
         try:
             self.decoded_token = JWTToken(
-                **jwt.decode(token, self._jwt_secret, algorithms=["HS256"])
+                **jwt.decode(
+                    token,
+                    self._jwt_secret,
+                    algorithms=["HS256"],
+                    audience=self._audience,
+                )
             )
             return True
         except DecodeError:

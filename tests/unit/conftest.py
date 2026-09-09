@@ -32,7 +32,7 @@ def attachment_service(
 
 @pytest.fixture
 def jwt_bearer() -> JWTBearer:
-    return JWTBearer(jwt_secret=Settings().jwt_secret)
+    return JWTBearer(jwt_secret=Settings().jwt_secret, audience=Settings().jwt_audience)
 
 
 @pytest.fixture
@@ -46,6 +46,7 @@ def jwt_token(user_dict: dict[str, str | None]) -> JWTToken:
     return JWTToken(
         exp=int((now + timedelta(days=365)).timestamp()),
         iat=int(now.timestamp()),
+        aud=Settings().jwt_audience,
         iss="https://netcode.hu",
         jti=str(uuid.uuid4()),
         sub=user_dict["id"],

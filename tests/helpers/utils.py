@@ -3,6 +3,8 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 
+from app.settings import Settings
+
 
 def generate_jwt_token(
     jwt_secret: str, user_dict: dict[str, str | None], exp: int = 1
@@ -15,6 +17,7 @@ def generate_jwt_token(
             {
                 "exp": int(exp.timestamp()),
                 "iat": int(iat.timestamp()),
+                "aud": Settings().jwt_audience,
                 "jti": token_id,
                 "sub": user_dict["id"],
                 "user": user_dict,

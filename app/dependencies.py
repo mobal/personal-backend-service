@@ -113,7 +113,7 @@ def get_jwt_bearer(
     ] = None,
 ) -> JWTToken:
     """FastAPI dependency that validates JWT and returns the decoded token."""
-    bearer = JWTBearer(jwt_secret=settings.jwt_secret)
+    bearer = JWTBearer(jwt_secret=settings.jwt_secret, audience=settings.jwt_audience)
     token = bearer(request)
     # JWTBearer with auto_error=True (default) always returns JWTToken or raises
     assert token is not None
