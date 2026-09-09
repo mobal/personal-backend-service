@@ -388,12 +388,35 @@ class TestPostService:
         )
 
         dt = datetime.fromisoformat(posts[0].published_at)
-        post_path = f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}"
+        post_path = f"{dt:%Y/%m/%d}/{posts[0].slug}"
         result = post_service.get_by_post_path(post_path)
 
         assert posts[0].slug == result.slug
         assert posts[0].published_at == result.published_at
         post_repository.get_post_by_post_path.assert_called_once_with(post_path, ANY)
+
+    def test_get_post_by_post_path_falls_back_to_unpadded_path(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_service: PostService,
+        post_repository: PostRepository,
+    ):
+        """Legacy posts stored with unpadded month/day are still found."""
+        mocker.patch.object(
+            PostRepository,
+            "get_post_by_post_path",
+            side_effect=[None, posts[0].model_dump()],
+        )
+
+        dt = datetime.fromisoformat(posts[0].published_at)
+        post_path = f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}"
+        post_service.get_by_post_path(post_path)
+
+        calls = post_repository.get_post_by_post_path.call_args_list
+        assert len(calls) == 2
+        assert calls[0].args[0] == post_path
+        assert calls[1].args[0] == f"{dt:%Y/%m/%d}/{posts[0].slug}"
 
     def test_fail_to_get_post_by_post_path_due_post_not_found_exception(
         self,
@@ -405,14 +428,18 @@ class TestPostService:
         mocker.patch.object(PostRepository, "get_post_by_post_path", return_value=None)
 
         dt = datetime.fromisoformat(posts[0].published_at)
-        post_path = f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}"
+        post_path = f"{dt:%Y/%m/%d}/{posts[0].slug}"
         with pytest.raises(PostNotFoundException) as excinfo:
             post_service.get_by_post_path(post_path)
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
         assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_post_path.assert_called_once_with(post_path, ANY)
+        calls = post_repository.get_post_by_post_path.call_args_list
+        assert [call.args[0] for call in calls] == [
+            post_path,
+            f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}",
+        ]
 
     def test_successfully_get_posts(
         self,
