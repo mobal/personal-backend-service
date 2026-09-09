@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -24,6 +25,17 @@ class FilterExpressions:
     @staticmethod
     def published() -> Any:
         return Attr("published_at").lte(datetime.now(UTC).isoformat())
+
+
+POST_PATH_RE = re.compile(r"^(\d{4})/(\d{1,2})/(\d{1,2})/(.+)$")
+
+
+def normalize_post_path(post_path: str) -> str | None:
+    """Return post_path with zero-padded month/day (e.g. 2026/09/09/slug)."""
+    if (match := POST_PATH_RE.match(post_path)) is None:
+        return None
+    year, month, day, slug = match.groups()
+    return f"{int(year):04d}/{int(month):02d}/{int(day):02d}/{slug}"
 
 
 class PostService:
@@ -92,6 +104,8 @@ class PostService:
             strip=True,
         )
         post_data["content"] = sanitized
+        if post_data.get("post_path"):
+            post_data["post_path"] = normalize_post_path(post_data["post_path"])
         return PostResponse(**post_data)
 
     def create_post(self, data: dict[str, Any]) -> Post:
@@ -140,9 +154,27 @@ class PostService:
         return self._post_to_response(post)
 
     def get_by_post_path(self, post_path: str) -> PostResponse:
-        post = self._post_repository.get_post_by_post_path(
-            post_path, FilterExpressions.NOT_DELETED & FilterExpressions.published()
+        filter_expression = (
+            FilterExpressions.NOT_DELETED & FilterExpressions.published()
         )
+        candidates = [post_path]
+        normalized = normalize_post_path(post_path)
+        # Posts created before zero-padding was introduced store unpadded
+        # month/day, so also try the unpadded form of the path.
+        if normalized and normalized != post_path:
+            candidates.append(normalized)
+        if (match := POST_PATH_RE.match(post_path)) is not None:
+            year, month, day, slug = match.groups()
+            unpadded = f"{int(year)}/{int(month)}/{int(day)}/{slug}"
+            if unpadded not in candidates:
+                candidates.append(unpadded)
+        post = None
+        for candidate in candidates:
+            post = self._post_repository.get_post_by_post_path(
+                candidate, filter_expression
+            )
+            if post:
+                break
         if not post:
             raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
         return self._post_to_response(post)
@@ -153,6 +185,9 @@ class PostService:
             {"id": exclusive_start_key} if exclusive_start_key else None,
             ["id", "title", "meta", "post_path", "published_at", "updated_at"],
         )
+        for post in posts:
+            if post.get("post_path"):
+                post["post_path"] = normalize_post_path(post["post_path"])
         return Page(
             exclusive_start_key=last_key,
             posts=[PostResponse(**post) for post in posts],
