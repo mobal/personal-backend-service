@@ -52,21 +52,25 @@ OPENAPI_TAGS = [
 app = FastAPI(
     debug=settings.debug,
     title="Personal Backend Service",
-    summary="Serverless personal blog backend",
+    summary="A secure API for managing and publishing Markdown blog content",
     description=(
-        "REST API for the personal blog: posts are stored as Markdown in "
-        "DynamoDB and rendered to HTML on read, attachments live in S3 with "
-        "public-read access, and published posts are pushed to a remote "
-        "server over SFTP.\n\n"
-        "Conventions:\n\n"
-        "- All v1 routes are prefixed with `/api/v1` and exchange JSON in "
-        "camelCase.\n"
-        "- Mutating and deleting a resource requires a JWT (HS256), sent as "
-        "`Authorization: Bearer <token>` or as `?token=<token>`.\n"
-        "- Every error response uses the same envelope "
-        "`{status, id, message}` (validation errors add an `errors` list).\n"
-        "- The response of every request carries an `X-Correlation-ID` "
-        "header.\n"
+        "## Overview\n\n"
+        "Personal Backend Service provides the backend for a Markdown-based "
+        "blog. Posts are stored in DynamoDB and rendered as HTML when "
+        "requested. Attachments are stored in S3, and publishing sends the "
+        "original Markdown to a remote blog server over SFTP.\n\n"
+        "## API conventions\n\n"
+        "- All routes use the `/api/v1` prefix.\n"
+        "- Request and response bodies use camelCase JSON.\n"
+        "- Protected operations require an HS256 JWT.\n"
+        "- Tokens may be sent as `Authorization: Bearer <token>` or "
+        "`?token=<token>`.\n"
+        "- Errors use `{status, id, message}`.\n"
+        "- Validation errors additionally include an `errors` array.\n"
+        "- Every response includes an `X-Correlation-ID` header.\n\n"
+        "## Authentication\n\n"
+        "Reading published content is public. Creating, updating, publishing, "
+        "uploading attachments, and deleting content require authentication."
     ),
     version="1.0.0",
     license_info={
