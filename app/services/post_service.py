@@ -100,7 +100,7 @@ class PostService:
             data["title"], FilterExpressions.NOT_DELETED
         ):
             raise PostAlreadyExistsException(self.ERROR_POST_EXISTS)
-        post_path = f"{now.year}/{now.month}/{now.day}/{slugify(data['title'])}"
+        post_path = f"{now:%Y/%m/%d}/{slugify(data['title'])}"
         data.update(
             {
                 "id": str(uuid.uuid4()),
@@ -151,7 +151,7 @@ class PostService:
         last_key, posts = self._post_repository.get_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.published(),
             {"id": exclusive_start_key} if exclusive_start_key else None,
-            ["id", "title", "meta", "published_at", "updated_at"],
+            ["id", "title", "meta", "post_path", "published_at", "updated_at"],
         )
         return Page(
             exclusive_start_key=last_key,
@@ -192,9 +192,7 @@ class PostService:
         slug = slugify(update_data["title"])
         created_at = datetime.fromisoformat(current["created_at"])
         update_data["slug"] = slug
-        update_data["post_path"] = (
-            f"{created_at.year}/{created_at.month}/{created_at.day}/{slug}"
-        )
+        update_data["post_path"] = f"{created_at:%Y/%m/%d}/{slug}"
 
     def update_publish_state(
         self,
