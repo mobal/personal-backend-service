@@ -1,5 +1,5 @@
 resource "aws_dynamodb_table" "posts" {
-  name         = "${var.stage}-posts"
+  name         = "${local.app_name}-posts"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "id"
 
@@ -58,7 +58,7 @@ resource "aws_dynamodb_table" "posts" {
 }
 
 resource "aws_dynamodb_table" "rate_limits" {
-  name         = "${var.stage}-rate-limits"
+  name         = "${local.app_name}-rate-limits"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "client_id"
   range_key    = "endpoint"
