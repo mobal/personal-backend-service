@@ -69,7 +69,11 @@ def dynamodb_resource(aws_default_region: str, settings: Settings):
 
 @pytest.fixture
 def initialize_posts_table(
-    dynamodb_resource, posts: list[Post], post_with_attachment: Post, posts_table
+    dynamodb_resource,
+    posts: list[Post],
+    post_with_attachment: Post,
+    posts_table,
+    settings: Settings,
 ):
     dynamodb_resource.create_table(
         AttributeDefinitions=[
@@ -90,7 +94,7 @@ def initialize_posts_table(
                 "AttributeType": "S",
             },
         ],
-        TableName="test-posts",
+        TableName=f"{settings.stage}-{settings.app_name}-posts",
         KeySchema=[
             {"AttributeName": "id", "KeyType": "HASH"},
         ],
@@ -190,8 +194,8 @@ def posts(make_post) -> list[Post]:
 
 
 @pytest.fixture
-def posts_table(dynamodb_resource):
-    return dynamodb_resource.Table("test-posts")
+def posts_table(dynamodb_resource, settings: Settings):
+    return dynamodb_resource.Table(f"{settings.stage}-{settings.app_name}-posts")
 
 
 @pytest.fixture

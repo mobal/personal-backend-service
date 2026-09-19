@@ -5,13 +5,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api_handler import app
+from app.settings import Settings
 
 
 @pytest.fixture
-def initialize_rate_limits_table(aws_default_region: str):
+def initialize_rate_limits_table(aws_default_region: str, settings: Settings):
     client = boto3.client("dynamodb", region_name=aws_default_region)
     client.create_table(
-        TableName="test-rate-limits",
+        TableName=f"{settings.stage}-{settings.app_name}-rate-limits",
         KeySchema=[
             {"AttributeName": "client_id", "KeyType": "HASH"},
             {"AttributeName": "endpoint", "KeyType": "RANGE"},
@@ -22,7 +23,6 @@ def initialize_rate_limits_table(aws_default_region: str):
         ],
         BillingMode="PAY_PER_REQUEST",
     )
-    yield
 
 
 @pytest.fixture(scope="module")

@@ -36,7 +36,7 @@ def get_post_repository(
     db: Annotated[boto3.resource, Depends(get_db_client)],
 ) -> PostRepository:
     return PostRepository(
-        table_name=f"{settings.stage}-posts",
+        table_name=f"{settings.stage}-{settings.app_name}-posts",
         db=db,
     )
 
