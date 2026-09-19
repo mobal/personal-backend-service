@@ -59,7 +59,7 @@ def post_repository(
     initialize_posts_table, dynamodb_resource, settings: Settings
 ) -> PostRepository:
     return PostRepository(
-        table_name=f"{settings.stage}-posts",
+        table_name=f"{settings.stage}-{settings.app_name}-posts",
         db=dynamodb_resource,
     )
 
@@ -93,10 +93,10 @@ def sshfs_storage_service() -> SSHFSStorageService:
 
 
 @pytest.fixture
-def initialize_rate_limits_table(aws_default_region: str):
+def initialize_rate_limits_table(aws_default_region: str, settings: Settings):
     client = boto3.client("dynamodb", region_name=aws_default_region)
     client.create_table(
-        TableName="test-rate-limits",
+        TableName=f"{settings.stage}-{settings.app_name}-rate-limits",
         KeySchema=[
             {"AttributeName": "client_id", "KeyType": "HASH"},
             {"AttributeName": "endpoint", "KeyType": "RANGE"},

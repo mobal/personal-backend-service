@@ -4,6 +4,7 @@ import boto3
 
 REGION = os.getenv("AWS_DEFAULT_REGION", "eu-central-1")
 STAGE = os.getenv("STAGE", "local")
+APP_NAME = os.getenv("APP_NAME", "personal-backend-service")
 ENDPOINT_URL = os.getenv("AWS_ENDPOINT_URL", "http://localhost:4566")
 SSM_PARAM_NAME = os.getenv("JWT_SECRET_SSM_PARAM_NAME", "/dev/secrets/secret")
 JWT_SECRET = os.getenv(
@@ -26,8 +27,9 @@ def _client(service: str) -> boto3.client:
 def create_tables() -> None:
     """Create the DynamoDB tables the app expects (mirrors infrastructure/*.tf)."""
     dynamodb = _client("dynamodb")
+    table_prefix = f"{STAGE}-{APP_NAME}"
     tables = {
-        f"{STAGE}-posts": {
+        f"{table_prefix}-posts": {
             "AttributeDefinitions": [
                 {"AttributeName": "id", "AttributeType": "S"},
                 {"AttributeName": "post_path", "AttributeType": "S"},
@@ -53,7 +55,7 @@ def create_tables() -> None:
                 },
             ],
         },
-        f"{STAGE}-rate-limits": {
+        f"{table_prefix}-rate-limits": {
             "AttributeDefinitions": [
                 {"AttributeName": "client_id", "AttributeType": "S"},
                 {"AttributeName": "endpoint", "AttributeType": "S"},
@@ -79,7 +81,7 @@ def create_tables() -> None:
 
 def enable_rate_limit_ttl() -> None:
     dynamodb = _client("dynamodb")
-    table_name = f"{STAGE}-rate-limits"
+    table_name = f"{STAGE}-{APP_NAME}-rate-limits"
     dynamodb.update_time_to_live(
         TableName=table_name,
         TimeToLiveSpecification={

@@ -26,7 +26,7 @@ class RateLimiterService:
         self._settings = settings
         self._logger = Logger()
         self._table = (db or boto3.resource("dynamodb")).Table(
-            f"{self._settings.stage}-rate-limits"
+            f"{self._settings.stage}-{self._settings.app_name}-rate-limits"
         )
         self._max_requests = self._settings.rate_limit_requests
         self._window_duration = self._settings.rate_limit_duration_in_seconds

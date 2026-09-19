@@ -17,7 +17,7 @@ def initialize_rate_limits_table(aws_default_region: str, settings: Settings):
         aws_secret_access_key=settings.aws_secret_access_key,
     )
     resource.create_table(
-        TableName="test-rate-limits",
+        TableName=f"{settings.stage}-{settings.app_name}-rate-limits",
         KeySchema=[
             {"AttributeName": "client_id", "KeyType": "HASH"},
             {"AttributeName": "endpoint", "KeyType": "RANGE"},
@@ -117,12 +117,13 @@ class TestRateLimiterService:
     def test_ttl_is_set_on_new_records(
         self,
         aws_default_region: str,
+        settings: Settings,
         rate_limiter_service: RateLimiterService,
     ):
         rate_limiter_service.check_rate_limit("1.2.3.4", "/api/v1/posts")
 
         table = boto3.resource("dynamodb", region_name=aws_default_region).Table(
-            "test-rate-limits"
+            f"{settings.stage}-{settings.app_name}-rate-limits"
         )
         response = table.get_item(
             Key={"client_id": "1.2.3.4", "endpoint": "/api/v1/posts"}
@@ -146,6 +147,7 @@ class TestRateLimiterService:
     def test_window_expired_resets_counter(
         self,
         aws_default_region: str,
+        settings: Settings,
         rate_limiter_service: RateLimiterService,
     ):
         client_id = "1.2.3.4"
@@ -156,7 +158,7 @@ class TestRateLimiterService:
 
         # Manually expire the window by setting window_start far in the past
         table = boto3.resource("dynamodb", region_name=aws_default_region).Table(
-            "test-rate-limits"
+            f"{settings.stage}-{settings.app_name}-rate-limits"
         )
         table.update_item(
             Key={"client_id": client_id, "endpoint": endpoint},
