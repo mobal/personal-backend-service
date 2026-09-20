@@ -8,6 +8,7 @@ from boto3.dynamodb.conditions import Attr, ConditionBase
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken
 from app.repositories.post_repository import PostRepository
+from app.repositories.rate_limit_repository import RateLimitRepository
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
@@ -112,6 +113,24 @@ def initialize_rate_limits_table(aws_default_region: str, settings: Settings):
 
 @pytest.fixture
 def rate_limiter_service(
-    initialize_rate_limits_table, settings: Settings
+    rate_limit_repository: RateLimitRepository, settings: Settings
 ) -> RateLimiterService:
-    return RateLimiterService(settings=settings)
+    return RateLimiterService(
+        settings=settings,
+        rate_limit_repository=rate_limit_repository,
+    )
+
+
+@pytest.fixture
+def rate_limit_repository(
+    initialize_rate_limits_table, dynamodb_resource, settings: Settings
+) -> RateLimitRepository:
+    return RateLimitRepository(
+        table_name=f"{settings.stage}-{settings.app_name}-rate-limits",
+        db=dynamodb_resource,
+    )
+
+
+@pytest.fixture
+def rate_limits_table(dynamodb_resource, settings: Settings):
+    return dynamodb_resource.Table(f"{settings.stage}-{settings.app_name}-rate-limits")

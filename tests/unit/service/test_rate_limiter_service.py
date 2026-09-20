@@ -4,6 +4,7 @@ from decimal import Decimal
 import boto3
 import pytest
 
+from app.repositories.rate_limit_repository import RateLimitRepository
 from app.services.rate_limiter_service import RateLimiterService
 from app.settings import Settings
 
@@ -35,7 +36,13 @@ def initialize_rate_limits_table(aws_default_region: str, settings: Settings):
 def rate_limiter_service(
     initialize_rate_limits_table, settings: Settings
 ) -> RateLimiterService:
-    return RateLimiterService(settings=settings)
+    return RateLimiterService(
+        settings=settings,
+        rate_limit_repository=RateLimitRepository(
+            table_name=f"{settings.stage}-{settings.app_name}-rate-limits",
+            db=boto3.resource("dynamodb"),
+        ),
+    )
 
 
 class TestRateLimiterService:

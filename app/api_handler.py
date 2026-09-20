@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 
 from app.api.v1.api import router as api_v1_router
+from app.dependencies import get_db_client, get_rate_limit_repository
 from app.middlewares import (
     ClientValidationMiddleware,
     CorrelationIdMiddleware,
@@ -86,6 +87,7 @@ app.add_middleware(
     RateLimitingMiddleware,
     rate_limiter_service=RateLimiterService(
         settings=settings,
+        rate_limit_repository=get_rate_limit_repository(settings, get_db_client()),
     ),
 )
 app.add_middleware(GZipMiddleware)
