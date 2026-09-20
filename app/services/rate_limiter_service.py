@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
 
-import boto3
 from aws_lambda_powertools import Logger
 
+from app.repositories.rate_limit_repository import RateLimitRepository
 from app.settings import Settings
 
 
@@ -21,13 +21,11 @@ class RateLimiterService:
     def __init__(
         self,
         settings: Settings,
-        db: boto3.resource | None = None,
+        rate_limit_repository: RateLimitRepository,
     ):
         self._settings = settings
         self._logger = Logger()
-        self._table = (db or boto3.resource("dynamodb")).Table(
-            f"{self._settings.stage}-{self._settings.app_name}-rate-limits"
-        )
+        self._rate_limit_repository = rate_limit_repository
         self._max_requests = self._settings.rate_limit_requests
         self._window_duration = self._settings.rate_limit_duration_in_seconds
 
@@ -37,13 +35,7 @@ class RateLimiterService:
         window_end = now + self._window_duration
         ttl_dec = Decimal(str(int(window_end)))
 
-        response = self._table.get_item(
-            Key={
-                "client_id": client_id,
-                "endpoint": endpoint,
-            }
-        )
-        item = response.get("Item")
+        item = self._rate_limit_repository.get_rate_limit(client_id, endpoint)
 
         if not item:
             return self._create_new_record(
@@ -67,14 +59,12 @@ class RateLimiterService:
         ttl: Decimal,
         window_end: float,
     ) -> RateLimitResult:
-        self._table.put_item(
-            Item={
-                "client_id": client_id,
-                "endpoint": endpoint,
-                "request_count": 1,
-                "window_start": now,
-                "ttl": ttl,
-            }
+        self._rate_limit_repository.create_rate_limit(
+            client_id,
+            endpoint,
+            request_count=1,
+            window_start=now,
+            ttl=ttl,
         )
         return RateLimitResult(
             allowed=True,
@@ -92,17 +82,12 @@ class RateLimiterService:
         ttl: Decimal,
         window_end: float,
     ) -> RateLimitResult:
-        self._table.update_item(
-            Key={"client_id": client_id, "endpoint": endpoint},
-            UpdateExpression=(
-                "SET request_count = :val, window_start = :now, #ttl_attr = :ttl"
-            ),
-            ExpressionAttributeNames={"#ttl_attr": "ttl"},
-            ExpressionAttributeValues={
-                ":val": 1,
-                ":now": now,
-                ":ttl": ttl,
-            },
+        self._rate_limit_repository.reset_rate_limit(
+            client_id,
+            endpoint,
+            request_count=1,
+            window_start=now,
+            ttl=ttl,
         )
         return RateLimitResult(
             allowed=True,
@@ -135,11 +120,7 @@ class RateLimiterService:
     def _increment_counter(
         self, client_id: str, endpoint: str, item: dict
     ) -> RateLimitResult:
-        self._table.update_item(
-            Key={"client_id": client_id, "endpoint": endpoint},
-            UpdateExpression="ADD request_count :inc",
-            ExpressionAttributeValues={":inc": 1},
-        )
+        self._rate_limit_repository.increment_rate_limit(client_id, endpoint)
         new_count = item["request_count"] + 1
         window_start = Decimal(str(item["window_start"]))
         return RateLimitResult(

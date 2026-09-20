@@ -9,6 +9,7 @@ from fastapi.security.http import HTTPAuthorizationCredentials
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken
 from app.repositories.post_repository import PostRepository
+from app.repositories.rate_limit_repository import RateLimitRepository
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
@@ -45,6 +46,16 @@ def get_post_service(
     post_repository: Annotated[PostRepository, Depends(get_post_repository)],
 ) -> PostService:
     return PostService(post_repository=post_repository)
+
+
+def get_rate_limit_repository(
+    settings: Annotated[Settings, Depends(get_settings)],
+    db: Annotated[boto3.resource, Depends(get_db_client)],
+) -> RateLimitRepository:
+    return RateLimitRepository(
+        table_name=f"{settings.stage}-{settings.app_name}-rate-limits",
+        db=db,
+    )
 
 
 def get_s3_storage_service(
@@ -85,11 +96,13 @@ def get_publisher_service(
 
 def get_rate_limiter_service(
     settings: Annotated[Settings, Depends(get_settings)],
-    db: Annotated[boto3.resource, Depends(get_db_client)],
+    rate_limit_repository: Annotated[
+        RateLimitRepository, Depends(get_rate_limit_repository)
+    ],
 ) -> RateLimiterService:
     return RateLimiterService(
         settings=settings,
-        db=db,
+        rate_limit_repository=rate_limit_repository,
     )
 
 
