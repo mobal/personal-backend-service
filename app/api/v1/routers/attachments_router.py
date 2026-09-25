@@ -83,7 +83,8 @@ def add_attachment(
     responses={**RESPONSE_404_POST, **RESPONSE_404_ATTACHMENT, **RESPONSE_422},
     summary="Get an attachment by UUID",
     description=(
-        "Returns the metadata of one attachment (including its public URL); "
+        "Returns the metadata of one attachment (including a signed "
+        "download URL valid for up to one hour); "
         "the binary content is served from S3 directly."
     ),
 )
@@ -101,8 +102,10 @@ def get_attachment_by_uuid(
     response_model=list[AttachmentResponse],
     responses={**RESPONSE_404_POST, **RESPONSE_422},
     summary="List attachments of a post",
-    description="Returns the metadata (including public URLs) of every "
-    "attachment linked to the post.",
+    description=(
+        "Returns the metadata (including signed download URLs valid for up to "
+        "one hour) of every attachment linked to the post."
+    ),
 )
 def get_attachments(
     post_uuid: Annotated[str, POST_UUID],

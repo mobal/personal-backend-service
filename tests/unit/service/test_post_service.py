@@ -171,6 +171,26 @@ class TestPostService:
         assert "<strong>bold</strong>" in result.content
         assert "<em>italic</em>" in result.content
 
+    def test_get_post_returns_signed_attachment_url(
+        self,
+        mocker: MockerFixture,
+        post_with_attachment: Post,
+        post_service: PostService,
+    ):
+        stored_post = post_with_attachment.model_dump()
+        stored_post["attachments"][0]["url"] = "https://old-public-url.example.com"
+        mocker.patch.object(
+            PostRepository,
+            "get_post_by_uuid",
+            return_value=stored_post,
+        )
+
+        result = post_service.get_post(post_with_attachment.id)
+
+        assert result.attachments
+        assert "X-Amz-Signature=" in result.attachments[0].url
+        assert "X-Amz-Expires=3600" in result.attachments[0].url
+
     def test_successfully_get_post_sanitizes_xss_from_markdown(
         self,
         mocker: MockerFixture,

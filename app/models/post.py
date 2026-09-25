@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from pydantic import BaseModel, Field, computed_field, conlist, constr
+from pydantic import BaseModel, Field, conlist, constr
 
 from app.models.camel_model import CamelModel
 
@@ -14,14 +14,6 @@ class Attachment(CamelModel):
     mime_type: str
     name: str
     region: str
-
-    @computed_field
-    @property
-    def url(self) -> str:
-        return (
-            f"https://{self.bucket}.s3.{self.region}.amazonaws.com/"
-            f"{self.name.lstrip('/')}"
-        )
 
 
 class Meta(BaseModel):

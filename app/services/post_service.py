@@ -17,6 +17,7 @@ from app.models.response import (
     Post as PostResponse,
 )
 from app.repositories.post_repository import PostRepository
+from app.services.s3_storage_service import S3StorageService
 
 
 class FilterExpressions:
@@ -45,9 +46,11 @@ class PostService:
     def __init__(
         self,
         post_repository: PostRepository,
+        storage_service: S3StorageService,
     ):
         self._logger = Logger()
         self._post_repository = post_repository
+        self._storage_service = storage_service
 
     def get_post_by_uuid(self, post_uuid: str) -> Post:
         item = self._post_repository.get_post_by_uuid(post_uuid)
@@ -104,9 +107,22 @@ class PostService:
             strip=True,
         )
         post_data["content"] = sanitized
+        self._sign_attachment_urls(post_data)
         if post_data.get("post_path"):
             post_data["post_path"] = normalize_post_path(post_data["post_path"])
         return PostResponse(**post_data)
+
+    def _sign_attachment_urls(self, post_data: dict[str, Any]) -> None:
+        if post_data.get("attachments"):
+            post_data["attachments"] = [
+                attachment
+                | {
+                    "url": self._storage_service.generate_presigned_download_url(
+                        attachment["bucket"], attachment["name"]
+                    )
+                }
+                for attachment in post_data["attachments"]
+            ]
 
     def create_post(self, data: dict[str, Any]) -> Post:
         now = datetime.now(UTC)
@@ -186,6 +202,7 @@ class PostService:
             ["id", "title", "meta", "post_path", "published_at", "updated_at"],
         )
         for post in posts:
+            self._sign_attachment_urls(post)
             if post.get("post_path"):
                 post["post_path"] = normalize_post_path(post["post_path"])
         return Page(
