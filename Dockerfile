@@ -9,7 +9,7 @@ RUN apk add --no-cache gcc musl-dev libffi-dev curl
 
 COPY pyproject.toml uv.lock ./
 
-RUN pip install --no-cache-dir uv \
+RUN pip install --no-cache-dir uv==0.12.19 \
     && uv sync --frozen --no-dev
 
 COPY . .

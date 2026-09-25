@@ -686,12 +686,11 @@ name = "personal-backend-service"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "aws-lambda-powertools", extras = ["validation"] },
     { name = "bleach" },
     { name = "boto3" },
-    { name = "boto3-stubs" },
     { name = "fastapi" },
     { name = "httpx2" },
-    { name = "httpx2-pytest" },
     { name = "mangum" },
     { name = "markdown" },
     { name = "pydantic" },
@@ -706,9 +705,10 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "aws-lambda-powertools", extra = ["validation"] },
     { name = "bandit" },
+    { name = "boto3-stubs" },
     { name = "faker" },
+    { name = "httpx2-pytest" },
     { name = "moto" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -721,12 +721,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aws-lambda-powertools", extras = ["validation"], specifier = ">=3.24.0" },
     { name = "bleach", specifier = ">=6.2.0" },
     { name = "boto3", specifier = ">=1.42.45" },
-    { name = "boto3-stubs", specifier = ">=1.42.48" },
     { name = "fastapi", specifier = ">=0.128.7" },
     { name = "httpx2", specifier = ">=2.2.0" },
-    { name = "httpx2-pytest", specifier = ">=1.0.1" },
     { name = "mangum", specifier = ">=0.21.0" },
     { name = "markdown", specifier = ">=3.7" },
     { name = "pydantic", specifier = ">=2.12.5" },
@@ -741,9 +740,10 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "aws-lambda-powertools", extras = ["validation"], specifier = ">=3.24.0" },
     { name = "bandit", specifier = ">=1.9.3" },
+    { name = "boto3-stubs", specifier = ">=1.42.48" },
     { name = "faker", specifier = ">=37.3.0" },
+    { name = "httpx2-pytest", specifier = ">=1.0.1" },
     { name = "moto", specifier = ">=5.1.21" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-cov", specifier = ">=7.1.0" },

@@ -34,6 +34,7 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v10.0.1
       with:
+        version: 0.12.19
         cache-dependency-glob: "uv.lock"
         enable-cache: true
 
@@ -52,6 +53,9 @@ jobs:
     - name: Running tests with Pytest and generate coverage
       run: |
         uv run -m pytest --cov-report=term --cov-report=xml:$Coverage_File --cov=app
+
+    - name: Build and verify Lambda artifacts
+      run: make build
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v5
@@ -109,4 +113,3 @@ jobs:
     - name: Clean up containers
       if: always()
       run: docker compose down -v --remove-orphans || true
-

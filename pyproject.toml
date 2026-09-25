@@ -5,12 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "aws-lambda-powertools[validation]>=3.24.0",
     "bleach>=6.2.0",
     "boto3>=1.42.45",
-    "boto3-stubs>=1.42.48",
     "fastapi>=0.128.7",
     "httpx2>=2.2.0",
-    "httpx2-pytest>=1.0.1",
     "mangum>=0.21.0",
     "markdown>=3.7",
     "pydantic>=2.12.5",
@@ -25,9 +24,10 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "aws-lambda-powertools[validation]>=3.24.0",
     "bandit>=1.9.3",
+    "boto3-stubs>=1.42.48",
     "faker>=37.3.0",
+    "httpx2-pytest>=1.0.1",
     "moto>=5.1.21",
     "pytest>=9.0.2",
     "pytest-cov>=7.1.0",

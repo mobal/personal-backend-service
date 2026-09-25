@@ -337,7 +337,7 @@ Error responses use a standard `ErrorResponse` shape: `{ status, id, message }`.
 | `aws_iam_role` / `aws_iam_policy` | Lambda IAM: DynamoDB CRUD + SSM + ENI + CloudWatch |
 | `aws_lambda_permission` | API Gateway invoke permission |
 
-Lambda layer is built inside a Docker container (`public.ecr.aws/sam/build-python3.14`) to produce platform-compatible wheels.
+The Lambda layer is built inside the versioned `public.ecr.aws/sam/build-python3.14:1.151.0` image. Build scripts install pinned uv `0.12.19`; the locked runtime layer includes boto3 and aws-lambda-powertools, while tests and typing tools remain development-only. `make build` checks ZIP size and required imports, then imports `app.api_handler` from the exact assembled API ZIP and dependency layer using Python 3.14.
 
 ---
 
