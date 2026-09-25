@@ -190,7 +190,9 @@ class TestAttachmentsApi:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         body = response.json()
         assert body["status"] == status.HTTP_422_UNPROCESSABLE_CONTENT
-        assert body["id"] and body["message"] and body["errors"]
+        assert body["id"]
+        assert body["message"]
+        assert body["errors"]
 
     def test_fail_to_add_attachment_due_to_unauthorized(
         self,

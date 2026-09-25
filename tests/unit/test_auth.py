@@ -45,7 +45,7 @@ class TestJWTAuth:
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_fail_to_authorize_request_due_to_authorization_header_is_missing(
@@ -54,7 +54,7 @@ class TestJWTAuth:
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_fail_to_authorize_request_due_to_bearer_token_is_invalid(
@@ -69,7 +69,7 @@ class TestJWTAuth:
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
         assert submitted_token not in caplog.text
 
@@ -115,7 +115,7 @@ class TestJWTAuth:
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_fail_to_authorize_request_due_to_token_is_missing_without_auto_error(
@@ -176,7 +176,7 @@ class TestJWTAuth:
             jwt_bearer(empty_request)
 
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
 
     def test_fail_to_authorize_request_due_to_missing_credentials_with_auto_error_false(
         self, empty_request: Mock
@@ -220,7 +220,7 @@ class TestJWTAuth:
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_fail_to_authorize_request_due_to_expired_token(
@@ -252,7 +252,7 @@ class TestJWTAuth:
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_successfully_authorize_request(

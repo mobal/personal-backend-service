@@ -355,6 +355,29 @@ class TestAttachmentService:
         exception_log.assert_not_called()
         error_log.assert_called_once()
 
+    def test_get_attachment_by_id_sanitizes_control_characters_in_logs(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+    ):
+        mocker.patch.object(PostService, "get_post", return_value=PostResponse())
+        info_log = mocker.patch.object(attachment_service._logger, "info")
+        error_log = mocker.patch.object(attachment_service._logger, "error")
+
+        with pytest.raises(AttachmentNotFoundException):
+            attachment_service.get_attachment_by_id(
+                "post-id\r\nforged-post-log", "attachment-id\r\nforged-attachment-log"
+            )
+
+        post_service.get_post.assert_called_once_with("post-id\r\nforged-post-log")
+        for log in (info_log, error_log):
+            message = log.call_args.args[0]
+            assert "\r" not in message
+            assert "\n" not in message
+            assert "\\r" not in message
+            assert "\\n" not in message
+
     def test_download_url_signs_published_attachment_on_demand(
         self,
         mocker: MockerFixture,

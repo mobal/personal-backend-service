@@ -1,5 +1,4 @@
 import base64
-import binascii
 from typing import Annotated
 
 from pydantic import ConfigDict, Field, field_validator
@@ -55,7 +54,7 @@ class CreateAttachment(CamelModel):
             raise ValueError("Attachment exceeds maximum size of 5 MB")
         try:
             decoded = base64.b64decode(value, validate=True)
-        except (binascii.Error, ValueError) as exc:
+        except ValueError as exc:
             raise ValueError("Attachment data must be valid base64") from exc
         if not decoded:
             raise ValueError("Attachment must not be empty")

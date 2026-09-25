@@ -122,7 +122,6 @@ def download_attachment(
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
-    response_model=list[AttachmentResponse],
     responses={**RESPONSE_404_POST, **RESPONSE_422},
     summary="List attachments of a post",
     description=(
