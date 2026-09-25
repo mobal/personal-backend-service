@@ -32,7 +32,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Remove query-string token references from code, OpenAPI descriptions, README examples, and tests.
   - Acceptance: query tokens are rejected and header tokens continue to work.
 
-- [ ] Ensure credentials are never logged.
+- [x] Ensure credentials are never logged.
   - Remove the `credentials` object from invalid-token log messages in `app/jwt_bearer.py`.
   - Review API Gateway, application, and exception logs for headers, query strings, and request bodies containing secrets.
   - Add a test that captures logs and asserts the submitted token is absent.

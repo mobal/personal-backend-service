@@ -58,15 +58,20 @@ class TestJWTAuth:
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_fail_to_authorize_request_due_to_bearer_token_is_invalid(
-        self, empty_request: Mock, jwt_bearer: JWTBearer
+        self,
+        empty_request: Mock,
+        jwt_bearer: JWTBearer,
+        caplog: pytest.LogCaptureFixture,
     ):
-        empty_request.headers = {"Authorization": "Bearer asdf"}
+        submitted_token = "submitted-secret-token-value"
+        empty_request.headers = {"Authorization": f"Bearer {submitted_token}"}
 
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
         assert NOT_AUTHENTICATED == excinfo.value.detail
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
+        assert submitted_token not in caplog.text
 
     def test_fail_to_authorize_request_due_to_invalid_token_without_auto_error(
         self, empty_request: Mock

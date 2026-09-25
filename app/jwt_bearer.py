@@ -36,7 +36,7 @@ class HTTPBearer(FastAPIHTTPBearer):
     ) -> HTTPAuthorizationCredentials | None:
         scheme, credentials = get_authorization_scheme_param(authorization)
         if not (authorization and scheme and credentials):
-            logger.warning(f"Missing {authorization=}, {scheme=} or {credentials=}")
+            logger.warning("Missing authorization scheme or credentials")
             if self._auto_error:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -45,7 +45,7 @@ class HTTPBearer(FastAPIHTTPBearer):
             else:
                 return None
         if scheme.lower() != "bearer":
-            logger.warning(f"Invalid {scheme=}")
+            logger.warning("Invalid authentication scheme")
             if self._auto_error:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -54,6 +54,7 @@ class HTTPBearer(FastAPIHTTPBearer):
             else:
                 return None
         return HTTPAuthorizationCredentials(scheme=scheme, credentials=credentials)
+
 
 class JWTBearer:
     def __init__(self, jwt_secret: str, audience: str, auto_error: bool = True):
@@ -66,7 +67,7 @@ class JWTBearer:
         if credentials:
             if not self._validate_token(credentials.credentials):
                 if self._auto_error:
-                    logger.warning(f"Invalid authentication token {credentials=}")
+                    logger.warning("Invalid authentication token")
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail=ERROR_MESSAGE_NOT_AUTHENTICATED,
@@ -89,12 +90,12 @@ class JWTBearer:
             )
             return True
         except DecodeError:
-            logger.exception("Error occurred during token validation")
+            logger.warning("Error occurred during token validation")
         except ExpiredSignatureError:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=ERROR_MESSAGE_NOT_AUTHENTICATED,
             )
         except Exception:
-            logger.exception("Unexpected error during JWT validation")
+            logger.warning("Unexpected error during JWT validation")
         return False
