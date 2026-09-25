@@ -168,6 +168,31 @@ class TestAttachmentsApi:
         assert result["message"]
         assert result["errors"]
 
+    @pytest.mark.parametrize("data", ["not-base64!", ""])
+    def test_rejects_invalid_or_empty_attachment_data(
+        self,
+        data: str,
+        create_attachment: CreateAttachment,
+        posts: list[Post],
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+        jwt_secret_ssm_param_value: str,
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+        payload = create_attachment.model_dump(by_alias=True)
+        payload["data"] = data
+
+        response = test_client.post(
+            f"/api/v1/posts/{posts[0].id}/attachments",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json=payload,
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        body = response.json()
+        assert body["status"] == status.HTTP_422_UNPROCESSABLE_CONTENT
+        assert body["id"] and body["message"] and body["errors"]
+
     def test_fail_to_add_attachment_due_to_unauthorized(
         self,
         create_attachment: CreateAttachment,

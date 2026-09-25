@@ -84,7 +84,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Handle `attachments is None` before iterating in `get_attachment_by_id`.
   - Add a regression test for this exact case.
 
-- [ ] Validate attachment input before uploading.
+- [x] Validate attachment input before uploading.
   - Decode with strict base64 validation and translate failures to a structured `422` response.
   - Reject empty files unless explicitly supported.
   - Bound the encoded request size before decoding to avoid unnecessary memory usage.

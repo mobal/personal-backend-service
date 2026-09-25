@@ -12,6 +12,7 @@ from app.models.response import (
     Attachment as AttachmentResponse,
     Post as PostResponse,
 )
+from app.schemas.attachment_schema import MAX_ENCODED_ATTACHMENT_SIZE, CreateAttachment
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.s3_storage_service import S3StorageService
@@ -36,6 +37,16 @@ def post_response_with_attachment(attachment: Attachment) -> PostResponse:
 
 
 class TestAttachmentService:
+    def test_rejects_oversized_encoded_data_before_decoding(self, mocker):
+        decode = mocker.patch("app.schemas.attachment_schema.base64.b64decode")
+
+        with pytest.raises(ValueError, match="maximum size"):
+            CreateAttachment(
+                name="large.bin", data="A" * (MAX_ENCODED_ATTACHMENT_SIZE + 1)
+            )
+
+        decode.assert_not_called()
+
     def test_successfully_add_attachment(
         self,
         mocker: MockerFixture,
@@ -144,6 +155,35 @@ class TestAttachmentService:
                 ]
             },
         )
+
+    def test_sanitizes_object_name_and_sets_safe_content_metadata(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        posts: list[Post],
+        s3_storage_service: S3StorageService,
+        test_data: bytes,
+    ):
+        mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
+        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(S3StorageService, "put_object")
+
+        result = attachment_service.add_attachment(
+            posts[0].id,
+            "../../hello world.txt",
+            base64.b64encode(test_data).decode("ascii"),
+            'report"\r\nX-Evil: true.txt',
+        )
+
+        assert result.name.endswith("-hello_world.txt")
+        assert ".." not in result.name
+        call = s3_storage_service.put_object.call_args
+        assert call.kwargs == {
+            "content_type": "text/plain",
+            "content_disposition": (
+                "attachment; filename*=UTF-8''report%22X-Evil%3A%20true.txt"
+            ),
+        }
 
     def test_fail_to_add_attachment_due_to_post_not_found(
         self,
