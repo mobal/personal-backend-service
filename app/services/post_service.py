@@ -132,6 +132,7 @@ class PostService:
                 "post_path": post_path,
                 "created_at": now.isoformat(),
                 "deleted_at": None,
+                "attachments": [],
                 "slug": slugify(data["title"]),
                 "updated_at": None,
             }
@@ -226,6 +227,9 @@ class PostService:
                 raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
             raise
         self._logger.info(f"Post updated: {post_uuid=}")
+
+    def append_attachment(self, post_uuid: str, attachment: dict[str, Any]) -> None:
+        self._post_repository.append_attachment(post_uuid, attachment)
 
     def _prepare_title_update(self, post_uuid: str, update_data: dict[str, Any]):
         current = self._post_repository.get_post_by_uuid(post_uuid)

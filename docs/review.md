@@ -91,7 +91,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Sanitize or replace user-controlled object names and URL-encode generated URLs.
   - Persist the correct `Content-Type` and safe `Content-Disposition` metadata in S3.
 
-- [ ] Make attachment updates resilient.
+- [x] Make attachment updates resilient.
   - Prevent concurrent attachment additions from overwriting each other.
   - Delete the uploaded S3 object if the DynamoDB update fails, or use an explicit recoverable workflow.
   - Add tests for database failure after upload and concurrent additions.

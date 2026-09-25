@@ -1,5 +1,4 @@
 import base64
-import copy
 import uuid
 from unittest.mock import ANY
 
@@ -65,7 +64,7 @@ class TestAttachmentService:
                 "ContentType": "plain/text",
             },
         )
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
 
         encoded_data = base64.b64encode(test_data).decode("utf-8")
         result = attachment_service.add_attachment(
@@ -79,8 +78,8 @@ class TestAttachmentService:
         assert "url" not in result.model_dump()
         post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         s3_storage_service.put_object.assert_called_once()
-        post_service.update_post.assert_called_once_with(
-            posts[0].id, {"attachments": [result.model_dump(exclude_none=True)]}
+        post_service.append_attachment.assert_called_once_with(
+            posts[0].id, result.model_dump(exclude_none=True)
         )
 
     def test_successfully_add_attachment_with_custom_display_name(
@@ -101,7 +100,7 @@ class TestAttachmentService:
                 "ContentType": "plain/text",
             },
         )
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
 
         encoded_data = base64.b64encode(test_data).decode("utf-8")
         result = attachment_service.add_attachment(
@@ -115,7 +114,7 @@ class TestAttachmentService:
         assert "url" not in result.model_dump()
         post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         s3_storage_service.put_object.assert_called_once()
-        post_service.update_post.assert_called_once_with(posts[0].id, ANY)
+        post_service.append_attachment.assert_called_once_with(posts[0].id, ANY)
 
     def test_successfully_extend_attachments(
         self,
@@ -134,7 +133,7 @@ class TestAttachmentService:
             "put_object",
             return_value={"ContentLength": len(test_data), "ContentType": "plain/text"},
         )
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
 
         encoded_data = base64.b64encode(test_data).decode("utf-8")
         result = attachment_service.add_attachment(
@@ -144,16 +143,8 @@ class TestAttachmentService:
         assert post_with_attachment.attachments
         post_service.get_post_by_uuid.assert_called_once_with(post_with_attachment.id)
         s3_storage_service.put_object.assert_called_once()
-        extended_attachments = copy.deepcopy(post_with_attachment.attachments)
-        extended_attachments.append(result)
-        post_service.update_post.assert_called_once_with(
-            post_with_attachment.id,
-            {
-                "attachments": [
-                    attachment.model_dump(exclude_none=True)
-                    for attachment in extended_attachments
-                ]
-            },
+        post_service.append_attachment.assert_called_once_with(
+            post_with_attachment.id, result.model_dump(exclude_none=True)
         )
 
     def test_sanitizes_object_name_and_sets_safe_content_metadata(
@@ -165,7 +156,7 @@ class TestAttachmentService:
         test_data: bytes,
     ):
         mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
         mocker.patch.object(S3StorageService, "put_object")
 
         result = attachment_service.add_attachment(
@@ -184,6 +175,34 @@ class TestAttachmentService:
                 "attachment; filename*=UTF-8''report%22X-Evil%3A%20true.txt"
             ),
         }
+
+    def test_deletes_uploaded_object_when_post_update_fails(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        posts: list[Post],
+        s3_storage_service: S3StorageService,
+        test_data: bytes,
+    ):
+        mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
+        mocker.patch.object(
+            PostService, "append_attachment", side_effect=RuntimeError("db failed")
+        )
+        mocker.patch.object(S3StorageService, "put_object")
+        mocker.patch.object(S3StorageService, "delete_object")
+
+        with pytest.raises(RuntimeError, match="db failed"):
+            attachment_service.add_attachment(
+                posts[0].id,
+                ATTACHMENT_NAME,
+                base64.b64encode(test_data).decode("ascii"),
+                ATTACHMENT_NAME,
+            )
+
+        s3_storage_service.put_object.assert_called_once()
+        s3_storage_service.delete_object.assert_called_once_with(
+            "attachments", s3_storage_service.put_object.call_args.args[1]
+        )
 
     def test_fail_to_add_attachment_due_to_post_not_found(
         self,
@@ -399,7 +418,7 @@ class TestAttachmentService:
                 "ContentType": "application/octet-stream",
             },
         )
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
 
         result = attachment_service.add_attachment(
             posts[0].id, "test.foo", test_data.decode(), "test.foo"
@@ -408,8 +427,8 @@ class TestAttachmentService:
         assert result.mime_type == "application/octet-stream"
         post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         s3_storage_service.put_object.assert_called_once()
-        post_service.update_post.assert_called_once_with(
-            posts[0].id, {"attachments": [result.model_dump(exclude_none=True)]}
+        post_service.append_attachment.assert_called_once_with(
+            posts[0].id, result.model_dump(exclude_none=True)
         )
 
     def test_fail_to_add_attachment_due_to_file_too_large(
@@ -420,7 +439,7 @@ class TestAttachmentService:
         posts: list[Post],
     ):
         mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
 
         large_data = b"x" * (5 * 1024 * 1024 + 1)  # 5MB + 1 byte
         encoded_data = base64.b64encode(large_data).decode("utf-8")
@@ -451,7 +470,7 @@ class TestAttachmentService:
                 "ContentType": "plain/text",
             },
         )
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
 
         encoded_data = base64.b64encode(test_data).decode("utf-8")
         result = attachment_service.add_attachment(
@@ -465,7 +484,7 @@ class TestAttachmentService:
         assert "url" not in result.model_dump()
         post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         s3_storage_service.put_object.assert_called_once()
-        post_service.update_post.assert_called_once()
+        post_service.append_attachment.assert_called_once()
 
     def test_add_attachment_with_exactly_5mb(
         self,
@@ -477,7 +496,7 @@ class TestAttachmentService:
     ):
         """Test that adding an attachment exactly 5MB succeeds."""
         mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
 
         exact_5mb_data = b"x" * (5 * 1024 * 1024)
         encoded_data = base64.b64encode(exact_5mb_data).decode("utf-8")

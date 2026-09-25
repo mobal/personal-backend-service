@@ -1,5 +1,6 @@
 import uuid
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from random import randint
 
@@ -16,6 +17,36 @@ MAX_NUMBER_OF_LARGE_SIZED_POSTS = 100
 
 
 class TestPostRepository:
+    def test_concurrent_attachment_additions_are_preserved(
+        self,
+        posts: list[Post],
+        post_repository: PostRepository,
+        posts_table,
+    ):
+        post = posts[0]
+        posts_table.update_item(
+            Key={"id": post.id},
+            UpdateExpression="SET attachments = :empty",
+            ExpressionAttributeValues={":empty": []},
+        )
+        attachments = [
+            {"id": str(uuid.uuid4()), "name": "first"},
+            {"id": str(uuid.uuid4()), "name": "second"},
+        ]
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [
+                executor.submit(post_repository.append_attachment, post.id, item)
+                for item in attachments
+            ]
+            for future in futures:
+                future.result()
+
+        stored = posts_table.get_item(Key={"id": post.id})["Item"]["attachments"]
+        assert {attachment["id"] for attachment in stored} == {
+            attachment["id"] for attachment in attachments
+        }
+
     def test_successfully_create_post(
         self,
         posts: list[Post],

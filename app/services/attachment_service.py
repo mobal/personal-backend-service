@@ -104,15 +104,20 @@ class AttachmentService:
             region=self._settings.aws_region,
         )
 
-        updated_attachments = list(post.attachments or []) + [attachment]
-        self._post_service.update_post(
-            post_uuid,
-            {
-                "attachments": [
-                    att.model_dump(exclude_none=True) for att in updated_attachments
-                ]
-            },
-        )
+        try:
+            self._post_service.append_attachment(
+                post_uuid, attachment.model_dump(exclude_none=True)
+            )
+        except Exception:
+            try:
+                self._storage_service.delete_object(
+                    self._settings.attachments_bucket_name, object_key
+                )
+            except Exception as cleanup_error:
+                self._logger.error(
+                    f"Failed to clean up attachment object {object_key=}: {cleanup_error}"
+                )
+            raise
 
         return attachment
 
