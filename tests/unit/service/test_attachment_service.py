@@ -278,6 +278,20 @@ class TestAttachmentService:
         assert exc_info.type == AttachmentNotFoundException
         post_service.get_post.assert_called_once_with(post_with_attachment.id)
 
+    def test_fail_to_get_attachment_when_post_has_no_attachments(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+        posts: list[Post],
+    ):
+        mocker.patch.object(PostService, "get_post", return_value=PostResponse())
+
+        with pytest.raises(AttachmentNotFoundException):
+            attachment_service.get_attachment_by_id(posts[0].id, str(uuid.uuid4()))
+
+        post_service.get_post.assert_called_once_with(posts[0].id)
+
     def test_download_url_signs_published_attachment_on_demand(
         self,
         mocker: MockerFixture,
