@@ -53,7 +53,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Test simultaneous requests at and above the threshold.
   - Acceptance: concurrent requests cannot exceed the configured allowance.
 
-- [ ] Stop using the raw URL path as an unbounded DynamoDB key.
+- [x] Stop using the raw URL path as an unbounded DynamoDB key.
   - Map requests to a small set of route templates or rate-limit buckets.
   - Exclude `/health` from application rate limiting.
   - Add protection against random-path storage/cost amplification.
