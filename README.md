@@ -334,8 +334,13 @@ Error responses use a standard `ErrorResponse` shape: `{ status, id, message }`.
 | `aws_lambda_layer_version` | Dependencies layer (built via Docker) |
 | `aws_dynamodb_table` | Posts table with 3 GSIs |
 | `aws_s3_bucket` | Private attachments bucket with public access blocked |
-| `aws_iam_role` / `aws_iam_policy` | Lambda IAM: DynamoDB CRUD + SSM + ENI + CloudWatch |
+| `aws_cloudwatch_log_group` | Lambda logs retained for 7 days |
+| `aws_iam_role` / `aws_iam_policy` | Scoped Lambda IAM for DynamoDB, SSM, S3, and CloudWatch logs |
 | `aws_lambda_permission` | API Gateway invoke permission |
+
+Production (`stage = "prod"` or `"production"`) enables DynamoDB deletion protection. Point-in-time recovery is disabled to avoid backup charges; enable it if the value of recovery outweighs the added cost. API Gateway/WAF throttling remains disabled per the product requirement to remove rate limiting.
+
+Lambda logs use CloudWatch Logs' default encryption at rest and are retained for `log_retention_days` (7 days by default). Custom KMS keys, API Gateway access-log ingestion, alarms, and custom metrics are omitted to keep recurring costs low. API Gateway access logging can be enabled later if operational needs justify the ingestion and retention costs.
 
 The Lambda layer is built inside the versioned `public.ecr.aws/sam/build-python3.14:1.151.0` image. Build scripts install pinned uv `0.12.19`; the locked runtime layer includes boto3 and aws-lambda-powertools, while tests and typing tools remain development-only. `make build` checks ZIP size and required imports, then imports `app.api_handler` from the exact assembled API ZIP and dependency layer using Python 3.14.
 
@@ -344,8 +349,9 @@ The Lambda layer is built inside the versioned `public.ecr.aws/sam/build-python3
 ## CI/CD Pipeline (GitHub Actions)
 
 `.github/workflows/ci.yml` runs on every push. The `build-and-test` job
-mirrors the Makefile targets; the `newman` job (last gate, needs
-`build-and-test`) replays the Docker end-to-end suite.
+mirrors the Makefile targets; the `newman` job (needs `build-and-test`)
+replays the Docker end-to-end suite, and a separate infrastructure job checks
+OpenTofu formatting/validation and TFLint.
 
 ```mermaid
 flowchart LR
