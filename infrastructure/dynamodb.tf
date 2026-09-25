@@ -1,7 +1,12 @@
 resource "aws_dynamodb_table" "posts" {
-  name         = "${local.app_name}-posts"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "id"
+  name                        = "${local.app_name}-posts"
+  billing_mode                = "PAY_PER_REQUEST"
+  hash_key                    = "id"
+  deletion_protection_enabled = local.is_production
+
+  point_in_time_recovery {
+    enabled = false
+  }
 
   attribute {
     name = "id"

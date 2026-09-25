@@ -38,5 +38,6 @@ resource "aws_lambda_function" "fastapi" {
   depends_on = [
     aws_iam_role_policy_attachment.lambda_policy_attachment,
     aws_lambda_layer_version.requirements_lambda_layer,
+    aws_cloudwatch_log_group.lambda,
   ]
 }
