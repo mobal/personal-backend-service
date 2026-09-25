@@ -150,7 +150,7 @@ def request_validation_error_handler(
 ) -> JSONResponse:
     error_id = uuid.uuid4()
     status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
-    logger.exception(f"Received request validation error {error_id=}")
+    logger.error(f"Received request validation error {error_id=}")
     return JSONResponse(
         content=jsonable_encoder(
             ValidationErrorResponse(
