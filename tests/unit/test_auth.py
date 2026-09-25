@@ -20,7 +20,6 @@ TEST_JWT_AUDIENCE = "https://test-personal-backend-service"
 def empty_request() -> Mock:
     request = Mock()
     request.headers = {}
-    request.query_params = {}
     return request
 
 
@@ -182,10 +181,16 @@ class TestJWTAuth:
         assert excinfo.value.status_code == status.HTTP_403_FORBIDDEN
         assert excinfo.value.detail == "Invalid authentication credentials"
 
-    def test_fail_to_authorize_request_due_to_empty_token_query_param(
-        self, empty_request: Mock, jwt_bearer: JWTBearer
+    def test_fail_to_authorize_request_with_valid_query_token(
+        self,
+        empty_request: Mock,
+        jwt_bearer: JWTBearer,
+        jwt_token: JWTToken,
+        settings: Settings,
     ):
-        empty_request.query_params = {"token": ""}
+        empty_request.query_params = {
+            "token": generate_bearer_token(jwt_token, settings.jwt_secret)
+        }
 
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
@@ -232,20 +237,5 @@ class TestJWTAuth:
         valid_request: Request,
     ):
         result = jwt_bearer(valid_request)
-
-        assert jwt_token.model_dump() == result.model_dump()
-
-    def test_successfully_authorize_request_with_query_token(
-        self,
-        jwt_bearer: JWTBearer,
-        jwt_token: JWTToken,
-        settings: Settings,
-    ):
-        request = Mock()
-        request.headers = {}
-        request.query_params = {
-            "token": jwt.encode(jwt_token.model_dump(), settings.jwt_secret)
-        }
-        result = jwt_bearer(request)
 
         assert jwt_token.model_dump() == result.model_dump()

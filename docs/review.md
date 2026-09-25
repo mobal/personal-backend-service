@@ -27,9 +27,9 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
 
 ## 2. Authentication and request security
 
-- [ ] Remove JWT query-parameter authentication.
+- [x] Remove JWT query-parameter authentication.
   - Accept tokens only through `Authorization: Bearer`.
-  - Remove `?token=` from code, OpenAPI descriptions, README examples, and tests.
+  - Remove query-string token references from code, OpenAPI descriptions, README examples, and tests.
   - Acceptance: query tokens are rejected and header tokens continue to work.
 
 - [ ] Ensure credentials are never logged.

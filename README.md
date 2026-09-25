@@ -35,7 +35,7 @@ A production-grade personal blog backend. Posts are stored in **DynamoDB**, rend
 | API Adapter | Mangum (AWS Lambda + API Gateway V2) |
 | Database | DynamoDB (single table, 3 GSIs) |
 | Object Storage | S3 (private attachments, stable API download links) |
-| Auth | JWT (HS256, header or query param) |
+| Auth | JWT (HS256, Authorization bearer header) |
 | Markdown | python-markdown |
 | Date/Time | Python stdlib `datetime` |
 | Validation | Pydantic v2 (camelCase alias) |
@@ -117,7 +117,7 @@ The schema is enriched with:
   top-level `description`.
 - **Tag groups** - `posts`, `attachments`, and `system` (`/health`).
 - **Authentication** - protected operations declare the `HTTPBearer`
-  security scheme (`Authorization: Bearer <token>` or `?token=<token>`),
+  security scheme (`Authorization: Bearer <token>`),
   documented under `components.securitySchemes`.
 - **Error responses** - every possible `4xx` references the
   `ErrorResponse` / `ValidationErrorResponse` schemas, matching the real
@@ -439,7 +439,7 @@ app/
 ├── api_handler.py          # FastAPI app, Mangum handler, error handlers
 ├── dependencies.py         # DI providers (services, repositories, JWT)
 ├── settings.py             # Pydantic settings (env vars + SSM secrets)
-├── jwt_bearer.py           # JWT auth (Bearer header + token query param)
+├── jwt_bearer.py           # JWT auth (Authorization bearer header)
 ├── middlewares.py          # Correlation ID, geo-block (country.is), rate limiting
 ├── exceptions.py           # PostNotFoundException, AttachmentNotFoundException, etc.
 ├── api/
