@@ -1,4 +1,3 @@
-import os
 from functools import cached_property
 
 from aws_lambda_powertools.utilities import parameters
@@ -16,6 +15,7 @@ class Settings(BaseSettings):
     aws_access_key_id: str
     aws_secret_access_key: str
     aws_region: str = Field(alias="AWS_DEFAULT_REGION")
+    jwt_secret_ssm_param_name: str = Field(alias="JWT_SECRET_SSM_PARAM_NAME")
     default_timezone: str
     ssh_host: str
     ssh_password_ssm_parameter_name: str | None = None
@@ -33,9 +33,7 @@ class Settings(BaseSettings):
     @computed_field
     @cached_property
     def jwt_secret(self) -> str:
-        return parameters.get_parameter(
-            os.environ.get("JWT_SECRET_SSM_PARAM_NAME"), decrypt=True
-        )
+        return parameters.get_parameter(self.jwt_secret_ssm_param_name, decrypt=True)
 
     @property
     def _ssh_password_parameter_name(self) -> str:

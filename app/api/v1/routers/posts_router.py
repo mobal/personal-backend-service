@@ -169,7 +169,7 @@ def get_by_post_path(
         ),
     ],
     post_service: Annotated[PostService, Depends(get_post_service)],
-    year: str = Annotated[
+    year: Annotated[
         str,
         Path(
             pattern=r"^\d{4}$",
@@ -177,7 +177,7 @@ def get_by_post_path(
             examples=["2026"],
         ),
     ],
-    month: str = Annotated[
+    month: Annotated[
         str,
         Path(
             pattern=r"^(0[1-9]|1[0-2])$",
@@ -185,7 +185,7 @@ def get_by_post_path(
             examples=["09"],
         ),
     ],
-    day: str = Annotated[
+    day: Annotated[
         str,
         Path(
             pattern=r"^(0[1-9]|[12]\d|3[01])$",
@@ -227,7 +227,7 @@ def get_post_by_uuid(
     "",
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
-    responses=ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
+    responses={**ERROR_RESPONSE_UNPROCESSABLE_CONTENT},
     summary="List published posts",
     description=(
         "Public endpoint. Results are paginated; pass the returned "

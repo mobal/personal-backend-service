@@ -1,3 +1,4 @@
+from builtins import list as builtin_list
 from collections.abc import Generator
 from contextlib import contextmanager
 
@@ -45,7 +46,9 @@ class SSHFSStorageService:
             )
             raise
 
-    def list(self, host: str, username: str, password: str, path: str) -> list[str]:
+    def list(
+        self, host: str, username: str, password: str, path: str
+    ) -> builtin_list[str]:
         try:
             with self._fs(host, username, password) as fs:
                 return fs.ls(path)

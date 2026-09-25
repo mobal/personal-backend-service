@@ -1,6 +1,5 @@
 from typing import Any
 
-import boto3
 from boto3.dynamodb.conditions import Attr, ConditionBase, Key
 from botocore.exceptions import ClientError
 
@@ -9,7 +8,7 @@ class PostRepository:
     def __init__(
         self,
         table_name: str,
-        db: boto3.resource,
+        db: Any,
     ):
         self._table = db.Table(table_name)
 

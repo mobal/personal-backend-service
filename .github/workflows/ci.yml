@@ -50,6 +50,9 @@ jobs:
         uv run ruff check app/ tests/ --statistics
         uv run ruff format --check app/ tests/
 
+    - name: Run ty type checker
+      run: make ty
+
     - name: Running tests with Pytest and generate coverage
       run: |
         uv run -m pytest --cov-report=term --cov-report=xml:$Coverage_File --cov=app
