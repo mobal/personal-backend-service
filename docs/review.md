@@ -16,12 +16,9 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Existing buckets retain ACL support for migration; the bucket ACL is private and all public access blocks are enabled. Review legacy object ACLs before switching to ACL-disabled ownership.
 
 - [ ] Move the SSH password out of Terraform variables and Lambda environment variables.
-  - Store the SSH credentials in SSM SecureString or Secrets Manager.
-  - Pass only the parameter/secret identifier to Lambda.
-  - Restrict `ssm:GetParameter` or secret access to the exact resource ARN; add `kms:Decrypt` only when a customer-managed key requires it.
-  - Remove the unused or conflicting `ssh_secret` configuration path.
-  - Rotate the password after deployment because the current value may already exist in Terraform state.
-  - Acceptance: neither the Terraform plan/state nor Lambda configuration contains the plaintext password.
+  - Runtime lookup through `/${stage}/${app_name}/ssh/password` as an SSM SecureString is implemented; only the parameter name is passed to Lambda, and IAM access is scoped to its exact ARN.
+  - Provision the SecureString outside Terraform, deploy, then rotate the SFTP password and update the parameter to invalidate the value that may remain in prior state snapshots.
+  - Verify the post-deploy plan/state and Lambda environment contain no plaintext password.
 
 - [ ] Add a production smoke test that uses the real Lambda execution role.
   - Cover health, create, UUID read, update, attachment upload/read, publish, and delete.
@@ -118,7 +115,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
 - [ ] Enable DynamoDB point-in-time recovery and deletion protection for production.
 - [ ] Add explicit CloudWatch log groups with retention and encryption settings.
 - [ ] Add alarms for Lambda errors/throttles/duration, API 5xx responses, and publish failures.
-- [ ] Scope `ssm:GetParameter` instead of granting `Resource = "*"`.
+- [x] Scope `ssm:GetParameter` instead of granting `Resource = "*"`.
 - [ ] Remove unused EC2/ENI permissions unless Lambda is actually configured for a VPC.
 - [ ] Add API Gateway or WAF throttling as the first line of abuse protection.
 - [ ] Pin the Terraform `random` provider and commit the provider lock file.

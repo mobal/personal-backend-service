@@ -11,11 +11,27 @@ from app.models.post import Post
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
 from app.services.sshfs_storage_service import SSHFSStorageService
+from app.settings import Settings
 
 ERROR_MESSAGE: str = "error"
 
 
 class TestPublisherService:
+    def test_ssh_password_is_loaded_from_secure_parameter(
+        self,
+        mocker: MockerFixture,
+        settings: Settings,
+    ):
+        get_parameter = mocker.patch(
+            "app.settings.parameters.get_parameter", return_value="runtime-password"
+        )
+
+        assert settings.ssh_password == "runtime-password"
+        get_parameter.assert_called_once_with(
+            settings._ssh_password_parameter_name, decrypt=True, max_age=60
+        )
+        assert "ssh_password" not in settings.model_dump()
+
     def test_successfully_publish(
         self,
         mocker: MockerFixture,

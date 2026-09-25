@@ -29,6 +29,11 @@ def setup(monkeypatch):
             Value=os.getenv("JWT_SECRET_SSM_PARAM_VALUE"),
             Type="SecureString",
         )
+        ssm_client.put_parameter(
+            Name=os.getenv("SSH_PASSWORD_SSM_PARAM_NAME"),
+            Value="test-only-ssh-password",
+            Type="SecureString",
+        )
         yield
 
 
