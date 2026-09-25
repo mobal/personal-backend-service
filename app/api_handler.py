@@ -15,7 +15,6 @@ from mangum import Mangum
 from app.api.v1.api import router as api_v1_router
 from app.dependencies import get_db_client, get_rate_limit_repository
 from app.middlewares import (
-    ClientValidationMiddleware,
     CorrelationIdMiddleware,
     RateLimitingMiddleware,
 )
@@ -81,7 +80,6 @@ app = FastAPI(
     openapi_tags=OPENAPI_TAGS,
 )
 app.add_middleware(CorrelationIdMiddleware)
-app.add_middleware(ClientValidationMiddleware)
 app.add_middleware(
     RateLimitingMiddleware,
     rate_limiter_service=RateLimiterService(

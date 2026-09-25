@@ -57,25 +57,25 @@ flowchart TD
     end
 
     subgraph AWS["AWS"]
-        B["API Gateway V2 (HTTP)"]
-        C["Lambda (FastAPI via Mangum)"]
-        D["DynamoDB - posts table"]
-        E["S3 - attachments bucket"]
-        F["SSM Parameter Store"]
+        B["CloudFront (CN/RU geo restriction)"]
+        C["API Gateway V2 (HTTP)"]
+        D["Lambda (FastAPI via Mangum)"]
+        E["DynamoDB - posts table"]
+        F["S3 - attachments bucket"]
+        G["SSM Parameter Store"]
     end
 
     subgraph Ext["External"]
-        G["SFTP / SSH Server"]
-        H["country.is (geo validation)"]
+        H["SFTP / SSH Server"]
     end
 
     A -->|HTTPS| B
-    B -->|AWS_PROXY| C
-    C -->|CRUD| D
-    C -->|get/put| E
-    C -->|jwt_secret| F
-    C -->|publish .md| G
-    C -->|geo-block CN/RU| H
+    B -->|HTTPS origin| C
+    C -->|AWS_PROXY| D
+    D -->|CRUD| E
+    D -->|get/put| F
+    D -->|jwt_secret| G
+    D -->|publish .md| H
 ```
 
 ---
@@ -324,11 +324,14 @@ Provision the SFTP password as an SSM Parameter Store `SecureString` at the conf
 
 ## Middleware
 
-Three custom middlewares run on every request:
+Two custom middlewares run on every request:
 
 1. **CorrelationIdMiddleware** - injects `X-Correlation-ID` header (from request or AWS request ID or new UUID)
-2. **ClientValidationMiddleware** - geo-blocks requests from China (CN) and Russia (RU) via `country.is`
-3. **RateLimitingMiddleware** - per-IP fixed-window rate limiting by route template; unknown paths share one bucket and `/health` is excluded
+2. **RateLimitingMiddleware** - per-IP fixed-window rate limiting by route template; unknown paths share one bucket and `/health` is excluded
+
+CloudFront applies the CN/RU geographic restriction before forwarding to API Gateway. The API URL stored in SSM points to CloudFront. The API Gateway execute-api endpoint remains directly addressable and bypasses this edge restriction; use the SSM URL for clients.
+
+API Gateway and the service process source IP addresses solely to limit abuse. Lambda stores an IP only as part of a rate-limit DynamoDB key, with TTL set to the active window plus one-window cleanup allowance; rate-limit logs omit the IP. Client IPs are not sent to a geolocation provider.
 
 Error responses use a standard `ErrorResponse` shape: `{ status, id, message }`.
 
@@ -339,6 +342,7 @@ Error responses use a standard `ErrorResponse` shape: `{ status, id, message }`.
 | Resource | Description |
 |---|---|
 | `aws_apigatewayv2_api` | HTTP API Gateway |
+| `aws_cloudfront_distribution` | API edge with geographic restrictions and caching disabled |
 | `aws_lambda_function` | FastAPI handler (Python 3.14, 768 MB, 15 s timeout) |
 | `aws_lambda_layer_version` | Dependencies layer (built via Docker) |
 | `aws_dynamodb_table` | Posts table with 3 GSIs |
@@ -440,7 +444,7 @@ app/
 ├── dependencies.py         # DI providers (services, repositories, JWT)
 ├── settings.py             # Pydantic settings (env vars + SSM secrets)
 ├── jwt_bearer.py           # JWT auth (Authorization bearer header)
-├── middlewares.py          # Correlation ID, geo-block (country.is), rate limiting
+├── middlewares.py          # Correlation ID and rate limiting
 ├── exceptions.py           # PostNotFoundException, AttachmentNotFoundException, etc.
 ├── api/
 │   └── v1/

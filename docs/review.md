@@ -58,7 +58,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Exclude `/health` from application rate limiting.
   - Add protection against random-path storage/cost amplification.
 
-- [ ] Move country filtering out of application middleware.
+- [x] Move country filtering out of application middleware.
   - Recommended: implement it with AWS WAF or CloudFront geographic restrictions.
   - Remove the per-client call to `country.is` from the request path.
   - Document the privacy basis for processing client IP addresses.

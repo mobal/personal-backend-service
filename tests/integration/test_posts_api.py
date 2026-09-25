@@ -5,11 +5,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from httpx2 import ConnectTimeout
-from pytest_httpx2 import HTTPXMock
 from tests.helpers.utils import generate_jwt_token
 
-from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts, country_cache
 from app.models.post import Post
 from app.schemas.post_schema import CreatePost
 from app.services.publisher_service import PublisherService
@@ -40,18 +37,8 @@ class TestPostsApi:
         self,
         initialize_posts_table,
         initialize_rate_limits_table,
-        httpx2_mock: HTTPXMock,
     ):
-        banned_hosts.clear()
-        country_cache.clear()
-        httpx2_mock.add_response(
-            url=f"{COUNTRY_IS_API_BASE_URL}/testclient",
-            status_code=status.HTTP_200_OK,
-            json={
-                "ip": "8.8.8.8",
-                "country": "US",
-            },
-        )
+        pass
 
     def test_successfully_get_posts(self, posts: list[Post], test_client: TestClient):
         response = test_client.get(BASE_URL)
@@ -108,64 +95,6 @@ class TestPostsApi:
             .items()
             <= response.json().items()
         )
-
-    def test_fail_to_get_post_due_to_invalid_client(
-        self,
-        httpx2_mock: HTTPXMock,
-        test_client: TestClient,
-    ):
-        url = f"{COUNTRY_IS_API_BASE_URL}/testclient"
-        httpx2_mock.reset()
-        httpx2_mock.add_response(
-            url=url,
-            status_code=status.HTTP_200_OK,
-            json={
-                "ip": "testclient",
-                "country": "RU",
-            },
-        )
-
-        response = test_client.get(f"{BASE_URL}/{str(uuid.uuid4())}")
-
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.json()["message"] == "Forbidden"
-        assert response.json()["status"] == status.HTTP_403_FORBIDDEN
-        assert response.json()["id"]
-        assert len(httpx2_mock.get_requests(url=url)) == 1
-
-    def test_successfully_get_post_despite_country_api_unavailability(
-        self,
-        posts: list[Post],
-        httpx2_mock: HTTPXMock,
-        test_client: TestClient,
-    ):
-        url = f"{COUNTRY_IS_API_BASE_URL}/testclient"
-        httpx2_mock.reset()
-        httpx2_mock.add_exception(
-            ConnectTimeout("timeout"),
-            url=url,
-        )
-
-        response = test_client.get(f"{BASE_URL}/{posts[0].id}")
-
-        assert response.status_code == status.HTTP_200_OK
-        assert (
-            posts[0]
-            .model_dump(
-                exclude={
-                    "attachments",
-                    "content",
-                    "created_at",
-                    "deleted_at",
-                    "post_path",
-                    "updated_at",
-                },
-                by_alias=True,
-            )
-            .items()
-            <= response.json().items()
-        )
-        assert len(httpx2_mock.get_requests(url=url)) == 1
 
     def test_successfully_get_archive(self, posts: list[Post], test_client: TestClient):
         response = test_client.get(f"{BASE_URL}/archive")

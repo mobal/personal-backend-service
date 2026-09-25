@@ -3,10 +3,8 @@ import uuid
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from pytest_httpx2 import HTTPXMock
 from tests.helpers.utils import generate_jwt_token
 
-from app.middlewares import COUNTRY_IS_API_BASE_URL, banned_hosts, country_cache
 from app.models.post import Attachment, Post
 from app.schemas.attachment_schema import CreateAttachment
 
@@ -26,21 +24,10 @@ class TestAttachmentsApi:
         s3_resource,
         initialize_posts_table,
         initialize_rate_limits_table,
-        httpx2_mock: HTTPXMock,
     ):
         s3_resource.create_bucket(
             Bucket="attachments",
             CreateBucketConfiguration={"LocationConstraint": aws_default_region},
-        )
-        banned_hosts.clear()
-        country_cache.clear()
-        httpx2_mock.add_response(
-            url=f"{COUNTRY_IS_API_BASE_URL}/testclient",
-            status_code=status.HTTP_200_OK,
-            json={
-                "ip": "8.8.8.8",
-                "country": "US",
-            },
         )
 
     def test_successfully_add_attachment(
@@ -153,33 +140,6 @@ class TestAttachmentsApi:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
-
-    def test_fail_to_get_attachment_due_to_invalid_client(
-        self,
-        httpx2_mock: HTTPXMock,
-        post_with_attachment: Post,
-        test_client: TestClient,
-    ):
-        url = f"{COUNTRY_IS_API_BASE_URL}/testclient"
-        httpx2_mock.reset()
-        httpx2_mock.add_response(
-            url=url,
-            status_code=status.HTTP_200_OK,
-            json={
-                "ip": "testclient",
-                "country": "RU",
-            },
-        )
-
-        response = test_client.get(
-            f"/api/v1/posts/{post_with_attachment.id}/attachments/{post_with_attachment.attachments[0].id}"
-        )
-
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.json()["message"] == "Forbidden"
-        assert response.json()["status"] == status.HTTP_403_FORBIDDEN
-        assert response.json()["id"]
-        assert len(httpx2_mock.get_requests(url=url)) == 1
 
     def test_fail_to_get_attachment_due_to_not_found(
         self,
