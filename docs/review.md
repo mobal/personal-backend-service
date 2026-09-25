@@ -11,12 +11,9 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Acceptance: the deployed Lambda can read, update, delete, publish, and attach files to an existing post without `AccessDenied`.
 
 - [ ] Decide and implement the attachment access model.
-  - Recommended: keep the bucket private and serve attachments through CloudFront or time-limited signed URLs.
-  - If objects must be public, keep bucket listing private and grant only the minimum public `s3:GetObject` access.
-  - Re-enable all applicable S3 public-access-block settings in `infrastructure/s3.tf`.
-  - Stop applying `public-read` to the bucket itself.
-  - Remove object ACL usage from `S3StorageService.put_object`, or explicitly grant `s3:PutObjectAcl` if ACLs are intentionally retained.
-  - Acceptance: uploads work with the production role, permitted objects are retrievable, and anonymous users cannot list the bucket.
+  - Private S3 and one-hour signed download URLs are implemented; verify the deployed behavior in staging.
+  - Confirm uploads work with the production role, signed URLs retrieve the uploaded object, and anonymous users cannot list the bucket or read objects directly.
+  - Existing buckets retain ACL support for migration; the bucket ACL is private and all public access blocks are enabled. Review legacy object ACLs before switching to ACL-disabled ownership.
 
 - [ ] Move the SSH password out of Terraform variables and Lambda environment variables.
   - Store the SSH credentials in SSM SecureString or Secrets Manager.

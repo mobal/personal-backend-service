@@ -1093,7 +1093,7 @@
                 "{{attachmentId}}"
               ]
             },
-            "description": "Fetches one attachment's metadata (public): camelCase fields, the content length computed from the decoded bytes, and the public S3 URL."
+            "description": "Fetches one attachment's metadata (public): camelCase fields, the content length computed from the decoded bytes, and a time-limited signed download URL."
           },
           "event": [
             {
@@ -1106,7 +1106,15 @@
                   "  pm.expect(body.id).to.eql(pm.collectionVariables.get('attachmentId'));",
                   "  pm.expect(body.displayName).to.eql('lorem.txt');",
                   "  pm.expect(body.mimeType).to.eql('text/plain');",
-                  "  pm.expect(body.url.startsWith('https://')).to.be.true;",
+                  "  pm.expect(body.url).to.include('X-Amz-Signature=');",
+                  "  pm.expect(body.url).to.include('X-Amz-Expires=3600');",
+                  "});",
+                  "pm.sendRequest(body.url, (error, response) => {",
+                  "  pm.test('signed URL retrieves attachment content', () => {",
+                  "    pm.expect(error).to.be.null;",
+                  "    pm.expect(response).to.have.status(200);",
+                  "    pm.expect(response.text()).to.eql('Lorem ipsum odor amet, consectetuer adipiscing elit.');",
+                  "  });",
                   "});",
                   "pm.test('reports the decoded content length', () => {",
                   "  // The base64 `data` sent by \"Add attachment\" decodes to 52 bytes.",

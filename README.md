@@ -22,7 +22,7 @@ limitations under the License.
 
 ## Overview
 
-A production-grade personal blog backend. Posts are stored in **DynamoDB**, rendered from Markdown to HTML, and served via a **FastAPI** application running on **AWS Lambda** through **Mangum**. Attachments are stored in **S3** with public-read access. Auth is handled via **JWT** (HS256).
+A production-grade personal blog backend. Posts are stored in **DynamoDB**, rendered from Markdown to HTML, and served via a **FastAPI** application running on **AWS Lambda** through **Mangum**. Attachments are stored in a private **S3** bucket and served through signed download URLs. Auth is handled via **JWT** (HS256).
 
 ---
 
@@ -34,7 +34,7 @@ A production-grade personal blog backend. Posts are stored in **DynamoDB**, rend
 | Runtime | Python 3.14+ |
 | API Adapter | Mangum (AWS Lambda + API Gateway V2) |
 | Database | DynamoDB (single table, 3 GSIs) |
-| Object Storage | S3 (public-read attachments) |
+| Object Storage | S3 (private attachments, signed download URLs) |
 | Auth | JWT (HS256, header or query param) |
 | Markdown | python-markdown |
 | Date/Time | Python stdlib `datetime` |
@@ -147,6 +147,8 @@ Nested under posts: `/posts/{postUuid}/attachments`
 | POST | `` | JWT | Add attachment (base64) |
 | GET | `` | No | List attachments |
 | GET | `/{attachmentUuid}` | No | Get attachment metadata |
+
+Attachment metadata in published post responses contains a signed S3 download URL valid for up to one hour. The URL can expire sooner if the Lambda role credentials expire. Fetch fresh metadata when a URL expires. The S3 bucket and its object listing are private.
 
 ## Posting and publishing
 
@@ -337,7 +339,7 @@ Error responses use a standard `ErrorResponse` shape: `{ status, id, message }`.
 | `aws_lambda_function` | FastAPI handler (Python 3.14, 768 MB, 15 s timeout) |
 | `aws_lambda_layer_version` | Dependencies layer (built via Docker) |
 | `aws_dynamodb_table` | Posts table with 3 GSIs |
-| `aws_s3_bucket` | Attachments bucket (public-read) |
+| `aws_s3_bucket` | Private attachments bucket with public access blocked |
 | `aws_iam_role` / `aws_iam_policy` | Lambda IAM: DynamoDB CRUD + SSM + ENI + CloudWatch |
 | `aws_lambda_permission` | API Gateway invoke permission |
 

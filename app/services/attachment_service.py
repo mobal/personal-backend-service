@@ -33,7 +33,7 @@ class AttachmentService:
         attachment_name = unidecode(attachment_name)
         self._logger.info(f"Adding attachment {attachment_name=} to {post_uuid=}")
 
-        post = self._post_service.get_post(post_uuid)
+        post = self._post_service.get_post_by_uuid(post_uuid)
         mime_type = mimetypes.guess_type(attachment_name)[0]
         if mime_type is None:
             self._logger.info(

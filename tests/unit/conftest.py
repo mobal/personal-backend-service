@@ -66,8 +66,12 @@ def post_repository(
 
 
 @pytest.fixture
-def post_service(post_repository: PostRepository) -> PostService:
-    return PostService(post_repository=post_repository)
+def post_service(
+    post_repository: PostRepository, s3_storage_service: S3StorageService
+) -> PostService:
+    return PostService(
+        post_repository=post_repository, storage_service=s3_storage_service
+    )
 
 
 @pytest.fixture

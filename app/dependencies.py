@@ -42,12 +42,6 @@ def get_post_repository(
     )
 
 
-def get_post_service(
-    post_repository: Annotated[PostRepository, Depends(get_post_repository)],
-) -> PostService:
-    return PostService(post_repository=post_repository)
-
-
 def get_rate_limit_repository(
     settings: Annotated[Settings, Depends(get_settings)],
     db: Annotated[boto3.resource, Depends(get_db_client)],
@@ -64,6 +58,13 @@ def get_s3_storage_service(
     return S3StorageService(
         region=settings.aws_region,
     )
+
+
+def get_post_service(
+    post_repository: Annotated[PostRepository, Depends(get_post_repository)],
+    storage_service: Annotated[S3StorageService, Depends(get_s3_storage_service)],
+) -> PostService:
+    return PostService(post_repository=post_repository, storage_service=storage_service)
 
 
 def get_sshfs_storage_service() -> SSHFSStorageService:

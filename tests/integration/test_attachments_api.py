@@ -29,7 +29,6 @@ class TestAttachmentsApi:
         httpx2_mock: HTTPXMock,
     ):
         s3_resource.create_bucket(
-            ACL="public-read-write",
             Bucket="attachments",
             CreateBucketConfiguration={"LocationConstraint": aws_default_region},
         )
