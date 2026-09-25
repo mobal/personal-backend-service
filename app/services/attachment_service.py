@@ -1,5 +1,4 @@
 import base64
-import binascii
 import mimetypes
 import re
 import uuid
@@ -66,7 +65,7 @@ class AttachmentService:
             )
         try:
             file_data = base64.b64decode(base64_data, validate=True)
-        except (binascii.Error, ValueError) as exc:
+        except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Attachment data must be valid base64",
@@ -136,7 +135,12 @@ class AttachmentService:
     def get_attachment_by_id(
         self, post_uuid: str, attachment_uuid: str
     ) -> AttachmentResponse:
-        self._logger.info(f"Get attachment {attachment_uuid=} from {post_uuid=}")
+        safe_post_uuid = post_uuid.replace("\r", "").replace("\n", "")
+        safe_attachment_uuid = attachment_uuid.replace("\r", "").replace("\n", "")
+        self._logger.info(
+            f"Get attachment attachment_uuid={safe_attachment_uuid!r} "
+            f"from post_uuid={safe_post_uuid!r}"
+        )
         post = self._post_service.get_post(post_uuid)
         attachment = next(
             (
@@ -148,7 +152,8 @@ class AttachmentService:
         )
         if attachment is None:
             error_message = (
-                f"The requested {attachment_uuid=} was not found for {post_uuid=}"
+                f"The requested attachment_uuid={safe_attachment_uuid!r} was not found "
+                f"for post_uuid={safe_post_uuid!r}"
             )
             self._logger.error(error_message)
             raise AttachmentNotFoundException(error_message)

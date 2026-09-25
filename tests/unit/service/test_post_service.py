@@ -71,7 +71,7 @@ class TestPostService:
             )
 
         assert status.HTTP_409_CONFLICT == excinfo.value.status_code
-        assert ERROR_MESSAGE_POST_ALREADY_EXISTS == excinfo.value.detail
+        assert excinfo.value.detail == ERROR_MESSAGE_POST_ALREADY_EXISTS
         post_repository.get_post_by_title.assert_called_once_with(posts[0].title, ANY)
 
     def test_successfully_create_post_despite_soft_deleted_post_with_same_title(
@@ -135,7 +135,7 @@ class TestPostService:
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
-        assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
+        assert excinfo.value.detail == ERROR_MESSAGE_POST_WAS_NOT_FOUND
 
     def test_successfully_get_post(
         self,
@@ -232,7 +232,7 @@ class TestPostService:
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
-        assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
+        assert excinfo.value.detail == ERROR_MESSAGE_POST_WAS_NOT_FOUND
         post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id)
 
     def test_fail_to_get_unpublished_post(
@@ -306,7 +306,7 @@ class TestPostService:
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
-        assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
+        assert excinfo.value.detail == ERROR_MESSAGE_POST_WAS_NOT_FOUND
 
     def test_successfully_get_archive(
         self,
@@ -334,7 +334,7 @@ class TestPostService:
 
         result = post_service.get_archive()
 
-        assert 0 == len(result)
+        assert len(result) == 0
 
     def test_successfully_get_archive_paginated(
         self,
@@ -456,7 +456,7 @@ class TestPostService:
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
-        assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
+        assert excinfo.value.detail == ERROR_MESSAGE_POST_WAS_NOT_FOUND
         calls = post_repository.get_post_by_post_path.call_args_list
         assert [call.args[0] for call in calls] == [
             post_path,
@@ -517,7 +517,7 @@ class TestPostService:
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
-        assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
+        assert excinfo.value.detail == ERROR_MESSAGE_POST_WAS_NOT_FOUND
         post_repository.get_post_by_uuid.assert_called_once_with(invalid_id)
 
     def test_fail_to_delete_post_due_to_unexpected_client_error(
