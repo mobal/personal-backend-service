@@ -328,7 +328,7 @@ Three custom middlewares run on every request:
 
 1. **CorrelationIdMiddleware** - injects `X-Correlation-ID` header (from request or AWS request ID or new UUID)
 2. **ClientValidationMiddleware** - geo-blocks requests from China (CN) and Russia (RU) via `country.is`
-3. **RateLimitingMiddleware** - per-IP rate limiting with configurable window and threshold
+3. **RateLimitingMiddleware** - per-IP fixed-window rate limiting by route template; unknown paths share one bucket and `/health` is excluded
 
 Error responses use a standard `ErrorResponse` shape: `{ status, id, message }`.
 
@@ -460,7 +460,7 @@ app/
 │   ├── post_service.py         # Business logic (CRUD, archive, markdown)
 │   ├── attachment_service.py   # S3 upload + post attachment link
 │   ├── publisher_service.py    # SFTP publish via SSHFS
-│   ├── rate_limiter_service.py # Per-IP sliding-window rate limiting
+│   ├── rate_limiter_service.py # Per-IP atomic fixed-window rate limiting
 │   ├── s3_storage_service.py   # S3 CRUD wrapper
 │   └── sshfs_storage_service.py# SSHFS storage wrapper
 └── repositories/
