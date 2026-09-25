@@ -75,7 +75,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Add an API regression test that creates a draft without the field.
   - Acceptance: the documented draft request returns `201`, not `422`.
 
-- [ ] Allow authenticated attachment uploads to draft and scheduled posts.
+- [x] Allow authenticated attachment uploads to draft and scheduled posts.
   - Load the post with the internal UUID lookup rather than the public-only post reader.
   - Keep public attachment reads restricted by the post's publication state.
   - Add draft, scheduled, published, deleted, and missing-post tests.
