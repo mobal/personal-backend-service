@@ -112,8 +112,7 @@ _bearer_security = HTTPBearer(
     auto_error=False,
     bearerFormat="JWT",
     description=(
-        "JWT (HS256) for this service, sent as `Authorization: Bearer "
-        "<token>` or as the `?token=<token>` query parameter."
+        "JWT (HS256) for this service, sent as `Authorization: Bearer <token>`."
     ),
 )
 

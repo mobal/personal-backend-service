@@ -468,22 +468,6 @@ class TestPostsApi:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         publish.assert_called_once_with(posts[0].id)
 
-    def test_fail_to_delete_post_due_to_empty_token_query_param(
-        self,
-        posts: list[Post],
-        test_client: TestClient,
-    ):
-        response = test_client.delete(
-            f"{BASE_URL}/{posts[0].id}",
-            params={"token": ""},
-        )
-
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert {
-            "status": status.HTTP_403_FORBIDDEN,
-            "message": ERROR_MESSAGE_NOT_AUTHENTICATED,
-        }.items() <= response.json().items()
-
     def test_fail_to_update_post_due_to_empty_body(
         self,
         jwt_secret_ssm_param_value: str,
