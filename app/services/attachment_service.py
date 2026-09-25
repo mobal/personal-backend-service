@@ -82,7 +82,7 @@ class AttachmentService:
         return (
             [
                 AttachmentResponse(**attachment.model_dump())
-                for attachment in post.attachments
+                for attachment in post.attachments or []
             ]
             if post.attachments
             else []
@@ -96,7 +96,7 @@ class AttachmentService:
         attachment = next(
             (
                 attachment
-                for attachment in post.attachments
+                for attachment in post.attachments or []
                 if attachment.id == attachment_uuid
             ),
             None,

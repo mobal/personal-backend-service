@@ -80,7 +80,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Keep public attachment reads restricted by the post's publication state.
   - Add draft, scheduled, published, deleted, and missing-post tests.
 
-- [ ] Return `404` when a post has no attachments.
+- [x] Return `404` when a post has no attachments.
   - Handle `attachments is None` before iterating in `get_attachment_by_id`.
   - Add a regression test for this exact case.
 
