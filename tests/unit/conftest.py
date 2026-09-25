@@ -1,18 +1,15 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-import boto3
 import pytest
 from boto3.dynamodb.conditions import Attr, ConditionBase
 
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken
 from app.repositories.post_repository import PostRepository
-from app.repositories.rate_limit_repository import RateLimitRepository
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
-from app.services.rate_limiter_service import RateLimiterService
 from app.services.s3_storage_service import S3StorageService
 from app.services.sshfs_storage_service import SSHFSStorageService
 from app.settings import Settings
@@ -93,46 +90,3 @@ def s3_storage_service(aws_default_region: str) -> S3StorageService:
 @pytest.fixture
 def sshfs_storage_service() -> SSHFSStorageService:
     return SSHFSStorageService()
-
-
-@pytest.fixture
-def initialize_rate_limits_table(aws_default_region: str, settings: Settings):
-    client = boto3.client("dynamodb", region_name=aws_default_region)
-    client.create_table(
-        TableName=f"{settings.stage}-{settings.app_name}-rate-limits",
-        KeySchema=[
-            {"AttributeName": "client_id", "KeyType": "HASH"},
-            {"AttributeName": "endpoint", "KeyType": "RANGE"},
-        ],
-        AttributeDefinitions=[
-            {"AttributeName": "client_id", "AttributeType": "S"},
-            {"AttributeName": "endpoint", "AttributeType": "S"},
-        ],
-        BillingMode="PAY_PER_REQUEST",
-    )
-    yield
-
-
-@pytest.fixture
-def rate_limiter_service(
-    rate_limit_repository: RateLimitRepository, settings: Settings
-) -> RateLimiterService:
-    return RateLimiterService(
-        settings=settings,
-        rate_limit_repository=rate_limit_repository,
-    )
-
-
-@pytest.fixture
-def rate_limit_repository(
-    initialize_rate_limits_table, dynamodb_resource, settings: Settings
-) -> RateLimitRepository:
-    return RateLimitRepository(
-        table_name=f"{settings.stage}-{settings.app_name}-rate-limits",
-        db=dynamodb_resource,
-    )
-
-
-@pytest.fixture
-def rate_limits_table(dynamodb_resource, settings: Settings):
-    return dynamodb_resource.Table(f"{settings.stage}-{settings.app_name}-rate-limits")

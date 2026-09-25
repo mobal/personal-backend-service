@@ -17,9 +17,6 @@ class Settings(BaseSettings):
     aws_secret_access_key: str
     aws_region: str = Field(alias="AWS_DEFAULT_REGION")
     default_timezone: str
-    rate_limit_duration_in_seconds: int
-    rate_limit_requests: int
-    rate_limiting: bool
     ssh_host: str
     ssh_password_ssm_parameter_name: str | None = None
     ssh_root_path: str

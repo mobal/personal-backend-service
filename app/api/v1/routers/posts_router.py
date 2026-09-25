@@ -30,18 +30,13 @@ router = APIRouter()
 
 # Shared OpenAPI response definitions. Error handlers wrap every failure in
 # the ErrorResponse envelope (ValidationErrorResponse for 422).
-RESPONSE_400_DATE = {
-    400: {"model": ErrorResponse, "description": "Date in the path is out of range"}
+ERROR_RESPONSE_FORBIDDEN = {
+    403: {"model": ErrorResponse, "description": "Missing or invalid JWT"}
 }
-RESPONSE_403 = {403: {"model": ErrorResponse, "description": "Missing or invalid JWT"}}
-RESPONSE_404 = {404: {"model": ErrorResponse, "description": "Post not found"}}
-RESPONSE_409 = {
-    409: {
-        "model": ErrorResponse,
-        "description": "A post with this title already exists",
-    }
+ERROR_RESPONSE_NOT_FOUND = {
+    404: {"model": ErrorResponse, "description": "Post not found"}
 }
-RESPONSE_422 = {
+ERROR_RESPONSE_UNPROCESSABLE_CONTENT = {
     422: {
         "model": ValidationErrorResponse,
         "description": "Request body or path parameters failed validation",
@@ -57,7 +52,16 @@ POST_UUID = Path(
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
-    responses={**RESPONSE_403, **RESPONSE_409, **RESPONSE_422},
+    responses={
+        **ERROR_RESPONSE_FORBIDDEN,
+        **{
+            409: {
+                "model": ErrorResponse,
+                "description": "A post with this title already exists",
+            }
+        },
+        **ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
+    },
     summary="Create a new post",
     description=(
         "The content is stored as Markdown and rendered to HTML when read. "
@@ -83,7 +87,11 @@ def create_post(
 @router.delete(
     "/{uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={**RESPONSE_403, **RESPONSE_404, **RESPONSE_422},
+    responses={
+        **ERROR_RESPONSE_FORBIDDEN,
+        **ERROR_RESPONSE_NOT_FOUND,
+        **ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
+    },
     summary="Soft-delete a post",
     description=(
         "Sets `deletedAt` on the item, so the post is excluded from every "
@@ -102,7 +110,7 @@ def delete_post(
 @router.post(
     "/{uuid}/publish",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={**RESPONSE_403, **RESPONSE_404},
+    responses={**ERROR_RESPONSE_FORBIDDEN, **ERROR_RESPONSE_NOT_FOUND},
     summary="Publish a post to the remote blog server",
     description=(
         "Writes the raw Markdown to the configured remote blog server when "
@@ -136,7 +144,16 @@ def get_archive(
 @router.get(
     "/{year}/{month}/{day}/{slug}",
     status_code=status.HTTP_200_OK,
-    responses={**RESPONSE_400_DATE, **RESPONSE_404, **RESPONSE_422},
+    responses={
+        **{
+            400: {
+                "model": ErrorResponse,
+                "description": "Date in the path is out of range",
+            }
+        },
+        **ERROR_RESPONSE_NOT_FOUND,
+        **ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
+    },
     summary="Get a published post by its date path and slug",
     description=(
         "Resolves the post published on the given date with the given URL "
@@ -195,7 +212,7 @@ def get_by_post_path(
     "/{uuid}",
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
-    responses={**RESPONSE_404, **RESPONSE_422},
+    responses={**ERROR_RESPONSE_NOT_FOUND, **ERROR_RESPONSE_UNPROCESSABLE_CONTENT},
     summary="Get a single post by UUID",
     description="Returns one post. Soft-deleted posts are not returned.",
 )
@@ -210,7 +227,7 @@ def get_post_by_uuid(
     "",
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
-    responses=RESPONSE_422,
+    responses=ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
     summary="List published posts",
     description=(
         "Public endpoint. Results are paginated; pass the returned "
@@ -234,7 +251,11 @@ def get_posts(
 @router.put(
     "/{uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={**RESPONSE_403, **RESPONSE_404, **RESPONSE_422},
+    responses={
+        **ERROR_RESPONSE_FORBIDDEN,
+        **ERROR_RESPONSE_NOT_FOUND,
+        **ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
+    },
     summary="Update an existing post",
     description=(
         "Partial update: only the fields present in the body are replaced, "

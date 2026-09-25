@@ -48,22 +48,6 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
 
 ## 3. Availability and abuse controls
 
-- [x] Make rate limiting atomic.
-  - Replace the read/check/write sequence with a conditional DynamoDB update or an edge-managed rate limit.
-  - Test simultaneous requests at and above the threshold.
-  - Acceptance: concurrent requests cannot exceed the configured allowance.
-
-- [x] Stop using the raw URL path as an unbounded DynamoDB key.
-  - Map requests to a small set of route templates or rate-limit buckets.
-  - Exclude `/health` from application rate limiting.
-  - Add protection against random-path storage/cost amplification.
-
-- [x] Move country filtering out of application middleware.
-  - Recommended: implement it with AWS WAF or CloudFront geographic restrictions.
-  - Remove the per-client call to `country.is` from the request path.
-  - Document the privacy basis for processing client IP addresses.
-  - Acceptance: `/health` and normal API requests do not depend on a third-party geolocation service.
-
 - [x] Make the health endpoint dependency-free.
   - Ensure `/health` does not call DynamoDB, SSM, S3, SSH, or external HTTP services.
   - If dependency checks are required, expose a separate readiness endpoint.
@@ -104,9 +88,8 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
 - [x] Validate real calendar dates in date-based routes.
   - Reject values such as `2026/02/31` as `400` rather than treating them as a missing post.
 
-- [ ] Standardize all error responses.
-  - Make the `429` body use the documented `{status, id, message}` envelope.
-  - Ensure correlation IDs are present on middleware-generated `403` and `429` responses.
+- [x] Standardize all error responses.
+  - Ensure correlation IDs are present on authentication `403` responses.
   - Avoid `logger.exception` when there is no active exception.
 
 ## 5. Deployment and infrastructure hardening
@@ -137,7 +120,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
 - [ ] Add `make ty` to the required CI workflow.
 - [ ] Add tests for IAM-sensitive behavior rather than relying only on Moto, which does not enforce the deployed role policy.
 - [ ] Run integration authentication without overriding `get_jwt_bearer` for at least one success and failure flow.
-- [ ] Add concurrency tests for rate limiting, title creation, and attachment mutation.
+- [ ] Add concurrency tests for title creation and attachment mutation.
 - [ ] Add failure-path tests for SSM, S3, DynamoDB conditional writes, and SSH timeouts.
 - [ ] Add a dependency vulnerability scan and a secret scan to CI.
 

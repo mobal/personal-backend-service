@@ -55,10 +55,11 @@ Use the project's existing test framework. Unit tests isolate one component and 
 - Imperative mood, capitalized, no trailing period, subject ≤50 chars (72 hard limit).
 - Blank line between subject and body.
 - Body explains *why*, not *how* — the diff already shows how.
+- Create conventional commit messages
 
 ## Before Finishing
 
-- Run the actual project checks (tests, lint, types, security) — never claim one passed without running it; if one can't be run, say so.
+- Run the actual project checks (tests, lint, types, security, end-to-end tests) — never claim one passed without running it; if one can't be run, say so.
 - Review `git status` / `git diff` for stray files, debug code, secrets, or unrelated changes.
 - Confirm: requested behavior works, conventions respected, no unnecessary visibility widening, tests added/passing, docs updated if public behavior changed.
 

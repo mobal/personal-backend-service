@@ -150,7 +150,7 @@ class AttachmentService:
             error_message = (
                 f"The requested {attachment_uuid=} was not found for {post_uuid=}"
             )
-            self._logger.exception(error_message)
+            self._logger.error(error_message)
             raise AttachmentNotFoundException(error_message)
         return AttachmentResponse(**attachment.model_dump())
 

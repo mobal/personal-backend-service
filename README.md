@@ -57,12 +57,11 @@ flowchart TD
     end
 
     subgraph AWS["AWS"]
-        B["CloudFront (CN/RU geo restriction)"]
-        C["API Gateway V2 (HTTP)"]
-        D["Lambda (FastAPI via Mangum)"]
-        E["DynamoDB - posts table"]
-        F["S3 - attachments bucket"]
-        G["SSM Parameter Store"]
+        B["API Gateway V2 (HTTP)"]
+        C["Lambda (FastAPI via Mangum)"]
+        D["DynamoDB - posts table"]
+        E["S3 - attachments bucket"]
+        F["SSM Parameter Store"]
     end
 
     subgraph Ext["External"]
@@ -70,12 +69,11 @@ flowchart TD
     end
 
     A -->|HTTPS| B
-    B -->|HTTPS origin| C
-    C -->|AWS_PROXY| D
-    D -->|CRUD| E
-    D -->|get/put| F
-    D -->|jwt_secret| G
-    D -->|publish .md| H
+    B -->|AWS_PROXY| C
+    C -->|CRUD| D
+    C -->|get/put| E
+    C -->|jwt_secret| F
+    C -->|publish .md| H
 ```
 
 ---
@@ -299,7 +297,7 @@ erDiagram
 
 ## Settings (Environment Variables)
 
-23 configuration values sourced from env vars:
+20 configuration values sourced from env vars:
 
 | Variable | Example |
 |---|---|
@@ -313,9 +311,6 @@ erDiagram
 | `JWT_SECRET_SSM_PARAM_NAME` | /dev/secrets/jwt |
 | `SSH_HOST` / `SSH_USERNAME` / `SSH_ROOT_PATH` | SFTP publish target |
 | `SSH_PASSWORD_SSM_PARAM_NAME` | `/dev/personal-backend-service/ssh/password` |
-| `RATE_LIMIT_DURATION_IN_SECONDS` | 60 |
-| `RATE_LIMIT_REQUESTS` | 60 |
-| `RATE_LIMITING` | true/false |
 | `STAGE` | dev |
 
 Provision the SFTP password as an SSM Parameter Store `SecureString` at the configured parameter name outside Terraform, using the AWS managed `aws/ssm` key. Lambda receives only the parameter name for the password; do not put the password in `.tfvars` or Lambda environment variables. The Lambda role can read only that parameter (plus the JWT parameter). If you use a customer-managed KMS key, grant `kms:Decrypt` on that exact key and allow the Lambda role in its key policy. After deploying the migration, rotate the SFTP account password and update the parameter to invalidate the credential that may remain in older Terraform state snapshots. Password lookups are cached for at most 60 seconds per warm Lambda process.
@@ -324,14 +319,7 @@ Provision the SFTP password as an SSM Parameter Store `SecureString` at the conf
 
 ## Middleware
 
-Two custom middlewares run on every request:
-
-1. **CorrelationIdMiddleware** - injects `X-Correlation-ID` header (from request or AWS request ID or new UUID)
-2. **RateLimitingMiddleware** - per-IP fixed-window rate limiting by route template; unknown paths share one bucket and `/health` is excluded
-
-CloudFront applies the CN/RU geographic restriction before forwarding to API Gateway. The API URL stored in SSM points to CloudFront. The API Gateway execute-api endpoint remains directly addressable and bypasses this edge restriction; use the SSM URL for clients.
-
-API Gateway and the service process source IP addresses solely to limit abuse. Lambda stores an IP only as part of a rate-limit DynamoDB key, with TTL set to the active window plus one-window cleanup allowance; rate-limit logs omit the IP. Client IPs are not sent to a geolocation provider.
+`CorrelationIdMiddleware` injects an `X-Correlation-ID` header from the request, AWS request ID, or a new UUID. The service does not apply geographic restrictions or application-level rate limiting.
 
 Error responses use a standard `ErrorResponse` shape: `{ status, id, message }`.
 
@@ -342,7 +330,6 @@ Error responses use a standard `ErrorResponse` shape: `{ status, id, message }`.
 | Resource | Description |
 |---|---|
 | `aws_apigatewayv2_api` | HTTP API Gateway |
-| `aws_cloudfront_distribution` | API edge with geographic restrictions and caching disabled |
 | `aws_lambda_function` | FastAPI handler (Python 3.14, 768 MB, 15 s timeout) |
 | `aws_lambda_layer_version` | Dependencies layer (built via Docker) |
 | `aws_dynamodb_table` | Posts table with 3 GSIs |
@@ -444,7 +431,7 @@ app/
 ├── dependencies.py         # DI providers (services, repositories, JWT)
 ├── settings.py             # Pydantic settings (env vars + SSM secrets)
 ├── jwt_bearer.py           # JWT auth (Authorization bearer header)
-├── middlewares.py          # Correlation ID and rate limiting
+├── middlewares.py          # Correlation ID
 ├── exceptions.py           # PostNotFoundException, AttachmentNotFoundException, etc.
 ├── api/
 │   └── v1/
@@ -464,7 +451,6 @@ app/
 │   ├── post_service.py         # Business logic (CRUD, archive, markdown)
 │   ├── attachment_service.py   # S3 upload + post attachment link
 │   ├── publisher_service.py    # SFTP publish via SSHFS
-│   ├── rate_limiter_service.py # Per-IP atomic fixed-window rate limiting
 │   ├── s3_storage_service.py   # S3 CRUD wrapper
 │   └── sshfs_storage_service.py# SSHFS storage wrapper
 └── repositories/

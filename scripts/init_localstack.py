@@ -58,16 +58,6 @@ def create_tables() -> None:
                 },
             ],
         },
-        f"{table_prefix}-rate-limits": {
-            "AttributeDefinitions": [
-                {"AttributeName": "client_id", "AttributeType": "S"},
-                {"AttributeName": "endpoint", "AttributeType": "S"},
-            ],
-            "KeySchema": [
-                {"AttributeName": "client_id", "KeyType": "HASH"},
-                {"AttributeName": "endpoint", "KeyType": "RANGE"},
-            ],
-        },
     }
 
     for name, schema in tables.items():
@@ -80,19 +70,6 @@ def create_tables() -> None:
             **schema,
         )
         print(f"created table {name}")
-
-
-def enable_rate_limit_ttl() -> None:
-    dynamodb = _client("dynamodb")
-    table_name = f"{STAGE}-{APP_NAME}-rate-limits"
-    dynamodb.update_time_to_live(
-        TableName=table_name,
-        TimeToLiveSpecification={
-            "AttributeName": "ttl",
-            "Enabled": True,
-        },
-    )
-    print(f"enabled TTL on {table_name}")
 
 
 def create_attachments_bucket() -> None:
@@ -128,7 +105,6 @@ def put_ssm_parameters() -> None:
 
 if __name__ == "__main__":
     create_tables()
-    enable_rate_limit_ttl()
     create_attachments_bucket()
     put_ssm_parameters()
     print("localstack seeded")

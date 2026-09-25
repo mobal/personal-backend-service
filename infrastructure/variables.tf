@@ -45,21 +45,6 @@ variable "memory_size" {
   type    = number
 }
 
-variable "rate_limit_duration_in_seconds" {
-  default = 60
-  type    = number
-}
-
-variable "rate_limit_requests" {
-  default = 60
-  type    = number
-}
-
-variable "rate_limiting" {
-  default = true
-  type    = bool
-}
-
 variable "ssh_host" {
   type = string
 }
