@@ -256,6 +256,26 @@ class TestPostsApi:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.headers["Location"]
 
+    def test_successfully_create_draft_without_published_at(
+        self,
+        create_post: CreatePost,
+        jwt_secret_ssm_param_value: str,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+        payload = create_post.model_dump(by_alias=True)
+        payload.pop("publishedAt")
+
+        response = test_client.post(
+            BASE_URL,
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json=payload,
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.headers["Location"]
+
     def test_fail_to_create_post_due_to_already_exists_by_title(
         self,
         jwt_secret_ssm_param_value: str,

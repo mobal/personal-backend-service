@@ -70,7 +70,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
 
 ## 4. API correctness
 
-- [ ] Make `publishedAt` genuinely optional on create.
+- [x] Make `publishedAt` genuinely optional on create.
   - Give `CreatePost.published_at` a default of `None`.
   - Add an API regression test that creates a draft without the field.
   - Acceptance: the documented draft request returns `201`, not `422`.

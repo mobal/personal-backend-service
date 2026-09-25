@@ -66,7 +66,7 @@ class CreatePost(CamelModel):
             "the post unpublished and unlisted",
             examples=["2026-09-05T12:00:00+00:00"],
         ),
-    ]
+    ] = None
 
     @field_validator("published_at")
     @classmethod
