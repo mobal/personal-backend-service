@@ -1093,7 +1093,7 @@
                 "{{attachmentId}}"
               ]
             },
-            "description": "Fetches one attachment's metadata (public): camelCase fields, the content length computed from the decoded bytes, and a time-limited signed download URL."
+            "description": "Fetches one attachment's metadata (public): camelCase fields, the content length computed from the decoded bytes, and a stable API-relative download URL."
           },
           "event": [
             {
@@ -1106,14 +1106,21 @@
                   "  pm.expect(body.id).to.eql(pm.collectionVariables.get('attachmentId'));",
                   "  pm.expect(body.displayName).to.eql('lorem.txt');",
                   "  pm.expect(body.mimeType).to.eql('text/plain');",
-                  "  pm.expect(body.url).to.include('X-Amz-Signature=');",
-                  "  pm.expect(body.url).to.include('X-Amz-Expires=3600');",
+                  "  pm.expect(body.url).to.eql('/api/v1/posts/' + pm.collectionVariables.get('attachmentPostId') + '/attachments/' + pm.collectionVariables.get('attachmentId') + '/download');",
                   "});",
-                  "pm.sendRequest(body.url, (error, response) => {",
-                  "  pm.test('signed URL retrieves attachment content', () => {",
+                  "pm.sendRequest(pm.variables.get('baseUrl') + body.url, (error, response) => {",
+                  "  pm.test('stable URL redirects without caching', () => {",
                   "    pm.expect(error).to.be.null;",
-                  "    pm.expect(response).to.have.status(200);",
-                  "    pm.expect(response.text()).to.eql('Lorem ipsum odor amet, consectetuer adipiscing elit.');",
+                  "    pm.expect(response).to.have.status(302);",
+                  "    pm.expect(response.headers.get('Cache-Control')).to.eql('no-store');",
+                  "    pm.expect(response.headers.get('Location')).to.include('X-Amz-Signature=');",
+                  "  });",
+                  "  pm.sendRequest(response.headers.get('Location'), (downloadError, downloadResponse) => {",
+                  "    pm.test('redirect target retrieves attachment content', () => {",
+                  "      pm.expect(downloadError).to.be.null;",
+                  "      pm.expect(downloadResponse).to.have.status(200);",
+                  "      pm.expect(downloadResponse.text()).to.eql('Lorem ipsum odor amet, consectetuer adipiscing elit.');",
+                  "    });",
                   "  });",
                   "});",
                   "pm.test('reports the decoded content length', () => {",

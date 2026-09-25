@@ -17,7 +17,6 @@ from app.models.response import (
     Post as PostResponse,
 )
 from app.repositories.post_repository import PostRepository
-from app.services.s3_storage_service import S3StorageService
 
 
 class FilterExpressions:
@@ -43,14 +42,9 @@ class PostService:
     ERROR_POST_EXISTS = "There is already a post with this title"
     ERROR_POST_NOT_FOUND = "The requested post was not found"
 
-    def __init__(
-        self,
-        post_repository: PostRepository,
-        storage_service: S3StorageService,
-    ):
+    def __init__(self, post_repository: PostRepository):
         self._logger = Logger()
         self._post_repository = post_repository
-        self._storage_service = storage_service
 
     def get_post_by_uuid(self, post_uuid: str) -> Post:
         item = self._post_repository.get_post_by_uuid(post_uuid)
@@ -107,18 +101,19 @@ class PostService:
             strip=True,
         )
         post_data["content"] = sanitized
-        self._sign_attachment_urls(post_data)
+        self._attach_download_urls(post_data)
         if post_data.get("post_path"):
             post_data["post_path"] = normalize_post_path(post_data["post_path"])
         return PostResponse(**post_data)
 
-    def _sign_attachment_urls(self, post_data: dict[str, Any]) -> None:
+    def _attach_download_urls(self, post_data: dict[str, Any]) -> None:
         if post_data.get("attachments"):
             post_data["attachments"] = [
                 attachment
                 | {
-                    "url": self._storage_service.generate_presigned_download_url(
-                        attachment["bucket"], attachment["name"]
+                    "url": (
+                        f"/api/v1/posts/{post_data['id']}/attachments/"
+                        f"{attachment['id']}/download"
                     )
                 }
                 for attachment in post_data["attachments"]
@@ -158,7 +153,7 @@ class PostService:
             raise
         self._logger.info(f"Post deleted: {post_uuid=}")
 
-    def get_post(self, post_uuid: str) -> PostResponse:
+    def get_published_post_by_uuid(self, post_uuid: str) -> Post:
         post = self._post_repository.get_post_by_uuid(post_uuid)
         if (
             not post
@@ -167,7 +162,12 @@ class PostService:
             or datetime.fromisoformat(post["published_at"]) > datetime.now(UTC)
         ):
             raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
-        return self._post_to_response(post)
+        return Post(**post)
+
+    def get_post(self, post_uuid: str) -> PostResponse:
+        return self._post_to_response(
+            self.get_published_post_by_uuid(post_uuid).model_dump()
+        )
 
     def get_by_post_path(self, post_path: str) -> PostResponse:
         filter_expression = (
@@ -202,7 +202,7 @@ class PostService:
             ["id", "title", "meta", "post_path", "published_at", "updated_at"],
         )
         for post in posts:
-            self._sign_attachment_urls(post)
+            self._attach_download_urls(post)
             if post.get("post_path"):
                 post["post_path"] = normalize_post_path(post["post_path"])
         return Page(

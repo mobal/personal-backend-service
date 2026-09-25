@@ -121,8 +121,38 @@ class TestAttachmentsApi:
             body.items()
             <= post_with_attachment.attachments[0].model_dump(by_alias=True).items()
         )
-        assert "X-Amz-Signature=" in url
-        assert "X-Amz-Expires=3600" in url
+        assert url == (
+            f"/api/v1/posts/{post_with_attachment.id}/attachments/"
+            f"{post_with_attachment.attachments[0].id}/download"
+        )
+
+    def test_download_redirects_to_fresh_signed_url(
+        self,
+        post_with_attachment: Post,
+        test_client: TestClient,
+    ):
+        attachment = post_with_attachment.attachments[0]
+        response = test_client.get(
+            f"/api/v1/posts/{post_with_attachment.id}/attachments/{attachment.id}/download",
+            follow_redirects=False,
+        )
+
+        assert response.status_code == status.HTTP_302_FOUND
+        assert response.headers["Cache-Control"] == "no-store"
+        assert "X-Amz-Signature=" in response.headers["Location"]
+        assert "X-Amz-Expires=3600" in response.headers["Location"]
+
+    def test_download_returns_not_found_for_unknown_attachment(
+        self,
+        post_with_attachment: Post,
+        test_client: TestClient,
+    ):
+        response = test_client.get(
+            f"/api/v1/posts/{post_with_attachment.id}/attachments/{uuid.uuid4()}/download",
+            follow_redirects=False,
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_fail_to_get_attachment_due_to_invalid_client(
         self,
@@ -181,8 +211,10 @@ class TestAttachmentsApi:
                 "attachments"
             ][0].items()
         )
-        assert "X-Amz-Signature=" in url
-        assert "X-Amz-Expires=3600" in url
+        assert url == (
+            f"/api/v1/posts/{post_with_attachment.id}/attachments/"
+            f"{post_with_attachment.attachments[0].id}/download"
+        )
 
     def test_successfully_get_empty_attachments(
         self,
