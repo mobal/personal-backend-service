@@ -115,10 +115,14 @@ class TestAttachmentsApi:
         )
 
         assert response.status_code == status.HTTP_200_OK
+        body = response.json()
+        url = body.pop("url")
         assert (
-            response.json().items()
+            body.items()
             <= post_with_attachment.attachments[0].model_dump(by_alias=True).items()
         )
+        assert "X-Amz-Signature=" in url
+        assert "X-Amz-Expires=3600" in url
 
     def test_fail_to_get_attachment_due_to_invalid_client(
         self,
@@ -169,12 +173,16 @@ class TestAttachmentsApi:
         )
 
         assert response.status_code == status.HTTP_200_OK
+        body = response.json()[0]
+        url = body.pop("url")
         assert (
-            response.json()[0].items()
+            body.items()
             <= post_with_attachment.model_dump(include=["attachments"], by_alias=True)[
                 "attachments"
             ][0].items()
         )
+        assert "X-Amz-Signature=" in url
+        assert "X-Amz-Expires=3600" in url
 
     def test_successfully_get_empty_attachments(
         self,
