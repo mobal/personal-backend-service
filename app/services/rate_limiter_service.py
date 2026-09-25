@@ -46,7 +46,6 @@ class RateLimiterService:
             self._logger.warning(
                 "Rate limit exceeded",
                 extra={
-                    "client_id": client_id,
                     "endpoint": endpoint,
                     "max_requests": self._max_requests,
                 },
