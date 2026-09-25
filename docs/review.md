@@ -106,13 +106,13 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
 
 ## 6. Build and dependency cleanup
 
-- [ ] Move `boto3-stubs` and `httpx2-pytest` out of runtime dependencies and into the dev dependency group.
-- [ ] Confirm whether Lambda's managed `boto3` is used; package it only when an application-pinned version is required.
-- [ ] Make `aws-lambda-powertools` ownership explicit: package it in the project layer or pin and verify the external layer in every target region.
-- [ ] Exclude `__pycache__`, `*.pyc`, tests, and development tooling from release artifacts.
-- [ ] Add artifact assertions for maximum compressed/uncompressed size and required imports.
-- [ ] Build without downloading an installer through `curl | sh`; use a pinned builder image/tool version.
-- [ ] Test importing `app.api_handler` from the exact assembled Lambda artifact in CI.
+- [x] Move `boto3-stubs` and `httpx2-pytest` out of runtime dependencies and into the dev dependency group.
+- [x] Package `boto3` in the project layer: application repositories and storage services use it directly, and the lockfile fixes the tested runtime version rather than relying on the Lambda-managed SDK version.
+- [x] Package `aws-lambda-powertools` in the project layer; remove the external layer ARN so ownership and versioning follow the project lockfile in every region.
+- [x] Exclude test directories, `__pycache__`, and `*.pyc` from both artifacts; package only `app/` in the API ZIP and export only non-development dependencies into the layer.
+- [x] Check each ZIP against the 50 MiB compressed limit, the combined artifacts against the 250 MiB uncompressed limit, and assert the handler and required runtime imports exist.
+- [x] Build with the versioned `public.ecr.aws/sam/build-python3.14:1.151.0` image and install pinned uv `0.12.19`; do not run an installer through `curl | sh`.
+- [x] In the build and CI jobs, import `app.api_handler` using the assembled API ZIP and dependency layer under Python 3.14.
 
 ## 7. Static analysis and test gaps
 
