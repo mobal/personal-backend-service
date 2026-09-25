@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Any
 
 import boto3
 from fastapi import Depends, Request
@@ -22,17 +22,17 @@ def get_settings() -> Settings:
     return Settings()
 
 
-def get_db_client() -> boto3.resource:
+def get_db_client() -> Any:
     return boto3.resource("dynamodb")
 
 
-def get_s3_client() -> boto3.client:
+def get_s3_client() -> Any:
     return boto3.client("s3")
 
 
 def get_post_repository(
     settings: Annotated[Settings, Depends(get_settings)],
-    db: Annotated[boto3.resource, Depends(get_db_client)],
+    db: Annotated[Any, Depends(get_db_client)],
 ) -> PostRepository:
     return PostRepository(
         table_name=f"{settings.stage}-{settings.app_name}-posts",

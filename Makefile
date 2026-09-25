@@ -30,4 +30,4 @@ tflint:
 	tflint --chdir=./infrastructure
 
 ty:
-	uv run ty check
+	uv run ty check app/

@@ -1,10 +1,15 @@
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any, cast
 
-from pydantic import ConfigDict, Field, conlist, constr, field_validator
+from pydantic import ConfigDict, Field, StringConstraints, field_validator
 
 from app.models.camel_model import CamelModel
 from app.models.post import Meta
+
+PostText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3)]
+OptionalPostText = PostText | None
+Tags = Annotated[list[str], Field(min_length=1)]
+OptionalTags = Tags | None
 
 CreatePostExample = {
     "summary": "A minimal Markdown blog post",
@@ -27,14 +32,14 @@ CreatePostExample = {
 
 class CreatePost(CamelModel):
     author: Annotated[
-        constr(strip_whitespace=True, min_length=3),
+        PostText,
         Field(
             description="Author of the post, at least 3 characters",
             examples=["Ada Lovelace"],
         ),
     ]
     title: Annotated[
-        constr(strip_whitespace=True, min_length=3),
+        PostText,
         Field(
             description="Title of the post, at least 3 characters; must be "
             "unique among non-deleted posts",
@@ -42,14 +47,14 @@ class CreatePost(CamelModel):
         ),
     ]
     content: Annotated[
-        constr(strip_whitespace=True, min_length=3),
+        PostText,
         Field(
             description="Body of the post in Markdown, at least 3 characters",
             examples=["**First draft** of the notes."],
         ),
     ]
     tags: Annotated[
-        conlist(str, min_length=1),
+        Tags,
         Field(
             description="Free-form tags used for grouping posts",
             examples=[["notes", "analytical-engine"]],
@@ -80,20 +85,22 @@ class CreatePost(CamelModel):
 
     model_config = ConfigDict(
         extra="ignore",
-        json_schema_extra={"examples": [CreatePostExample["value"]]},
+        json_schema_extra=cast(
+            dict[str, Any], {"examples": [CreatePostExample["value"]]}
+        ),
     )
 
 
 class UpdatePost(CamelModel):
     author: Annotated[
-        constr(strip_whitespace=True, min_length=3) | None,
+        OptionalPostText,
         Field(
             description="Author of the post, at least 3 characters",
             examples=["Ada Lovelace"],
         ),
     ] = None
     title: Annotated[
-        constr(strip_whitespace=True, min_length=3) | None,
+        OptionalPostText,
         Field(
             description="Title of the post, at least 3 characters; must be "
             "unique among non-deleted posts",
@@ -101,14 +108,14 @@ class UpdatePost(CamelModel):
         ),
     ] = None
     content: Annotated[
-        constr(strip_whitespace=True, min_length=3) | None,
+        OptionalPostText,
         Field(
             description="Body of the post in Markdown, at least 3 characters",
             examples=["**First draft** of the notes."],
         ),
     ] = None
     tags: Annotated[
-        conlist(str, min_length=1) | None,
+        OptionalTags,
         Field(
             description="Free-form tags used for grouping posts",
             examples=[["notes", "analytical-engine"]],

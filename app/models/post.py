@@ -1,8 +1,11 @@
 from typing import Annotated
 
-from pydantic import BaseModel, Field, conlist, constr
+from pydantic import BaseModel, Field, StringConstraints
 
 from app.models.camel_model import CamelModel
+
+PostText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3)]
+Tags = Annotated[list[str], Field(min_length=1)]
 
 
 class Attachment(CamelModel):
@@ -39,7 +42,7 @@ class Meta(BaseModel):
         ),
     ]
     keywords: Annotated[
-        conlist(item_type=str, min_length=1),
+        Tags,
         Field(
             description="Search keywords describing the post",
             examples=[["engine", "notes"]],
@@ -56,9 +59,9 @@ class Meta(BaseModel):
 
 class Post(CamelModel):
     id: str
-    author: constr(strip_whitespace=True, min_length=3)
-    title: constr(strip_whitespace=True, min_length=3)
-    content: constr(strip_whitespace=True, min_length=3)
+    author: PostText
+    title: PostText
+    content: PostText
     post_path: str
     created_at: str
     deleted_at: str | None = None
@@ -68,7 +71,7 @@ class Post(CamelModel):
     publish_error: str | None = Field(default=None, exclude=True)
     updated_at: str | None = None
     slug: str
-    tags: conlist(item_type=str, min_length=1)
+    tags: Tags
     meta: Meta
     attachments: list[Attachment] | None = None
 
