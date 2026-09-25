@@ -1,7 +1,8 @@
 from typing import Any
 
 import boto3
-from boto3.dynamodb.conditions import ConditionBase, Key
+from boto3.dynamodb.conditions import Attr, ConditionBase, Key
+from botocore.exceptions import ClientError
 
 
 class PostRepository:
@@ -105,3 +106,48 @@ class PostRepository:
         }
 
         self._table.update_item(**update_kwargs)
+
+    def append_attachment(self, post_uuid: str, attachment: dict[str, Any]) -> None:
+        current = self.get_post_by_uuid(post_uuid)
+        if current is None:
+            self._append_attachment_atomically(post_uuid, attachment)
+            return
+        if current.get("attachments") is None:
+            try:
+                self._table.update_item(
+                    Key={"id": post_uuid},
+                    UpdateExpression="SET attachments = :new",
+                    ConditionExpression=(
+                        Attr("id").exists()
+                        & (
+                            Attr("deleted_at").eq(None)
+                            | Attr("deleted_at").not_exists()
+                        )
+                        & (
+                            Attr("attachments").not_exists()
+                            | Attr("attachments").attribute_type("NULL")
+                        )
+                    ),
+                    ExpressionAttributeValues={":new": [attachment]},
+                )
+                return
+            except ClientError as exc:
+                if exc.response["Error"]["Code"] != "ConditionalCheckFailedException":
+                    raise
+
+        self._append_attachment_atomically(post_uuid, attachment)
+
+    def _append_attachment_atomically(
+        self, post_uuid: str, attachment: dict[str, Any]
+    ) -> None:
+        self._table.update_item(
+            Key={"id": post_uuid},
+            UpdateExpression=(
+                "SET attachments = list_append(if_not_exists(attachments, :empty), :new)"
+            ),
+            ConditionExpression=(
+                Attr("id").exists()
+                & (Attr("deleted_at").eq(None) | Attr("deleted_at").not_exists())
+            ),
+            ExpressionAttributeValues={":empty": [], ":new": [attachment]},
+        )
