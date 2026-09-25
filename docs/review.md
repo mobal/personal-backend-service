@@ -64,7 +64,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Document the privacy basis for processing client IP addresses.
   - Acceptance: `/health` and normal API requests do not depend on a third-party geolocation service.
 
-- [ ] Make the health endpoint dependency-free.
+- [x] Make the health endpoint dependency-free.
   - Ensure `/health` does not call DynamoDB, SSM, S3, SSH, or external HTTP services.
   - If dependency checks are required, expose a separate readiness endpoint.
 
