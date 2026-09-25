@@ -2,6 +2,7 @@ from typing import Annotated
 
 from aws_lambda_powertools import Logger
 from fastapi import APIRouter, Depends, Path, Response, status
+from fastapi.responses import RedirectResponse
 
 from app.dependencies import get_attachment_service, get_jwt_bearer
 from app.models.auth import JWTToken
@@ -83,9 +84,8 @@ def add_attachment(
     responses={**RESPONSE_404_POST, **RESPONSE_404_ATTACHMENT, **RESPONSE_422},
     summary="Get an attachment by UUID",
     description=(
-        "Returns the metadata of one attachment (including a signed "
-        "download URL valid for up to one hour); "
-        "the binary content is served from S3 directly."
+        "Returns attachment metadata with a stable, API-relative download URL. "
+        "The download endpoint redirects to a short-lived S3 URL."
     ),
 )
 def get_attachment_by_uuid(
@@ -97,14 +97,37 @@ def get_attachment_by_uuid(
 
 
 @router.get(
+    "/{attachment_uuid}/download",
+    status_code=status.HTTP_302_FOUND,
+    response_class=RedirectResponse,
+    responses={**RESPONSE_404_POST, **RESPONSE_404_ATTACHMENT},
+    summary="Download an attachment",
+    description=(
+        "Redirects to a fresh signed S3 URL. The redirect is not cached; "
+        "the stable API URL can be reused."
+    ),
+)
+def download_attachment(
+    post_uuid: Annotated[str, POST_UUID],
+    attachment_uuid: Annotated[str, ATTACHMENT_UUID],
+    attachment_service: Annotated[AttachmentService, Depends(get_attachment_service)],
+) -> RedirectResponse:
+    return RedirectResponse(
+        url=attachment_service.get_attachment_download_url(post_uuid, attachment_uuid),
+        status_code=status.HTTP_302_FOUND,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.get(
     "",
     status_code=status.HTTP_200_OK,
     response_model=list[AttachmentResponse],
     responses={**RESPONSE_404_POST, **RESPONSE_422},
     summary="List attachments of a post",
     description=(
-        "Returns the metadata (including signed download URLs valid for up to "
-        "one hour) of every attachment linked to the post."
+        "Returns the metadata (including stable, API-relative download URLs) "
+        "of every attachment linked to the post."
     ),
 )
 def get_attachments(

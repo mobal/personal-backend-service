@@ -108,3 +108,21 @@ class AttachmentService:
             self._logger.exception(error_message)
             raise AttachmentNotFoundException(error_message)
         return AttachmentResponse(**attachment.model_dump())
+
+    def get_attachment_download_url(self, post_uuid: str, attachment_uuid: str) -> str:
+        post = self._post_service.get_published_post_by_uuid(post_uuid)
+        attachment = next(
+            (
+                attachment
+                for attachment in post.attachments or []
+                if attachment.id == attachment_uuid
+            ),
+            None,
+        )
+        if attachment is None:
+            raise AttachmentNotFoundException(
+                f"The requested {attachment_uuid=} was not found for {post_uuid=}"
+            )
+        return self._storage_service.generate_presigned_download_url(
+            attachment.bucket, attachment.name
+        )

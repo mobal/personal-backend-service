@@ -62,9 +62,8 @@ def get_s3_storage_service(
 
 def get_post_service(
     post_repository: Annotated[PostRepository, Depends(get_post_repository)],
-    storage_service: Annotated[S3StorageService, Depends(get_s3_storage_service)],
 ) -> PostService:
-    return PostService(post_repository=post_repository, storage_service=storage_service)
+    return PostService(post_repository=post_repository)
 
 
 def get_sshfs_storage_service() -> SSHFSStorageService:

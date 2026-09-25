@@ -11,8 +11,8 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Acceptance: the deployed Lambda can read, update, delete, publish, and attach files to an existing post without `AccessDenied`.
 
 - [ ] Decide and implement the attachment access model.
-  - Private S3 and one-hour signed download URLs are implemented; verify the deployed behavior in staging.
-  - Confirm uploads work with the production role, signed URLs retrieve the uploaded object, and anonymous users cannot list the bucket or read objects directly.
+  - Private S3 and stable API download links redirecting to one-hour signed URLs are implemented; verify the deployed behavior in staging.
+  - Confirm uploads work with the production role, stable links redirect and retrieve the uploaded object, and anonymous users cannot list the bucket or read objects directly.
   - Existing buckets retain ACL support for migration; the bucket ACL is private and all public access blocks are enabled. Review legacy object ACLs before switching to ACL-disabled ownership.
 
 - [ ] Move the SSH password out of Terraform variables and Lambda environment variables.

@@ -278,6 +278,55 @@ class TestAttachmentService:
         assert exc_info.type == AttachmentNotFoundException
         post_service.get_post.assert_called_once_with(post_with_attachment.id)
 
+    def test_download_url_signs_published_attachment_on_demand(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+        post_with_attachment: Post,
+        s3_storage_service: S3StorageService,
+    ):
+        attachment = post_with_attachment.attachments[0]
+        mocker.patch.object(
+            PostService, "get_published_post_by_uuid", return_value=post_with_attachment
+        )
+        mocker.patch.object(
+            S3StorageService,
+            "generate_presigned_download_url",
+            return_value="https://example.com/signed-download",
+        )
+
+        result = attachment_service.get_attachment_download_url(
+            post_with_attachment.id, attachment.id
+        )
+
+        assert result == "https://example.com/signed-download"
+        post_service.get_published_post_by_uuid.assert_called_once_with(
+            post_with_attachment.id
+        )
+        s3_storage_service.generate_presigned_download_url.assert_called_once_with(
+            attachment.bucket, attachment.name
+        )
+
+    def test_download_url_rejects_unknown_attachment(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_with_attachment: Post,
+        s3_storage_service: S3StorageService,
+    ):
+        mocker.patch.object(
+            PostService, "get_published_post_by_uuid", return_value=post_with_attachment
+        )
+        mocker.patch.object(S3StorageService, "generate_presigned_download_url")
+
+        with pytest.raises(AttachmentNotFoundException):
+            attachment_service.get_attachment_download_url(
+                post_with_attachment.id, str(uuid.uuid4())
+            )
+
+        s3_storage_service.generate_presigned_download_url.assert_not_called()
+
     def test_successfully_add_attachment_with_unknown_mime_type(
         self,
         mocker: MockerFixture,

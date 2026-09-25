@@ -22,7 +22,7 @@ limitations under the License.
 
 ## Overview
 
-A production-grade personal blog backend. Posts are stored in **DynamoDB**, rendered from Markdown to HTML, and served via a **FastAPI** application running on **AWS Lambda** through **Mangum**. Attachments are stored in a private **S3** bucket and served through signed download URLs. Auth is handled via **JWT** (HS256).
+A production-grade personal blog backend. Posts are stored in **DynamoDB**, rendered from Markdown to HTML, and served via a **FastAPI** application running on **AWS Lambda** through **Mangum**. Attachments are stored in a private **S3** bucket and downloaded through stable API links that redirect to signed S3 URLs. Auth is handled via **JWT** (HS256).
 
 ---
 
@@ -34,7 +34,7 @@ A production-grade personal blog backend. Posts are stored in **DynamoDB**, rend
 | Runtime | Python 3.14+ |
 | API Adapter | Mangum (AWS Lambda + API Gateway V2) |
 | Database | DynamoDB (single table, 3 GSIs) |
-| Object Storage | S3 (private attachments, signed download URLs) |
+| Object Storage | S3 (private attachments, stable API download links) |
 | Auth | JWT (HS256, header or query param) |
 | Markdown | python-markdown |
 | Date/Time | Python stdlib `datetime` |
@@ -147,8 +147,9 @@ Nested under posts: `/posts/{postUuid}/attachments`
 | POST | `` | JWT | Add attachment (base64) |
 | GET | `` | No | List attachments |
 | GET | `/{attachmentUuid}` | No | Get attachment metadata |
+| GET | `/{attachmentUuid}/download` | No | Redirect to a fresh signed S3 URL |
 
-Attachment metadata in published post responses contains a signed S3 download URL valid for up to one hour. The URL can expire sooner if the Lambda role credentials expire. Fetch fresh metadata when a URL expires. The S3 bucket and its object listing are private.
+Attachment metadata in published post responses contains a stable API-relative `url`, such as `/api/v1/posts/{postUuid}/attachments/{attachmentUuid}/download`. Resolve it against the API origin when the frontend is hosted elsewhere. The download endpoint returns an uncached redirect to a freshly signed S3 URL; the stable link does not expire. The S3 bucket and its object listing remain private.
 
 ## Posting and publishing
 
@@ -280,7 +281,6 @@ erDiagram
         string display_name
         string mime_type
         string name
-        string url
     }
 
     Post ||--o{ Attachment : embeds
@@ -444,7 +444,7 @@ app/
 │       ├── api.py          # /api/v1 router mount (posts, attachments)
 │       └── routers/
 │           ├── posts_router.py        # 8 post endpoints (OpenAPI annotated)
-│           └── attachments_router.py  # 3 attachment endpoints (OpenAPI annotated)
+│           └── attachments_router.py  # 4 attachment endpoints (OpenAPI annotated)
 ├── models/
 │   ├── auth.py             # JWTToken model
 │   ├── post.py             # Post, Attachment, Meta models

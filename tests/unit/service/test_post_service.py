@@ -171,7 +171,7 @@ class TestPostService:
         assert "<strong>bold</strong>" in result.content
         assert "<em>italic</em>" in result.content
 
-    def test_get_post_returns_signed_attachment_url(
+    def test_get_post_returns_stable_attachment_url(
         self,
         mocker: MockerFixture,
         post_with_attachment: Post,
@@ -188,8 +188,10 @@ class TestPostService:
         result = post_service.get_post(post_with_attachment.id)
 
         assert result.attachments
-        assert "X-Amz-Signature=" in result.attachments[0].url
-        assert "X-Amz-Expires=3600" in result.attachments[0].url
+        assert result.attachments[0].url == (
+            f"/api/v1/posts/{post_with_attachment.id}/attachments/"
+            f"{post_with_attachment.attachments[0].id}/download"
+        )
 
     def test_successfully_get_post_sanitizes_xss_from_markdown(
         self,
