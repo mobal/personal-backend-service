@@ -48,7 +48,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
 
 ## 3. Availability and abuse controls
 
-- [ ] Make rate limiting atomic.
+- [x] Make rate limiting atomic.
   - Replace the read/check/write sequence with a conditional DynamoDB update or an edge-managed rate limit.
   - Test simultaneous requests at and above the threshold.
   - Acceptance: concurrent requests cannot exceed the configured allowance.

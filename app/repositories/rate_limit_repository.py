@@ -1,7 +1,7 @@
-from decimal import Decimal
 from typing import Any
 
 import boto3
+from botocore.exceptions import ClientError
 
 
 class RateLimitRepository:
@@ -12,57 +12,36 @@ class RateLimitRepository:
     ):
         self._table = db.Table(table_name)
 
-    def get_rate_limit(self, client_id: str, endpoint: str) -> dict[str, Any] | None:
-        response = self._table.get_item(
-            Key={
-                "client_id": client_id,
-                "endpoint": endpoint,
-            }
-        )
-        return response.get("Item")
-
-    def create_rate_limit(
+    def consume_request(
         self,
         client_id: str,
         endpoint: str,
-        request_count: int,
-        window_start: Decimal,
-        ttl: Decimal,
-    ) -> None:
-        self._table.put_item(
-            Item={
-                "client_id": client_id,
-                "endpoint": endpoint,
-                "request_count": request_count,
-                "window_start": window_start,
-                "ttl": ttl,
-            }
-        )
+        limit: int,
+        window_start: int,
+        ttl: int,
+    ) -> int | None:
+        try:
+            response: dict[str, Any] = self._table.update_item(
+                Key={"client_id": client_id, "endpoint": endpoint},
+                UpdateExpression=(
+                    "SET window_start = :window_start, #ttl = :ttl "
+                    "ADD request_count :one"
+                ),
+                ConditionExpression=(
+                    "attribute_not_exists(request_count) OR request_count < :limit"
+                ),
+                ExpressionAttributeNames={"#ttl": "ttl"},
+                ExpressionAttributeValues={
+                    ":window_start": window_start,
+                    ":ttl": ttl,
+                    ":one": 1,
+                    ":limit": limit,
+                },
+                ReturnValues="ALL_NEW",
+            )
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
+                return None
+            raise
 
-    def reset_rate_limit(
-        self,
-        client_id: str,
-        endpoint: str,
-        request_count: int,
-        window_start: Decimal,
-        ttl: Decimal,
-    ) -> None:
-        self._table.update_item(
-            Key={"client_id": client_id, "endpoint": endpoint},
-            UpdateExpression=(
-                "SET request_count = :val, window_start = :now, #ttl_attr = :ttl"
-            ),
-            ExpressionAttributeNames={"#ttl_attr": "ttl"},
-            ExpressionAttributeValues={
-                ":val": request_count,
-                ":now": window_start,
-                ":ttl": ttl,
-            },
-        )
-
-    def increment_rate_limit(self, client_id: str, endpoint: str) -> None:
-        self._table.update_item(
-            Key={"client_id": client_id, "endpoint": endpoint},
-            UpdateExpression="ADD request_count :inc",
-            ExpressionAttributeValues={":inc": 1},
-        )
+        return int(response["Attributes"]["request_count"])
