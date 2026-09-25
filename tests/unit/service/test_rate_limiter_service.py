@@ -1,5 +1,6 @@
-from datetime import UTC, datetime
-from decimal import Decimal
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
+from threading import Lock
 
 import boto3
 import pytest
@@ -46,6 +47,46 @@ def rate_limiter_service(
 
 
 class TestRateLimiterService:
+    def test_simultaneous_requests_cannot_exceed_limit(
+        self,
+        rate_limiter_service: RateLimiterService,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        monkeypatch.setattr(rate_limiter_service, "_max_requests", 5)
+
+        class AtomicRepository:
+            def __init__(self):
+                self._count = 0
+                self._lock = Lock()
+
+            def consume_request(self, **kwargs):
+                with self._lock:
+                    if self._count >= kwargs["limit"]:
+                        return None
+                    self._count += 1
+                    return self._count
+
+        monkeypatch.setattr(
+            rate_limiter_service,
+            "_rate_limit_repository",
+            AtomicRepository(),
+        )
+
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            results = list(
+                executor.map(
+                    lambda _: rate_limiter_service.check_rate_limit(
+                        "1.2.3.4", "/api/v1/posts"
+                    ),
+                    range(20),
+                )
+            )
+
+        assert sum(result.allowed for result in results) == 5
+        assert all(
+            result.request_count == 5 for result in results if not result.allowed
+        )
+
     def test_first_request_creates_record_and_allows(
         self,
         rate_limiter_service: RateLimiterService,
@@ -132,12 +173,11 @@ class TestRateLimiterService:
         table = boto3.resource("dynamodb", region_name=aws_default_region).Table(
             f"{settings.stage}-{settings.app_name}-rate-limits"
         )
-        response = table.get_item(
-            Key={"client_id": "1.2.3.4", "endpoint": "/api/v1/posts"}
-        )
+        response = table.scan()
+        item = response["Items"][0]
 
-        assert "ttl" in response["Item"]
-        assert response["Item"]["ttl"] > datetime.now(UTC).timestamp()
+        assert "ttl" in item
+        assert item["ttl"] > datetime.now(UTC).timestamp()
 
     def test_reset_at_increases_with_each_request(
         self,
@@ -153,29 +193,32 @@ class TestRateLimiterService:
 
     def test_window_expired_resets_counter(
         self,
-        aws_default_region: str,
-        settings: Settings,
         rate_limiter_service: RateLimiterService,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         client_id = "1.2.3.4"
         endpoint = "/api/v1/posts"
+        first_window = datetime(2025, 1, 1, tzinfo=UTC)
 
-        # Create initial record
-        rate_limiter_service.check_rate_limit(client_id, endpoint)
+        class FrozenDateTime:
+            current = first_window
 
-        # Manually expire the window by setting window_start far in the past
-        table = boto3.resource("dynamodb", region_name=aws_default_region).Table(
-            f"{settings.stage}-{settings.app_name}-rate-limits"
+            @classmethod
+            def now(cls, tz):
+                return cls.current
+
+        monkeypatch.setattr(
+            "app.services.rate_limiter_service.datetime", FrozenDateTime
         )
-        table.update_item(
-            Key={"client_id": client_id, "endpoint": endpoint},
-            UpdateExpression="SET window_start = :past",
-            ExpressionAttributeValues={":past": Decimal("100")},
+
+        initial = rate_limiter_service.check_rate_limit(client_id, endpoint)
+        FrozenDateTime.current += timedelta(
+            seconds=rate_limiter_service._window_duration
         )
 
-        # Next request should reset the window
         result = rate_limiter_service.check_rate_limit(client_id, endpoint)
 
         assert result.allowed is True
         assert result.request_count == 1
         assert result.remaining == 59
+        assert result.reset_at > initial.reset_at

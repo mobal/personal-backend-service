@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from decimal import Decimal
 
 from aws_lambda_powertools import Logger
 
@@ -30,103 +29,40 @@ class RateLimiterService:
         self._window_duration = self._settings.rate_limit_duration_in_seconds
 
     def check_rate_limit(self, client_id: str, endpoint: str) -> RateLimitResult:
-        now = datetime.now(UTC).timestamp()
-        now_dec = Decimal(str(now))
-        window_end = now + self._window_duration
-        ttl_dec = Decimal(str(int(window_end)))
+        now = int(datetime.now(UTC).timestamp())
+        window_start = now // self._window_duration * self._window_duration
+        reset_at = window_start + self._window_duration
+        bucket_key = f"{endpoint}#{window_start}"
+        ttl = reset_at + self._window_duration
 
-        item = self._rate_limit_repository.get_rate_limit(client_id, endpoint)
-
-        if not item:
-            return self._create_new_record(
-                client_id, endpoint, now_dec, ttl_dec, window_end
+        request_count = self._rate_limit_repository.consume_request(
+            client_id=client_id,
+            endpoint=bucket_key,
+            limit=self._max_requests,
+            window_start=window_start,
+            ttl=ttl,
+        )
+        if request_count is None:
+            self._logger.warning(
+                "Rate limit exceeded",
+                extra={
+                    "client_id": client_id,
+                    "endpoint": endpoint,
+                    "max_requests": self._max_requests,
+                },
+            )
+            return RateLimitResult(
+                allowed=False,
+                request_count=self._max_requests,
+                limit=self._max_requests,
+                remaining=0,
+                reset_at=reset_at,
             )
 
-        window_start = Decimal(str(item["window_start"]))
-        if window_start + Decimal(str(self._window_duration)) < now_dec:
-            return self._reset_window(client_id, endpoint, now_dec, ttl_dec, window_end)
-
-        if item["request_count"] >= self._max_requests:
-            return self._rate_limited(item)
-
-        return self._increment_counter(client_id, endpoint, item)
-
-    def _create_new_record(
-        self,
-        client_id: str,
-        endpoint: str,
-        now: Decimal,
-        ttl: Decimal,
-        window_end: float,
-    ) -> RateLimitResult:
-        self._rate_limit_repository.create_rate_limit(
-            client_id,
-            endpoint,
-            request_count=1,
-            window_start=now,
-            ttl=ttl,
-        )
         return RateLimitResult(
             allowed=True,
-            request_count=1,
+            request_count=request_count,
             limit=self._max_requests,
-            remaining=self._max_requests - 1,
-            reset_at=int(window_end),
-        )
-
-    def _reset_window(
-        self,
-        client_id: str,
-        endpoint: str,
-        now: Decimal,
-        ttl: Decimal,
-        window_end: float,
-    ) -> RateLimitResult:
-        self._rate_limit_repository.reset_rate_limit(
-            client_id,
-            endpoint,
-            request_count=1,
-            window_start=now,
-            ttl=ttl,
-        )
-        return RateLimitResult(
-            allowed=True,
-            request_count=1,
-            limit=self._max_requests,
-            remaining=self._max_requests - 1,
-            reset_at=int(window_end),
-        )
-
-    def _rate_limited(self, item: dict) -> RateLimitResult:
-        self._logger.warning(
-            "Rate limit exceeded",
-            extra={
-                "client_id": item.get("client_id"),
-                "endpoint": item.get("endpoint"),
-                "request_count": item["request_count"],
-                "max_requests": self._max_requests,
-            },
-        )
-        return RateLimitResult(
-            allowed=False,
-            request_count=item["request_count"],
-            limit=self._max_requests,
-            remaining=0,
-            reset_at=int(
-                Decimal(str(item["window_start"])) + Decimal(str(self._window_duration))
-            ),
-        )
-
-    def _increment_counter(
-        self, client_id: str, endpoint: str, item: dict
-    ) -> RateLimitResult:
-        self._rate_limit_repository.increment_rate_limit(client_id, endpoint)
-        new_count = item["request_count"] + 1
-        window_start = Decimal(str(item["window_start"]))
-        return RateLimitResult(
-            allowed=True,
-            request_count=new_count,
-            limit=self._max_requests,
-            remaining=self._max_requests - new_count,
-            reset_at=int(window_start + Decimal(str(self._window_duration))),
+            remaining=self._max_requests - request_count,
+            reset_at=reset_at,
         )
