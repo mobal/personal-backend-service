@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi import status
@@ -49,6 +50,100 @@ class TestAttachmentsApi:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert response.headers["Location"]
+
+    @pytest.mark.parametrize("publication_state", ["draft", "scheduled", "published"])
+    def test_add_attachment_to_non_deleted_post_in_any_publication_state(
+        self,
+        publication_state: str,
+        create_attachment: CreateAttachment,
+        posts: list[Post],
+        posts_table,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+        jwt_secret_ssm_param_value: str,
+    ):
+        post = posts[0]
+        if publication_state == "draft":
+            posts_table.update_item(
+                Key={"id": post.id},
+                UpdateExpression="REMOVE published_at",
+            )
+        elif publication_state == "scheduled":
+            posts_table.update_item(
+                Key={"id": post.id},
+                UpdateExpression="SET published_at = :published_at",
+                ExpressionAttributeValues={
+                    ":published_at": (datetime.now(UTC) + timedelta(days=1)).isoformat()
+                },
+            )
+
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+        response = test_client.post(
+            f"/api/v1/posts/{post.id}/attachments",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json=create_attachment.model_dump(by_alias=True),
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+    def test_cannot_add_attachment_to_deleted_post(
+        self,
+        create_attachment: CreateAttachment,
+        posts: list[Post],
+        posts_table,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+        jwt_secret_ssm_param_value: str,
+    ):
+        post = posts[0]
+        posts_table.update_item(
+            Key={"id": post.id},
+            UpdateExpression="SET deleted_at = :deleted_at",
+            ExpressionAttributeValues={":deleted_at": datetime.now(UTC).isoformat()},
+        )
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.post(
+            f"/api/v1/posts/{post.id}/attachments",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json=create_attachment.model_dump(by_alias=True),
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_cannot_add_attachment_to_missing_post(
+        self,
+        create_attachment: CreateAttachment,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+        jwt_secret_ssm_param_value: str,
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.post(
+            f"/api/v1/posts/{uuid.uuid4()}/attachments",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json=create_attachment.model_dump(by_alias=True),
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_public_attachment_read_remains_unavailable_for_draft_post(
+        self,
+        post_with_attachment: Post,
+        posts_table,
+        test_client: TestClient,
+    ):
+        posts_table.update_item(
+            Key={"id": post_with_attachment.id},
+            UpdateExpression="REMOVE published_at",
+        )
+
+        response = test_client.get(
+            f"/api/v1/posts/{post_with_attachment.id}/attachments"
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_fail_to_add_attachment_due_to_bad_request(
         self,
