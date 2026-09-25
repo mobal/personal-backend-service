@@ -154,6 +154,13 @@ class TestPostsApi:
             "message": ERROR_MESSAGE_NOT_FOUND,
         }.items() <= response.json().items()
 
+    def test_fail_to_get_post_by_impossible_calendar_date(
+        self, test_client: TestClient
+    ):
+        response = test_client.get(f"{BASE_URL}/2026/02/31/slug")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
     def test_fail_to_delete_post_due_to_not_found(
         self,
         jwt_secret_ssm_param_value: str,

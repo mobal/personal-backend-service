@@ -101,7 +101,7 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Use a transaction/uniqueness item or relax and document the constraint.
   - Add a concurrent-create test.
 
-- [ ] Validate real calendar dates in date-based routes.
+- [x] Validate real calendar dates in date-based routes.
   - Reject values such as `2026/02/31` as `400` rather than treating them as a missing post.
 
 - [ ] Standardize all error responses.
