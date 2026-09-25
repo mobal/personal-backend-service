@@ -75,9 +75,19 @@ class S3StorageService:
         self._logger.info(f"Listing objects in bucket={bucket}")
         return [obj.get() for obj in self._s3.Bucket(name=bucket).objects.all()]
 
-    def put_object(self, bucket: str, key: str, data: bytes) -> dict[str, Any]:
+    def put_object(
+        self,
+        bucket: str,
+        key: str,
+        data: bytes,
+        content_type: str = "application/octet-stream",
+        content_disposition: str | None = None,
+    ) -> dict[str, Any]:
         self._logger.info(f"Uploading object key={key} to bucket={bucket}")
-        return self._s3.Object(bucket_name=bucket, key=key).put(Body=data)
+        parameters: dict[str, Any] = {"Body": data, "ContentType": content_type}
+        if content_disposition is not None:
+            parameters["ContentDisposition"] = content_disposition
+        return self._s3.Object(bucket_name=bucket, key=key).put(**parameters)
 
     def generate_presigned_download_url(
         self, bucket: str, key: str, expires_in: int = 3600

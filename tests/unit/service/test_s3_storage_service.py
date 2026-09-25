@@ -197,7 +197,29 @@ class TestS3StorageService:
 
         s3_storage_service.put_object(BUCKET_NAME, OBJECT_KEY, b"data")
 
-        s3_object.put.assert_called_once_with(Body=b"data")
+        s3_object.put.assert_called_once_with(
+            Body=b"data", ContentType="application/octet-stream"
+        )
+
+    def test_put_object_persists_content_metadata(
+        self, s3_storage_service: S3StorageService, mocker
+    ):
+        s3_object = mocker.Mock()
+        mocker.patch.object(s3_storage_service._s3, "Object", return_value=s3_object)
+
+        s3_storage_service.put_object(
+            BUCKET_NAME,
+            OBJECT_KEY,
+            b"data",
+            content_type="text/plain",
+            content_disposition="attachment; filename*=UTF-8''hello.txt",
+        )
+
+        s3_object.put.assert_called_once_with(
+            Body=b"data",
+            ContentType="text/plain",
+            ContentDisposition="attachment; filename*=UTF-8''hello.txt",
+        )
 
     def test_fail_to_put_object_due_to_non_existent_bucket(
         self,
