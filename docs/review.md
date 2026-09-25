@@ -37,10 +37,9 @@ Work through this list in order. Do not deploy while any **Release blocker** ite
   - Review API Gateway, application, and exception logs for headers, query strings, and request bodies containing secrets.
   - Add a test that captures logs and asserts the submitted token is absent.
 
-- [ ] Tighten JWT validation.
-  - Confirm the expected issuer and require it during decoding if the service has a single trusted issuer.
-  - Make required claims explicit (`exp`, `iat`, `aud`, `sub`, and `jti` as applicable).
-  - Return `401` with `WWW-Authenticate: Bearer` for missing or invalid authentication unless the API contract deliberately requires `403`.
+- [x] Tighten JWT validation.
+  - Require `exp`, `iat`, `aud`, `sub`, and `jti` during decoding. No trusted issuer is configured, and the existing token producer omits `iss`, so issuer validation needs an auth-service contract first.
+  - Preserve the existing `403` auth response contract, which is declared by the OpenAPI responses and asserted by API tests.
 
 - [ ] Replace wildcard CORS with the production frontend origins.
   - Configure origins per environment.

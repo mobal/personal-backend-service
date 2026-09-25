@@ -86,6 +86,7 @@ class JWTBearer:
                     self._jwt_secret,
                     algorithms=["HS256"],
                     audience=self._audience,
+                    options={"require": ["exp", "iat", "aud", "sub", "jti"]},
                 )
             )
             return True
