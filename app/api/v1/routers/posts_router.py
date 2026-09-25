@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 
 from aws_lambda_powertools import Logger
@@ -180,14 +181,12 @@ def get_by_post_path(
     month_int = int(month)
     day_int = int(day)
 
-    if not (
-        MIN_YEAR <= year_int <= MAX_YEAR
-        and MIN_MONTH <= month_int <= MAX_MONTH
-        and MIN_DAY <= day_int <= MAX_DAY
-    ):
+    try:
+        date(year_int, month_int, day_int)
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date"
-        )
+        ) from exc
 
     return post_service.get_by_post_path(f"{year}/{month}/{day}/{slug}")
 
