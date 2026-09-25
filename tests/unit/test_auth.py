@@ -73,6 +73,26 @@ class TestJWTAuth:
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
         assert submitted_token not in caplog.text
 
+    @pytest.mark.parametrize("claim", ["exp", "iat", "aud", "sub", "jti"])
+    def test_fail_to_authorize_request_when_required_claim_is_missing(
+        self,
+        claim: str,
+        empty_request: Mock,
+        jwt_bearer: JWTBearer,
+        jwt_token: JWTToken,
+        settings: Settings,
+    ):
+        payload = jwt_token.model_dump()
+        payload.pop(claim)
+        token = jwt.encode(payload, settings.jwt_secret)
+        empty_request.headers = {"Authorization": f"Bearer {token}"}
+
+        with pytest.raises(HTTPException) as excinfo:
+            jwt_bearer(empty_request)
+
+        assert excinfo.value.status_code == status.HTTP_403_FORBIDDEN
+        assert excinfo.value.detail == NOT_AUTHENTICATED
+
     def test_fail_to_authorize_request_due_to_invalid_token_without_auto_error(
         self, empty_request: Mock
     ):
