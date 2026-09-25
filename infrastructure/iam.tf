@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 resource "aws_iam_role" "lambda_role" {
   name = "${local.app_name}-lambda-role"
 
@@ -80,10 +82,11 @@ resource "aws_iam_policy" "lambda_policy" {
       },
       {
         Effect = "Allow"
-        Action = [
-          "ssm:GetParameter"
+        Action = "ssm:GetParameter"
+        Resource = [
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${var.jwt_secret_ssm_param_name}",
+          "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter${local.ssh_password_parameter_name}"
         ]
-        Resource = "*"
       }
     ]
   })

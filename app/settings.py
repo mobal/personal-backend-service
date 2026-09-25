@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     rate_limit_requests: int
     rate_limiting: bool
     ssh_host: str
-    ssh_password: str
+    ssh_password_ssm_parameter_name: str | None = None
     ssh_root_path: str
     ssh_username: str
     stage: str
@@ -40,11 +40,16 @@ class Settings(BaseSettings):
             os.environ.get("JWT_SECRET_SSM_PARAM_NAME"), decrypt=True
         )
 
-    @computed_field
-    @cached_property
-    def ssh_secret(self) -> dict:
+    @property
+    def _ssh_password_parameter_name(self) -> str:
+        return self.ssh_password_ssm_parameter_name or (
+            f"/{self.stage}/{self.app_name}/ssh/password"
+        )
+
+    @property
+    def ssh_password(self) -> str:
         return parameters.get_parameter(
-            os.environ.get("SSH_SECRET_SSM_PARAM_NAME"), transform="json", decrypt=True
+            self._ssh_password_parameter_name, decrypt=True, max_age=60
         )
 
     @computed_field

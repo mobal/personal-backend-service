@@ -7,6 +7,9 @@ STAGE = os.getenv("STAGE", "local")
 APP_NAME = os.getenv("APP_NAME", "personal-backend-service")
 ENDPOINT_URL = os.getenv("AWS_ENDPOINT_URL", "http://localhost:4566")
 SSM_PARAM_NAME = os.getenv("JWT_SECRET_SSM_PARAM_NAME", "/dev/secrets/secret")
+SSH_PASSWORD_PARAM_NAME = os.getenv(
+    "SSH_PASSWORD_SSM_PARAM_NAME", f"/{STAGE}/{APP_NAME}/ssh/password"
+)
 JWT_SECRET = os.getenv(
     "JWT_SECRET_SSM_PARAM_VALUE",
     "9f4a2c8e1b7d0f3a6e5c9b2a4d7f0e1c3f8a9c7e2b1d0f5a6e4c8b9a2d7f0e1c",
@@ -114,6 +117,13 @@ def put_ssm_parameters() -> None:
         Overwrite=True,
     )
     print(f"put parameter {SSM_PARAM_NAME}")
+    ssm.put_parameter(
+        Name=SSH_PASSWORD_PARAM_NAME,
+        Value="local-test-only",
+        Type="SecureString",
+        Overwrite=True,
+    )
+    print(f"put parameter {SSH_PASSWORD_PARAM_NAME}")
 
 
 if __name__ == "__main__":
