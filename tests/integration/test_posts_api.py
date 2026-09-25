@@ -36,7 +36,6 @@ class TestPostsApi:
     def setup_function(
         self,
         initialize_posts_table,
-        initialize_rate_limits_table,
     ):
         pass
 

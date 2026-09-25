@@ -24,7 +24,6 @@ class TestAttachmentsApi:
         aws_default_region: str,
         s3_resource,
         initialize_posts_table,
-        initialize_rate_limits_table,
     ):
         s3_resource.create_bucket(
             Bucket="attachments",

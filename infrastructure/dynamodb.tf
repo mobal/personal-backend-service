@@ -24,7 +24,7 @@ resource "aws_dynamodb_table" "posts" {
   }
 
   global_secondary_index {
-    name            = "PostPathIndex"
+    name = "PostPathIndex"
 
     key_schema {
       attribute_name = "post_path"
@@ -35,7 +35,7 @@ resource "aws_dynamodb_table" "posts" {
   }
 
   global_secondary_index {
-    name            = "TitleIndex"
+    name = "TitleIndex"
 
     key_schema {
       attribute_name = "title"
@@ -46,7 +46,7 @@ resource "aws_dynamodb_table" "posts" {
   }
 
   global_secondary_index {
-    name            = "CreatedAtIndex"
+    name = "CreatedAtIndex"
 
     key_schema {
       attribute_name = "created_at"
@@ -54,27 +54,5 @@ resource "aws_dynamodb_table" "posts" {
     }
 
     projection_type = "ALL"
-  }
-}
-
-resource "aws_dynamodb_table" "rate_limits" {
-  name         = "${local.app_name}-rate-limits"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "client_id"
-  range_key    = "endpoint"
-
-  attribute {
-    name = "client_id"
-    type = "S"
-  }
-
-  attribute {
-    name = "endpoint"
-    type = "S"
-  }
-
-  ttl {
-    attribute_name = "ttl"
-    enabled        = true
   }
 }

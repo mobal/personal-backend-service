@@ -345,11 +345,15 @@ class TestAttachmentService:
         posts: list[Post],
     ):
         mocker.patch.object(PostService, "get_post", return_value=PostResponse())
+        exception_log = mocker.patch.object(attachment_service._logger, "exception")
+        error_log = mocker.patch.object(attachment_service._logger, "error")
 
         with pytest.raises(AttachmentNotFoundException):
             attachment_service.get_attachment_by_id(posts[0].id, str(uuid.uuid4()))
 
         post_service.get_post.assert_called_once_with(posts[0].id)
+        exception_log.assert_not_called()
+        error_log.assert_called_once()
 
     def test_download_url_signs_published_attachment_on_demand(
         self,

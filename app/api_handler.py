@@ -13,13 +13,8 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 
 from app.api.v1.api import router as api_v1_router
-from app.dependencies import get_db_client, get_rate_limit_repository
-from app.middlewares import (
-    CorrelationIdMiddleware,
-    RateLimitingMiddleware,
-)
+from app.middlewares import CorrelationIdMiddleware
 from app.models.response import ErrorResponse, ValidationErrorResponse
-from app.services.rate_limiter_service import RateLimiterService
 from app.settings import Settings
 
 settings = Settings()
@@ -80,13 +75,6 @@ app = FastAPI(
     openapi_tags=OPENAPI_TAGS,
 )
 app.add_middleware(CorrelationIdMiddleware)
-app.add_middleware(
-    RateLimitingMiddleware,
-    rate_limiter_service=RateLimiterService(
-        settings=settings,
-        rate_limit_repository=get_rate_limit_repository(settings, get_db_client()),
-    ),
-)
 app.add_middleware(GZipMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -121,7 +109,7 @@ def botocore_error_handler(request: Request, error: BotoCoreError) -> JSONRespon
     error_id = uuid.uuid4()
     error_message = str(error) if settings.debug else "Internal Server Error"
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    logger.exception(f"Received botocore error {error_id=}")
+    logger.error(f"Received botocore error {error_id=}")
     return JSONResponse(
         content=jsonable_encoder(
             ErrorResponse(status=status_code, id=error_id, message=error_message)
@@ -133,7 +121,7 @@ def botocore_error_handler(request: Request, error: BotoCoreError) -> JSONRespon
 @app.exception_handler(HTTPException)
 def http_exception_handler(request: Request, error: HTTPException) -> JSONResponse:
     error_id = uuid.uuid4()
-    logger.exception(f"Received http exception {error_id=}")
+    logger.error(f"Received http exception {error_id=}")
     return JSONResponse(
         content=jsonable_encoder(
             ErrorResponse(status=error.status_code, id=error_id, message=error.detail)
@@ -155,7 +143,10 @@ def request_validation_error_handler(
                 status=status_code,
                 id=error_id,
                 message=str(error),
-                errors=error.errors(),
+                errors=[
+                    {key: value for key, value in item.items() if key != "ctx"}
+                    for item in error.errors()
+                ],
             )
         ),
         status_code=status_code,
