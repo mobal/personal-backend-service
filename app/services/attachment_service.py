@@ -2,6 +2,8 @@ import base64
 import mimetypes
 import re
 import uuid
+from collections.abc import Sequence
+from typing import TypeVar
 from urllib.parse import quote
 
 from aws_lambda_powertools import Logger
@@ -18,6 +20,8 @@ from app.schemas.attachment_schema import (
 from app.services.post_service import PostService
 from app.services.s3_storage_service import S3StorageService
 from app.settings import Settings
+
+AttachmentType = TypeVar("AttachmentType", Attachment, AttachmentResponse)
 
 
 class AttachmentService:
@@ -177,8 +181,9 @@ class AttachmentService:
 
     @staticmethod
     def _find_attachment(
-        attachments: list[Attachment] | None, attachment_uuid: str
-    ) -> Attachment | None:
+        attachments: Sequence[AttachmentType] | None,
+        attachment_uuid: str,
+    ) -> AttachmentType | None:
         return next(
             (
                 attachment

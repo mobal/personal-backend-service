@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from asyncssh import Error as SSHError
+from botocore.exceptions import ClientError
 from fastapi import status
 from pytest_mock import MockerFixture
 
@@ -17,6 +18,27 @@ ERROR_MESSAGE: str = "error"
 
 
 class TestPublisherService:
+    def test_ssh_password_lookup_propagates_ssm_failure(
+        self,
+        mocker: MockerFixture,
+        settings: Settings,
+    ):
+        ssm_error = ClientError(
+            {"Error": {"Code": "AccessDeniedException", "Message": "denied"}},
+            "GetParameter",
+        )
+        get_parameter = mocker.patch(
+            "app.settings.parameters.get_parameter", side_effect=ssm_error
+        )
+
+        with pytest.raises(ClientError) as exc_info:
+            _ = settings.ssh_password
+
+        assert exc_info.value is ssm_error
+        get_parameter.assert_called_once_with(
+            settings._ssh_password_parameter_name, decrypt=True, max_age=60
+        )
+
     def test_ssh_password_is_loaded_from_secure_parameter(
         self,
         mocker: MockerFixture,
