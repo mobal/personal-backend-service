@@ -15,6 +15,7 @@ from mangum import Mangum
 from app.api.v1.api import router as api_v1_router
 from app.middlewares import CorrelationIdMiddleware
 from app.models.response import ErrorResponse, ValidationErrorResponse
+from app.rss_router import router as rss_router
 from app.settings import Settings
 
 settings = Settings()
@@ -84,6 +85,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(api_v1_router)
+app.include_router(rss_router)
 
 
 @app.get(

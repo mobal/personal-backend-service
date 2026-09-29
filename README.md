@@ -82,6 +82,9 @@ flowchart TD
 
 All routes are prefixed with `/api/v1`.
 
+The RSS 2.0 feed is available at `/rss.xml`. It includes all published,
+non-deleted posts, newest first, with each post's summary and Markdown content.
+
 ### Posts
 
 | Method | Path | Auth | Description |
