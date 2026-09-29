@@ -223,6 +223,24 @@ class PostService:
             posts=[PostResponse(**post) for post in posts],
         )
 
+    def get_published_posts(self) -> list[Post]:
+        posts = self._post_repository.get_all_posts(
+            FilterExpressions.NOT_DELETED & FilterExpressions.published(),
+            [
+                "id",
+                "author",
+                "title",
+                "content",
+                "post_path",
+                "published_at",
+                "created_at",
+                "meta",
+                "slug",
+                "tags",
+            ],
+        )
+        return [Post(**post) for post in posts]
+
     def update_post(self, post_uuid: str, update_data: dict[str, Any]):
         if "title" in update_data:
             self._prepare_title_update(post_uuid, update_data)

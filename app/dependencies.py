@@ -12,6 +12,7 @@ from app.repositories.post_repository import PostRepository
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
+from app.services.rss_service import RSSService
 from app.services.s3_storage_service import S3StorageService
 from app.services.sshfs_storage_service import SSHFSStorageService
 from app.settings import Settings
@@ -52,6 +53,12 @@ def get_post_service(
     post_repository: Annotated[PostRepository, Depends(get_post_repository)],
 ) -> PostService:
     return PostService(post_repository=post_repository)
+
+
+def get_rss_service(
+    post_service: Annotated[PostService, Depends(get_post_service)],
+) -> RSSService:
+    return RSSService(post_service=post_service)
 
 
 def get_sshfs_storage_service() -> SSHFSStorageService:
