@@ -28,8 +28,6 @@ logger = Logger()
 
 router = APIRouter()
 
-# Shared OpenAPI response definitions. Error handlers wrap every failure in
-# the ErrorResponse envelope (ValidationErrorResponse for 422).
 ERROR_RESPONSE_FORBIDDEN = {
     403: {"model": ErrorResponse, "description": "Missing or invalid JWT"}
 }
