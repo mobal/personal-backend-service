@@ -18,14 +18,16 @@ logger = Logger()
 
 router = APIRouter()
 
-# Shared OpenAPI response definitions. Error handlers wrap every failure in
-# the ErrorResponse envelope (ValidationErrorResponse for 422).
-RESPONSE_403 = {403: {"model": ErrorResponse, "description": "Missing or invalid JWT"}}
-RESPONSE_404_POST = {404: {"model": ErrorResponse, "description": "Post not found"}}
-RESPONSE_404_ATTACHMENT = {
+ERROR_RESPONSE_MISSING_OR_INVALID_JWT = {
+    403: {"model": ErrorResponse, "description": "Missing or invalid JWT"}
+}
+ERROR_RESPONSE_POST_NOT_FOUND = {
+    404: {"model": ErrorResponse, "description": "Post not found"}
+}
+ERROR_RESPONSE_ATTACHMENT_NOT_FOUND = {
     404: {"model": ErrorResponse, "description": "Attachment not found"}
 }
-RESPONSE_422 = {
+ERROR_RESPONSE_VALIDATION_FAILED = {
     422: {
         "model": ValidationErrorResponse,
         "description": "Request body failed validation",
@@ -45,7 +47,11 @@ ATTACHMENT_UUID = Path(
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
-    responses={**RESPONSE_403, **RESPONSE_404_POST, **RESPONSE_422},
+    responses={
+        **ERROR_RESPONSE_MISSING_OR_INVALID_JWT,
+        **ERROR_RESPONSE_POST_NOT_FOUND,
+        **ERROR_RESPONSE_VALIDATION_FAILED,
+    },
     summary="Add an attachment to a post",
     description=(
         "Uploads a file (base64-encoded, up to 5 MB) to S3 and links it to "
@@ -81,7 +87,11 @@ def add_attachment(
 @router.get(
     "/{attachment_uuid}",
     status_code=status.HTTP_200_OK,
-    responses={**RESPONSE_404_POST, **RESPONSE_404_ATTACHMENT, **RESPONSE_422},
+    responses={
+        **ERROR_RESPONSE_POST_NOT_FOUND,
+        **ERROR_RESPONSE_ATTACHMENT_NOT_FOUND,
+        **ERROR_RESPONSE_VALIDATION_FAILED,
+    },
     summary="Get an attachment by UUID",
     description=(
         "Returns attachment metadata with a stable, API-relative download URL. "
@@ -100,7 +110,7 @@ def get_attachment_by_uuid(
     "/{attachment_uuid}/download",
     status_code=status.HTTP_302_FOUND,
     response_class=RedirectResponse,
-    responses={**RESPONSE_404_POST, **RESPONSE_404_ATTACHMENT},
+    responses={**ERROR_RESPONSE_POST_NOT_FOUND, **ERROR_RESPONSE_ATTACHMENT_NOT_FOUND},
     summary="Download an attachment",
     description=(
         "Redirects to a fresh signed S3 URL. The redirect is not cached; "
@@ -122,7 +132,7 @@ def download_attachment(
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
-    responses={**RESPONSE_404_POST, **RESPONSE_422},
+    responses={**ERROR_RESPONSE_POST_NOT_FOUND, **ERROR_RESPONSE_VALIDATION_FAILED},
     summary="List attachments of a post",
     description=(
         "Returns the metadata (including stable, API-relative download URLs) "

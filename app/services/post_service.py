@@ -28,6 +28,46 @@ class FilterExpressions:
 
 
 POST_PATH_RE = re.compile(r"^(\d{4})/(\d{1,2})/(\d{1,2})/(.+)$")
+ALLOWED_POST_TAGS = bleach.ALLOWED_TAGS | {
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "p",
+    "br",
+    "hr",
+    "ul",
+    "ol",
+    "li",
+    "pre",
+    "code",
+    "blockquote",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "img",
+    "a",
+    "strong",
+    "em",
+    "u",
+    "s",
+    "del",
+    "ins",
+    "sup",
+    "sub",
+    "div",
+    "span",
+}
+ALLOWED_POST_ATTRIBUTES = {
+    "a": ["href", "title", "rel"],
+    "img": ["src", "alt", "title", "width", "height"],
+    "*": ["class"],
+}
 
 
 def normalize_post_path(post_path: str) -> str | None:
@@ -53,58 +93,21 @@ class PostService:
         return Post(**item)
 
     def _post_to_response(self, post_data: dict[str, Any]) -> PostResponse:
-        html = markdown.markdown(post_data["content"])
-        allowed_tags = bleach.ALLOWED_TAGS | {
-            "h1",
-            "h2",
-            "h3",
-            "h4",
-            "h5",
-            "h6",
-            "p",
-            "br",
-            "hr",
-            "ul",
-            "ol",
-            "li",
-            "pre",
-            "code",
-            "blockquote",
-            "table",
-            "thead",
-            "tbody",
-            "tr",
-            "th",
-            "td",
-            "img",
-            "a",
-            "strong",
-            "em",
-            "u",
-            "s",
-            "del",
-            "ins",
-            "sup",
-            "sub",
-            "div",
-            "span",
-        }
-        allowed_attributes = {
-            "a": ["href", "title", "rel"],
-            "img": ["src", "alt", "title", "width", "height"],
-            "*": ["class"],
-        }
-        sanitized = bleach.clean(
-            html,
-            tags=allowed_tags,
-            attributes=allowed_attributes,
-            strip=True,
-        )
-        post_data["content"] = sanitized
+        post_data["content"] = self._render_content(post_data["content"])
         self._attach_download_urls(post_data)
         if post_data.get("post_path"):
             post_data["post_path"] = normalize_post_path(post_data["post_path"])
         return PostResponse(**post_data)
+
+    @staticmethod
+    def _render_content(content: str) -> str:
+        html = markdown.markdown(content)
+        return bleach.clean(
+            html,
+            tags=ALLOWED_POST_TAGS,
+            attributes=ALLOWED_POST_ATTRIBUTES,
+            strip=True,
+        )
 
     def _attach_download_urls(self, post_data: dict[str, Any]) -> None:
         if post_data.get("attachments"):
@@ -174,27 +177,36 @@ class PostService:
         filter_expression = (
             FilterExpressions.NOT_DELETED & FilterExpressions.published()
         )
-        candidates = [post_path]
-        normalized = normalize_post_path(post_path)
-        # Posts created before zero-padding was introduced store unpadded
-        # month/day, so also try the unpadded form of the path.
-        if normalized and normalized != post_path:
-            candidates.append(normalized)
-        if (match := POST_PATH_RE.match(post_path)) is not None:
-            year, month, day, slug = match.groups()
-            unpadded = f"{int(year)}/{int(month)}/{int(day)}/{slug}"
-            if unpadded not in candidates:
-                candidates.append(unpadded)
-        post = None
-        for candidate in candidates:
+        post = self._find_post_by_path(post_path, filter_expression)
+        if not post:
+            raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
+        return self._post_to_response(post)
+
+    def _find_post_by_path(
+        self, post_path: str, filter_expression: Any
+    ) -> dict[str, Any] | None:
+        for candidate in self._post_path_candidates(post_path):
             post = self._post_repository.get_post_by_post_path(
                 candidate, filter_expression
             )
             if post:
-                break
-        if not post:
-            raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
-        return self._post_to_response(post)
+                return post
+        return None
+
+    @staticmethod
+    def _post_path_candidates(post_path: str) -> list[str]:
+        candidates = [post_path]
+        normalized = normalize_post_path(post_path)
+        if normalized and normalized != post_path:
+            candidates.append(normalized)
+
+        # Older posts may have unpadded month and day values in storage.
+        if match := POST_PATH_RE.match(post_path):
+            year, month, day, slug = match.groups()
+            unpadded = f"{int(year)}/{int(month)}/{int(day)}/{slug}"
+            if unpadded not in candidates:
+                candidates.append(unpadded)
+        return candidates
 
     def get_posts(self, exclusive_start_key: str | None = None) -> Page:
         last_key, posts = self._post_repository.get_posts(
@@ -312,8 +324,13 @@ class PostService:
         if not posts:
             return {}
 
+        return self._archive_from_posts(posts, max_results)
+
+    def _archive_from_posts(
+        self, posts: list[dict[str, Any]], max_results: int
+    ) -> dict[str, int]:
         dates = [datetime.fromisoformat(post["published_at"]) for post in posts]
-        return self._sort_dates_and_group_by_month(dates, max_results) if dates else {}
+        return self._sort_dates_and_group_by_month(dates, max_results)
 
     def get_archive_paginated(
         self,
@@ -334,13 +351,8 @@ class PostService:
                 "last_evaluated_key": None,
             }
 
-        dates = [datetime.fromisoformat(post["published_at"]) for post in posts]
-        archive = (
-            self._sort_dates_and_group_by_month(dates, max_results) if dates else {}
-        )
-
         return {
-            "archive": archive,
+            "archive": self._archive_from_posts(posts, max_results),
             "count": len(posts),
             "exclusive_start_key": exclusive_start_key,
             "last_evaluated_key": last_key,

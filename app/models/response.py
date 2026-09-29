@@ -37,14 +37,10 @@ class Page(CamelModel):
 
 
 class ErrorResponse(CamelModel):
-    """Standard error envelope returned by all error handlers."""
-
     status: int
     id: uuid.UUID
     message: str
 
 
 class ValidationErrorResponse(ErrorResponse):
-    """Error envelope for request validation failures (HTTP 422)."""
-
     errors: Sequence[Any]
