@@ -323,7 +323,7 @@
                   "});",
                   "const xml = pm.response.text();",
                   "pm.test('returns an RSS 2.0 document', () => {",
-                  "  pm.expect(xml).to.include('<rss version=\"2.0\">');",
+                  "  pm.expect(xml).to.match(/<rss\\b[^>]*\\bversion=\"2\\.0\"[^>]*>/);",
                   "  pm.expect(xml).to.include('<item>');",
                   "});",
                   "pm.test('includes the published post created by this collection', () => {",
