@@ -11,7 +11,11 @@ from boto3.dynamodb.conditions import Attr
 from botocore.exceptions import ClientError
 from slugify import slugify
 
-from app.exceptions import PostAlreadyExistsException, PostNotFoundException
+from app.exceptions import (
+    InvalidPostTitleException,
+    PostAlreadyExistsException,
+    PostNotFoundException,
+)
 from app.models.post import Post
 from app.models.response import (
     Page,
@@ -81,6 +85,8 @@ def normalize_post_path(post_path: str) -> str | None:
 
 class PostService:
     ERROR_POST_EXISTS = "There is already a post with this title"
+    ERROR_POST_PATH_EXISTS = "There is already a post with this date and slug"
+    ERROR_TITLE_WITHOUT_SLUG = "The title must contain at least one letter or digit"
     ERROR_POST_NOT_FOUND = "The requested post was not found"
 
     def __init__(self, post_repository: PostRepository):
@@ -129,7 +135,7 @@ class PostService:
             data["title"], FilterExpressions.NOT_DELETED
         ):
             raise PostAlreadyExistsException(self.ERROR_POST_EXISTS)
-        post_path = f"{now:%Y/%m/%d}/{slugify(data['title'])}"
+        slug, post_path = self._slug_and_post_path(data["title"], now)
         data.update(
             {
                 "id": str(uuid.uuid4()),
@@ -137,12 +143,32 @@ class PostService:
                 "created_at": now.isoformat(),
                 "deleted_at": None,
                 "attachments": [],
-                "slug": slugify(data["title"]),
+                "slug": slug,
                 "updated_at": None,
             }
         )
         self._post_repository.create_post(data)
         return Post(**data)
+
+    def _slug_and_post_path(
+        self, title: str, created_at: datetime, post_uuid: str | None = None
+    ) -> tuple[str, str]:
+        """Derive the public path and make sure no other post already owns it.
+
+        Different titles can share a slug ("Hello World", "Hello, World!"), and
+        the path lookup returns a single post, so a second owner would shadow
+        the first.
+        """
+        slug = slugify(title)
+        if not slug:
+            raise InvalidPostTitleException(self.ERROR_TITLE_WITHOUT_SLUG)
+        post_path = f"{created_at:%Y/%m/%d}/{slug}"
+        owner = self._post_repository.get_post_by_post_path(
+            post_path, FilterExpressions.NOT_DELETED
+        )
+        if owner and owner.get("id") != post_uuid:
+            raise PostAlreadyExistsException(self.ERROR_POST_PATH_EXISTS)
+        return slug, post_path
 
     def delete_post(self, post_uuid: str):
         now = datetime.now(UTC).isoformat()
@@ -276,10 +302,11 @@ class PostService:
         if duplicate and duplicate.get("id") != post_uuid:
             raise PostAlreadyExistsException(self.ERROR_POST_EXISTS)
 
-        slug = slugify(update_data["title"])
-        created_at = datetime.fromisoformat(current["created_at"])
-        update_data["slug"] = slug
-        update_data["post_path"] = f"{created_at:%Y/%m/%d}/{slug}"
+        update_data["slug"], update_data["post_path"] = self._slug_and_post_path(
+            update_data["title"],
+            datetime.fromisoformat(current["created_at"]),
+            post_uuid,
+        )
 
     def update_publish_state(
         self,

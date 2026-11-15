@@ -299,6 +299,69 @@ class TestPostsApi:
 
         assert response.status_code == status.HTTP_409_CONFLICT
 
+    def test_fail_to_create_post_due_to_colliding_post_path(
+        self,
+        create_post: CreatePost,
+        jwt_secret_ssm_param_value: str,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+        headers = {"Authorization": f"Bearer {jwt_token}"}
+        payload = create_post.model_dump(by_alias=True)
+
+        first = test_client.post(
+            BASE_URL, headers=headers, json=payload | {"title": "Hello World"}
+        )
+        second = test_client.post(
+            BASE_URL, headers=headers, json=payload | {"title": "Hello, World!"}
+        )
+
+        assert first.status_code == status.HTTP_201_CREATED
+        assert second.status_code == status.HTTP_409_CONFLICT
+
+    def test_fail_to_create_post_with_title_that_has_no_slug(
+        self,
+        create_post: CreatePost,
+        jwt_secret_ssm_param_value: str,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.post(
+            BASE_URL,
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json=create_post.model_dump(by_alias=True) | {"title": "?!?!"},
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    def test_fail_to_update_title_due_to_colliding_post_path(
+        self,
+        jwt_secret_ssm_param_value: str,
+        posts: list[Post],
+        posts_table,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+        headers = {"Authorization": f"Bearer {jwt_token}"}
+        renamed = test_client.put(
+            f"{BASE_URL}/{posts[0].id}", headers=headers, json={"title": "Hello World"}
+        )
+
+        response = test_client.put(
+            f"{BASE_URL}/{posts[1].id}",
+            headers=headers,
+            json={"title": "Hello, World!"},
+        )
+
+        assert renamed.status_code == status.HTTP_204_NO_CONTENT
+        assert response.status_code == status.HTTP_409_CONFLICT
+        stored = posts_table.get_item(Key={"id": posts[1].id})["Item"]
+        assert stored["title"] == posts[1].title
+
     def test_fail_to_update_post_due_to_not_found(
         self,
         create_post: CreatePost,

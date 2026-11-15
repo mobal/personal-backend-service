@@ -34,6 +34,13 @@ ERROR_RESPONSE_FORBIDDEN = {
 ERROR_RESPONSE_NOT_FOUND = {
     404: {"model": ErrorResponse, "description": "Post not found"}
 }
+ERROR_RESPONSE_CONFLICT = {
+    409: {
+        "model": ErrorResponse,
+        "description": "A post with this title, or with the same date and slug, "
+        "already exists",
+    }
+}
 ERROR_RESPONSE_UNPROCESSABLE_CONTENT = {
     422: {
         "model": ValidationErrorResponse,
@@ -52,12 +59,7 @@ POST_UUID = Path(
     status_code=status.HTTP_201_CREATED,
     responses={
         **ERROR_RESPONSE_FORBIDDEN,
-        **{
-            409: {
-                "model": ErrorResponse,
-                "description": "A post with this title already exists",
-            }
-        },
+        **ERROR_RESPONSE_CONFLICT,
         **ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
     },
     summary="Create a new post",
@@ -252,6 +254,7 @@ def get_posts(
     responses={
         **ERROR_RESPONSE_FORBIDDEN,
         **ERROR_RESPONSE_NOT_FOUND,
+        **ERROR_RESPONSE_CONFLICT,
         **ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
     },
     summary="Update an existing post",
