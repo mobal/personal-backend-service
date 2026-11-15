@@ -31,3 +31,17 @@ class TestHealthApi:
         assert body["message"] == "Not Found"
         assert body["id"]
         assert response.headers["X-Correlation-ID"]
+
+    def test_cors_allows_any_origin_without_credentials(self, test_client: TestClient):
+        response = test_client.options(
+            "/api/v1/posts",
+            headers={
+                "Origin": "https://blog.example.com",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization,content-type",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == "*"
+        assert "access-control-allow-credentials" not in response.headers

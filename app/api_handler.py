@@ -83,10 +83,13 @@ app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(GZipMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins="*",
-    allow_credentials=True,
+    # Authentication is a bearer header, never a cookie, so browsers do not
+    # need credentialed CORS; without it any origin may read the public API.
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Location", X_CORRELATION_ID],
 )
 app.include_router(api_v1_router)
 app.include_router(rss_router)
