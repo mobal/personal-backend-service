@@ -311,8 +311,11 @@ Configuration values sourced from env vars. AWS credentials are not application 
 | `DEFAULT_TIMEZONE` | Europe/Budapest |
 | `JWT_SECRET_SSM_PARAM_NAME` | /dev/secrets/jwt |
 | `SSH_HOST` / `SSH_USERNAME` / `SSH_ROOT_PATH` | SFTP publish target |
+| `SSH_KNOWN_HOSTS` | `blog.example.com ssh-ed25519 AAAA...` (optional, see below) |
 | `SSH_PASSWORD_SSM_PARAM_NAME` | `/dev/personal-backend-service/ssh/password` |
 | `STAGE` | dev |
+
+Set `SSH_KNOWN_HOSTS` (Terraform: `ssh_known_hosts`) to the publish target's host key in OpenSSH `known_hosts` format, for example the output of `ssh-keyscan -t ed25519 blog.example.com` after comparing it with the key shown on the server. Without it the SFTP connection does not verify the host key, so the password can be captured by anyone able to impersonate the host; every publish logs a warning while it is unset.
 
 Provision the SFTP password as an SSM Parameter Store `SecureString` at the configured parameter name outside Terraform, using the AWS managed `aws/ssm` key. Lambda receives only the parameter name for the password; do not put the password in `.tfvars` or Lambda environment variables. The Lambda role can read only that parameter (plus the JWT parameter). If you use a customer-managed KMS key, grant `kms:Decrypt` on that exact key and allow the Lambda role in its key policy. After deploying the migration, rotate the SFTP account password and update the parameter to invalidate the credential that may remain in older Terraform state snapshots. Password lookups are cached for at most 60 seconds per warm Lambda process.
 

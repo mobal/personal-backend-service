@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     jwt_secret_ssm_param_name: str = Field(alias="JWT_SECRET_SSM_PARAM_NAME")
     default_timezone: str
     ssh_host: str
+    ssh_known_hosts: str | None = None
     ssh_password_ssm_param_name: str | None = None
     ssh_root_path: str
     ssh_username: str

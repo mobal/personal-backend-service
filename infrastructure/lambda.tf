@@ -28,6 +28,7 @@ resource "aws_lambda_function" "fastapi" {
       POWERTOOLS_SERVICE_NAME     = var.powertools_service_name
       POWERTOOLS_DEBUG            = var.debug
       SSH_HOST                    = var.ssh_host
+      SSH_KNOWN_HOSTS             = var.ssh_known_hosts
       SSH_PASSWORD_SSM_PARAM_NAME = local.ssh_password_parameter_name
       SSH_ROOT_PATH               = var.ssh_root_path
       SSH_USERNAME                = var.ssh_username

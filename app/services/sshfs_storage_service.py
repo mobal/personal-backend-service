@@ -2,18 +2,41 @@ from builtins import list as builtin_list
 from collections.abc import Generator
 from contextlib import contextmanager
 
-from asyncssh import Error as SSHError
+from asyncssh import (
+    Error as SSHError,
+    import_known_hosts,
+)
 from aws_lambda_powertools import Logger
 from sshfs import SSHFileSystem
 
 
 class SSHFSStorageService:
-    def __init__(self):
+    # Fail well inside the Lambda timeout when the remote host is unreachable.
+    CONNECT_TIMEOUT_SECONDS = 5
+
+    def __init__(self, known_hosts: str | None = None):
+        """known_hosts: trusted host keys in OpenSSH known_hosts format."""
         self._logger = Logger()
+        self._known_hosts = import_known_hosts(known_hosts) if known_hosts else None
 
     @contextmanager
     def _fs(self, host: str, username: str, password: str) -> Generator[SSHFileSystem]:
-        fs = SSHFileSystem(host, username=username, password=password)
+        if self._known_hosts is None:
+            # sshfs disables host key checks unless known_hosts is passed.
+            self._logger.warning(
+                "SSH host key verification is disabled; set SSH_KNOWN_HOSTS"
+            )
+        fs = SSHFileSystem(
+            host,
+            username=username,
+            password=password,
+            known_hosts=self._known_hosts,
+            connect_timeout=self.CONNECT_TIMEOUT_SECONDS,
+            login_timeout=self.CONNECT_TIMEOUT_SECONDS,
+            # fsspec caches instances by their arguments; a cached instance
+            # would come back with the client that was closed below.
+            skip_instance_cache=True,
+        )
         try:
             yield fs
         finally:

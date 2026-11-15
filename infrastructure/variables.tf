@@ -62,6 +62,12 @@ variable "ssh_host" {
   type = string
 }
 
+variable "ssh_known_hosts" {
+  default     = ""
+  description = "Trusted host keys of ssh_host in OpenSSH known_hosts format (output of ssh-keyscan). Host key verification is disabled while this is empty."
+  type        = string
+}
+
 variable "ssh_root_path" {
   type = string
 }

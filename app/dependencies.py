@@ -61,8 +61,10 @@ def get_rss_service(
     return RSSService(post_service=post_service)
 
 
-def get_sshfs_storage_service() -> SSHFSStorageService:
-    return SSHFSStorageService()
+def get_sshfs_storage_service(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> SSHFSStorageService:
+    return SSHFSStorageService(known_hosts=settings.ssh_known_hosts)
 
 
 def get_attachment_service(
