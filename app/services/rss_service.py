@@ -3,7 +3,7 @@ from email.utils import format_datetime
 from xml.etree import ElementTree
 
 from app.models.post import Post
-from app.services.post_service import PostService
+from app.services.post_service import PostService, render_markdown
 
 CONTENT_NAMESPACE = "http://purl.org/rss/1.0/modules/content/"
 ElementTree.register_namespace("content", CONTENT_NAMESPACE)
@@ -41,7 +41,7 @@ class RSSService:
             self._add_text(
                 item,
                 f"{{{CONTENT_NAMESPACE}}}encoded",
-                post.content,
+                render_markdown(post.content),
             )
 
         return ElementTree.tostring(rss, encoding="utf-8", xml_declaration=True)

@@ -4,6 +4,7 @@ from xml.etree import ElementTree
 from fastapi import status
 from fastapi.testclient import TestClient
 
+from app.services.post_service import render_markdown
 from app.services.rss_service import CONTENT_NAMESPACE
 
 
@@ -66,4 +67,6 @@ class TestRSSApi:
         assert newer_item.findtext("link") == (
             f"http://testserver/api/v1/posts/{newer.post_path}"
         )
-        assert newer_item.findtext(f"{{{CONTENT_NAMESPACE}}}encoded") == newer.content
+        assert newer_item.findtext(f"{{{CONTENT_NAMESPACE}}}encoded") == (
+            render_markdown(newer.content)
+        )

@@ -83,6 +83,16 @@ def normalize_post_path(post_path: str) -> str | None:
     return f"{int(year):04d}/{int(month):02d}/{int(day):02d}/{slug}"
 
 
+def render_markdown(content: str) -> str:
+    """Render Markdown to HTML that is safe to embed in a page or a feed."""
+    return bleach.clean(
+        markdown.markdown(content),
+        tags=ALLOWED_POST_TAGS,
+        attributes=ALLOWED_POST_ATTRIBUTES,
+        strip=True,
+    )
+
+
 class PostService:
     ERROR_POST_EXISTS = "There is already a post with this title"
     ERROR_POST_PATH_EXISTS = "There is already a post with this date and slug"
@@ -100,21 +110,11 @@ class PostService:
         return Post(**item)
 
     def _post_to_response(self, post_data: dict[str, Any]) -> PostResponse:
-        post_data["content"] = self._render_content(post_data["content"])
+        post_data["content"] = render_markdown(post_data["content"])
         self._attach_download_urls(post_data)
         if post_data.get("post_path"):
             post_data["post_path"] = normalize_post_path(post_data["post_path"])
         return PostResponse(**post_data)
-
-    @staticmethod
-    def _render_content(content: str) -> str:
-        html = markdown.markdown(content)
-        return bleach.clean(
-            html,
-            tags=ALLOWED_POST_TAGS,
-            attributes=ALLOWED_POST_ATTRIBUTES,
-            strip=True,
-        )
 
     def _attach_download_urls(self, post_data: dict[str, Any]) -> None:
         if post_data.get("attachments"):

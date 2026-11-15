@@ -12,6 +12,7 @@ class TestRSSService:
         newer_date = datetime.now(UTC) - timedelta(days=1)
         older.published_at = older_date.isoformat()
         newer.published_at = newer_date.isoformat()
+        newer.content = "**Bold** <script>alert(1)</script>claim"
 
         class StubPostService:
             def get_published_posts(self):
@@ -29,4 +30,6 @@ class TestRSSService:
         assert newer_item.findtext("link") == (
             f"http://testserver/api/v1/posts/{newer.post_path}"
         )
-        assert newer_item.findtext(f"{{{CONTENT_NAMESPACE}}}encoded") == newer.content
+        assert newer_item.findtext(f"{{{CONTENT_NAMESPACE}}}encoded") == (
+            "<p><strong>Bold</strong> alert(1)claim</p>"
+        )
