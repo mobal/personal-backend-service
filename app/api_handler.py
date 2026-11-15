@@ -1,19 +1,21 @@
 import uuid
+from collections.abc import Mapping
 
 import uvicorn
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.logging.logger import set_package_logger
 from botocore.exceptions import BotoCoreError, ClientError
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.api import router as api_v1_router
-from app.middlewares import CorrelationIdMiddleware
+from app.middlewares import X_CORRELATION_ID, CorrelationIdMiddleware, correlation_id
 from app.models.response import ErrorResponse, ValidationErrorResponse
 from app.rss_router import router as rss_router
 from app.settings import Settings
@@ -24,6 +26,8 @@ if settings.debug:
     set_package_logger()
 
 logger = Logger()
+
+INTERNAL_SERVER_ERROR = "Internal Server Error"
 
 OPENAPI_TAGS = [
     {
@@ -105,30 +109,45 @@ handler = Mangum(app)
 handler = logger.inject_lambda_context(handler, clear_state=True)
 
 
-@app.exception_handler(BotoCoreError)
-@app.exception_handler(ClientError)
-def botocore_error_handler(request: Request, error: BotoCoreError) -> JSONResponse:
-    error_id = uuid.uuid4()
-    error_message = str(error) if settings.debug else "Internal Server Error"
-    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    logger.error(f"Received botocore error {error_id=}")
+def _error_response(
+    status_code: int,
+    message: str,
+    error_id: uuid.UUID,
+    headers: Mapping[str, str] | None = None,
+) -> JSONResponse:
     return JSONResponse(
         content=jsonable_encoder(
-            ErrorResponse(status=status_code, id=error_id, message=error_message)
+            ErrorResponse(status=status_code, id=error_id, message=message)
         ),
         status_code=status_code,
+        headers=headers,
     )
 
 
-@app.exception_handler(HTTPException)
-def http_exception_handler(request: Request, error: HTTPException) -> JSONResponse:
+@app.exception_handler(BotoCoreError)
+@app.exception_handler(ClientError)
+def botocore_error_handler(
+    request: Request, error: BotoCoreError | ClientError
+) -> JSONResponse:
     error_id = uuid.uuid4()
-    logger.error(f"Received http exception {error_id=}")
-    return JSONResponse(
-        content=jsonable_encoder(
-            ErrorResponse(status=error.status_code, id=error_id, message=error.detail)
-        ),
-        status_code=error.status_code,
+    error_message = str(error) if settings.debug else INTERNAL_SERVER_ERROR
+    logger.error(f"Received botocore error {error_id=}", exc_info=error)
+    return _error_response(
+        status.HTTP_500_INTERNAL_SERVER_ERROR, error_message, error_id
+    )
+
+
+# Starlette raises its own HTTPException for unknown routes and unsupported
+# methods; FastAPI's HTTPException is a subclass, so this covers both.
+@app.exception_handler(StarletteHTTPException)
+def http_exception_handler(
+    request: Request, error: StarletteHTTPException
+) -> JSONResponse:
+    error_id = uuid.uuid4()
+    log = logger.error if error.status_code >= 500 else logger.info
+    log(f"Received http exception {error_id=} status_code={error.status_code}")
+    return _error_response(
+        error.status_code, str(error.detail), error_id, error.headers
     )
 
 
@@ -138,20 +157,40 @@ def request_validation_error_handler(
 ) -> JSONResponse:
     error_id = uuid.uuid4()
     status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
-    logger.error(f"Received request validation error {error_id=}")
+    logger.info(f"Received request validation error {error_id=}")
     return JSONResponse(
         content=jsonable_encoder(
             ValidationErrorResponse(
                 status=status_code,
                 id=error_id,
-                message=str(error),
+                message="Request validation failed",
+                # "input" echoes the rejected value, which can be a multi-megabyte
+                # attachment payload; "ctx" may hold non-serializable exceptions.
                 errors=[
-                    {key: value for key, value in item.items() if key != "ctx"}
+                    {
+                        key: value
+                        for key, value in item.items()
+                        if key not in ("ctx", "input")
+                    }
                     for item in error.errors()
                 ],
             )
         ),
         status_code=status_code,
+    )
+
+
+@app.exception_handler(Exception)
+def unhandled_exception_handler(request: Request, error: Exception) -> JSONResponse:
+    error_id = uuid.uuid4()
+    logger.error(f"Received unhandled error {error_id=}", exc_info=error)
+    # This response is produced outside CorrelationIdMiddleware.
+    request_correlation_id = correlation_id.get(None)
+    return _error_response(
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+        INTERNAL_SERVER_ERROR,
+        error_id,
+        {X_CORRELATION_ID: request_correlation_id} if request_correlation_id else None,
     )
 
 

@@ -194,6 +194,28 @@ class TestAttachmentsApi:
         assert body["message"]
         assert body["errors"]
 
+    def test_validation_error_does_not_echo_the_rejected_payload(
+        self,
+        create_attachment: CreateAttachment,
+        posts: list[Post],
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+        jwt_secret_ssm_param_value: str,
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+        payload = create_attachment.model_dump(by_alias=True)
+        payload["data"] = "not-base64-payload!"
+
+        response = test_client.post(
+            f"/api/v1/posts/{posts[0].id}/attachments",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json=payload,
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        assert "not-base64-payload!" not in response.text
+        assert response.json()["errors"][0]["loc"] == ["body", "data"]
+
     def test_fail_to_add_attachment_due_to_unauthorized(
         self,
         create_attachment: CreateAttachment,
