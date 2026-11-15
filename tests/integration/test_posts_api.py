@@ -440,6 +440,29 @@ class TestPostsApi:
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
+    @pytest.mark.parametrize("field", ["author", "title", "content", "tags", "meta"])
+    def test_fail_to_update_post_due_to_null_required_field(
+        self,
+        field: str,
+        jwt_secret_ssm_param_value: str,
+        posts: list[Post],
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.put(
+            f"{BASE_URL}/{posts[0].id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json={field: None},
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        assert (
+            test_client.get(f"{BASE_URL}/{posts[0].id}").status_code
+            == status.HTTP_200_OK
+        )
+
     def test_fail_expired_jwt_token_cause_forbidden(
         self,
         posts: list[Post],

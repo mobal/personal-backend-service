@@ -134,6 +134,15 @@ class UpdatePost(CamelModel):
         ),
     ] = None
 
+    @field_validator("author", "title", "content", "tags", "meta", mode="before")
+    @classmethod
+    def reject_explicit_null(cls, value: Any) -> Any:
+        # Only publishedAt may be cleared; a stored null in any other field
+        # would make the post unreadable.
+        if value is None:
+            raise ValueError("must not be null; omit the field to keep its value")
+        return value
+
     @field_validator("published_at")
     @classmethod
     def validate_published_at(cls, value: str | None) -> str | None:
