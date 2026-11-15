@@ -300,14 +300,12 @@ erDiagram
 
 ## Settings (Environment Variables)
 
-20 configuration values sourced from env vars:
+Configuration values sourced from env vars. AWS credentials are not application settings: boto3 resolves them from its default chain (the Lambda execution role in production, `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` for local runs).
 
 | Variable | Example |
 |---|---|
 | `APP_NAME` | personal-backend-service |
 | `ATTACHMENTS_BUCKET_NAME` | dev-attachments-xxxxx |
-| `AWS_ACCESS_KEY_ID` | ... |
-| `AWS_SECRET_ACCESS_KEY` | ... |
 | `AWS_DEFAULT_REGION` | eu-central-1 |
 | `DEBUG` | true/false |
 | `DEFAULT_TIMEZONE` | Europe/Budapest |

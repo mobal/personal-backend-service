@@ -12,13 +12,11 @@ class Settings(BaseSettings):
     debug: bool = False
     app_name: str
     attachments_bucket_name: str
-    aws_access_key_id: str
-    aws_secret_access_key: str
     aws_region: str = Field(alias="AWS_DEFAULT_REGION")
     jwt_secret_ssm_param_name: str = Field(alias="JWT_SECRET_SSM_PARAM_NAME")
     default_timezone: str
     ssh_host: str
-    ssh_password_ssm_parameter_name: str | None = None
+    ssh_password_ssm_param_name: str | None = None
     ssh_root_path: str
     ssh_username: str
     stage: str
@@ -30,14 +28,13 @@ class Settings(BaseSettings):
     def jwt_audience(self) -> str:
         return f"https://{self.stage}-{self.app_name}"
 
-    @computed_field
     @cached_property
     def jwt_secret(self) -> str:
         return parameters.get_parameter(self.jwt_secret_ssm_param_name, decrypt=True)
 
     @property
     def _ssh_password_parameter_name(self) -> str:
-        return self.ssh_password_ssm_parameter_name or (
+        return self.ssh_password_ssm_param_name or (
             f"/{self.stage}/{self.app_name}/ssh/password"
         )
 
