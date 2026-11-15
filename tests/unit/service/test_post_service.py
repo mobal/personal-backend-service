@@ -15,6 +15,8 @@ from app.services.post_service import PostService
 
 ERROR_MESSAGE_POST_WAS_NOT_FOUND = "The requested post was not found"
 ERROR_MESSAGE_POST_ALREADY_EXISTS = "There is already a post with this title"
+# Padded and unpadded paths only differ for single-digit months and days.
+SINGLE_DIGIT_DATE = datetime(2026, 2, 3, tzinfo=UTC)
 
 
 class TestPostService:
@@ -431,7 +433,7 @@ class TestPostService:
             side_effect=[None, posts[0].model_dump()],
         )
 
-        dt = datetime.fromisoformat(posts[0].published_at)
+        dt = SINGLE_DIGIT_DATE
         post_path = f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}"
         post_service.get_by_post_path(post_path)
 
@@ -449,7 +451,7 @@ class TestPostService:
     ):
         mocker.patch.object(PostRepository, "get_post_by_post_path", return_value=None)
 
-        dt = datetime.fromisoformat(posts[0].published_at)
+        dt = SINGLE_DIGIT_DATE
         post_path = f"{dt:%Y/%m/%d}/{posts[0].slug}"
         with pytest.raises(PostNotFoundException) as excinfo:
             post_service.get_by_post_path(post_path)
