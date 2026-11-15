@@ -338,67 +338,25 @@ class TestPostService:
 
         assert len(result) == 0
 
-    def test_successfully_get_archive_paginated(
+    def test_archive_counts_every_post_of_a_busy_month(
         self,
         mocker: MockerFixture,
-        posts: list[Post],
         post_service: PostService,
     ):
-        all_posts = [post.model_dump() for post in posts]
+        january = [
+            {"id": str(uuid.uuid4()), "published_at": "2026-01-15T10:00:00+00:00"}
+        ] * 150
+        february = [
+            {"id": str(uuid.uuid4()), "published_at": "2026-02-01T10:00:00+00:00"}
+        ]
         mocker.patch.object(
-            PostRepository, "get_posts", return_value=(posts[-1].id, all_posts)
+            PostRepository, "get_all_posts", return_value=february + january
         )
 
-        result = post_service.get_archive_paginated()
+        result = post_service.get_archive()
 
-        assert "count" in result
-        assert "last_evaluated_key" in result
-        assert result["count"] == len(all_posts)
-
-    def test_successfully_get_archive_paginated_with_custom_params(
-        self,
-        mocker: MockerFixture,
-        posts: list[Post],
-        post_service: PostService,
-    ):
-        """Test pagination with custom max_results."""
-        all_posts = [post.model_dump() for post in posts]
-        mocker.patch.object(PostRepository, "get_posts", return_value=(None, all_posts))
-
-        result = post_service.get_archive_paginated(max_results=50)
-
-        assert result["count"] == len(all_posts)
-
-    def test_successfully_get_archive_paginated_with_exclusive_start_key(
-        self,
-        mocker: MockerFixture,
-        posts: list[Post],
-        post_service: PostService,
-    ):
-        """Test pagination with exclusive_start_key for continuation."""
-        all_posts = [post.model_dump() for post in posts]
-        mocker.patch.object(PostRepository, "get_posts", return_value=(None, all_posts))
-
-        first_page = post_service.get_archive_paginated(max_results=2)
-        exclusive_start_key = first_page["last_evaluated_key"]
-
-        second_page = post_service.get_archive_paginated(
-            max_results=2, exclusive_start_key=exclusive_start_key
-        )
-
-        assert second_page["count"] == len(all_posts)
-
-    def test_successfully_get_archive_paginated_empty_result(
-        self,
-        mocker: MockerFixture,
-        post_service: PostService,
-    ):
-        mocker.patch.object(PostRepository, "get_posts", return_value=(None, []))
-
-        result = post_service.get_archive_paginated()
-
-        assert result["count"] == 0
-        assert result["last_evaluated_key"] is None
+        assert result == {"2026-01": 150, "2026-02": 1}
+        assert list(result) == ["2026-01", "2026-02"]
 
     def test_successfully_get_post_by_post_path(
         self,
@@ -568,27 +526,3 @@ class TestPostService:
             post_service.update_post(posts[0].id, {"content": "Updated content"})
 
         assert excinfo.value.response["Error"]["Code"] == "InternalServerError"
-
-    def test_sort_dates_and_group_by_month_with_multiple_months(
-        self,
-        post_service: PostService,
-    ):
-        dates = [
-            datetime.fromisoformat("2025-01-15T12:00:00"),
-            datetime.fromisoformat("2025-01-20T12:00:00"),
-            datetime.fromisoformat("2025-02-10T12:00:00"),
-            datetime.fromisoformat("2025-02-15T12:00:00"),
-            datetime.fromisoformat("2025-02-20T12:00:00"),
-        ]
-
-        result = post_service._sort_dates_and_group_by_month(dates)
-
-        assert result == {"2025-01": 2, "2025-02": 3}
-
-    def test_sort_dates_and_group_by_month_with_empty_dates(
-        self,
-        post_service: PostService,
-    ):
-        result = post_service._sort_dates_and_group_by_month([])
-
-        assert result == {}

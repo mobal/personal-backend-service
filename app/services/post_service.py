@@ -1,5 +1,6 @@
 import re
 import uuid
+from collections import Counter
 from datetime import UTC, datetime
 from typing import Any
 
@@ -304,74 +305,13 @@ class PostService:
                 raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
             raise
 
-    def _sort_dates_and_group_by_month(
-        self, dates: list[datetime], max_results: int = 100
-    ) -> dict[str, int]:
-        sorted_dates = sorted(dates)
-        archive = {}
-        current_month = None
-        count = 0
-
-        for date in sorted_dates:
-            if count >= max_results:
-                break
-
-            month_key = date.strftime("%Y-%m")
-
-            if current_month != month_key:
-                if current_month is not None:
-                    archive[current_month] = count
-                current_month = month_key
-                count = 1
-            else:
-                count += 1
-
-        if current_month is not None:
-            archive[current_month] = count
-
-        return archive
-
-    def get_archive(
-        self,
-        max_results: int = 100,
-    ) -> dict[str, int]:
+    def get_archive(self) -> dict[str, int]:
         posts = self._post_repository.get_all_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.published(),
             ["id", "published_at"],
         )
-        if not posts:
-            return {}
-
-        return self._archive_from_posts(posts, max_results)
-
-    def _archive_from_posts(
-        self, posts: list[dict[str, Any]], max_results: int
-    ) -> dict[str, int]:
-        dates = [datetime.fromisoformat(post["published_at"]) for post in posts]
-        return self._sort_dates_and_group_by_month(dates, max_results)
-
-    def get_archive_paginated(
-        self,
-        exclusive_start_key: str | None = None,
-        max_results: int = 100,
-    ) -> dict[str, Any]:
-        """Get archive with pagination support."""
-        last_key, posts = self._post_repository.get_posts(
-            FilterExpressions.NOT_DELETED & FilterExpressions.published(),
-            {"id": exclusive_start_key} if exclusive_start_key else None,
-            ["id", "published_at"],
+        months = Counter(
+            datetime.fromisoformat(post["published_at"]).strftime("%Y-%m")
+            for post in posts
         )
-        if not posts:
-            return {
-                "archive": {},
-                "count": 0,
-                "exclusive_start_key": exclusive_start_key,
-                "last_evaluated_key": None,
-            }
-
-        return {
-            "archive": self._archive_from_posts(posts, max_results),
-            "count": len(posts),
-            "exclusive_start_key": exclusive_start_key,
-            "last_evaluated_key": last_key,
-        }
+        return dict(sorted(months.items()))
