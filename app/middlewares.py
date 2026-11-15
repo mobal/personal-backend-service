@@ -1,3 +1,4 @@
+import re
 import uuid
 from contextvars import ContextVar
 
@@ -8,6 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.types import ASGIApp
 
 X_CORRELATION_ID = "X-Correlation-ID"
+CORRELATION_ID_RE = re.compile(r"[A-Za-z0-9._:-]{1,128}")
 
 correlation_id: ContextVar[str] = ContextVar(X_CORRELATION_ID)
 logger = Logger()
@@ -21,7 +23,9 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         x_correlation_id = request.headers.get(X_CORRELATION_ID)
-        if not x_correlation_id:
+        # The value is copied into every log line and the response, so only
+        # accept short identifier-like values from the client.
+        if not x_correlation_id or not CORRELATION_ID_RE.fullmatch(x_correlation_id):
             aws_context = request.scope.get("aws.context")
             if aws_context:
                 x_correlation_id = aws_context.aws_request_id

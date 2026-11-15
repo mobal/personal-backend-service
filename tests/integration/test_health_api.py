@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -45,3 +47,16 @@ class TestHealthApi:
         assert response.status_code == 200
         assert response.headers["access-control-allow-origin"] == "*"
         assert "access-control-allow-credentials" not in response.headers
+
+    def test_correlation_id_from_the_request_is_echoed(self, test_client: TestClient):
+        response = test_client.get("/health", headers={"X-Correlation-ID": "req-123"})
+
+        assert response.headers["X-Correlation-ID"] == "req-123"
+
+    @pytest.mark.parametrize("value", ["a" * 129, "id with spaces", 'id"quote'])
+    def test_unsafe_correlation_id_is_replaced(
+        self, value: str, test_client: TestClient
+    ):
+        response = test_client.get("/health", headers={"X-Correlation-ID": value})
+
+        assert uuid.UUID(response.headers["X-Correlation-ID"])
