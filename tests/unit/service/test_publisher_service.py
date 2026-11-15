@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 from fastapi import status
 from pytest_mock import MockerFixture
 
-from app.exceptions import PublishException
+from app.exceptions import PostNotPublishableException, PublishException
 from app.models.post import Post
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
@@ -88,8 +88,10 @@ class TestPublisherService:
         mocker.patch.object(SSHFSStorageService, "write")
         update_state = mocker.patch.object(PostService, "update_publish_state")
 
-        publisher_service.publish(posts[0].id)
+        with pytest.raises(PostNotPublishableException) as excinfo:
+            publisher_service.publish(posts[0].id)
 
+        assert excinfo.value.status_code == status.HTTP_409_CONFLICT
         post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         sshfs_storage_service.write.assert_not_called()
         update_state.assert_not_called()
@@ -178,8 +180,10 @@ class TestPublisherService:
         mock_write = mocker.patch.object(SSHFSStorageService, "write")
         update_state = mocker.patch.object(PostService, "update_publish_state")
 
-        publisher_service.publish(post.id)
+        with pytest.raises(PostNotPublishableException) as excinfo:
+            publisher_service.publish(post.id)
 
+        assert excinfo.value.status_code == status.HTTP_409_CONFLICT
         post_service.get_post_by_uuid.assert_called_once_with(post.id)
         mock_write.assert_not_called()
         update_state.assert_not_called()

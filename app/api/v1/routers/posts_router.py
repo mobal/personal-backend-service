@@ -110,11 +110,19 @@ def delete_post(
 @router.post(
     "/{uuid}/publish",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={**ERROR_RESPONSE_FORBIDDEN, **ERROR_RESPONSE_NOT_FOUND},
+    responses={
+        **ERROR_RESPONSE_FORBIDDEN,
+        **ERROR_RESPONSE_NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "The post is a draft or scheduled for the future",
+        },
+    },
     summary="Publish a post to the remote blog server",
     description=(
-        "Writes the raw Markdown to the configured remote blog server when "
-        "the post has a publication timestamp in the past. Requires a valid JWT."
+        "Writes the raw Markdown to the configured remote blog server. The "
+        "post needs a publication timestamp in the past; drafts and scheduled "
+        "posts are rejected with 409. Requires a valid JWT."
     ),
     response_description="Published — no content",
 )

@@ -33,6 +33,11 @@ class PostNotFoundException(HTTPException):
         super().__init__(status.HTTP_404_NOT_FOUND, detail=detail)
 
 
+class PostNotPublishableException(HTTPException):
+    def __init__(self, detail: Any = None) -> None:
+        super().__init__(status.HTTP_409_CONFLICT, detail=detail)
+
+
 class PublishException(HTTPException):
     def __init__(self, detail: Any = None) -> None:
         super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail)
