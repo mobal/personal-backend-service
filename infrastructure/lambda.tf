@@ -1,7 +1,7 @@
 resource "aws_lambda_function" "fastapi" {
   function_name = "${local.app_name}-fastapi"
   role          = aws_iam_role.lambda_role.arn
-  runtime       = "python3.14"
+  runtime       = "python3.15"
   handler       = "app.api_handler.handler"
 
   s3_bucket = var.artifacts_bucket

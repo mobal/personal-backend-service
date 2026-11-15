@@ -3,7 +3,7 @@ name = "personal-backend-service"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 dependencies = [
     "aws-lambda-powertools[validation]>=3.24.0",
     "bleach>=6.2.0",
@@ -12,7 +12,7 @@ dependencies = [
     "httpx2>=2.2.0",
     "mangum>=0.21.0",
     "markdown>=3.7",
-    "pydantic>=2.12.5",
+    "pydantic>=2.14.3",
     "pydantic-settings>=2.12.0",
     "pyjwt>=2.10.1",
     "python-dotenv>=1.1.0",

@@ -3,34 +3,29 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DIST="$ROOT/dist"
-BUILDER_IMAGE="public.ecr.aws/sam/build-python3.14:1.151.0"
+# The Lambda base image ships the exact interpreter the function runs on.
+BUILDER_IMAGE="public.ecr.aws/lambda/python:3.15.2026.11.11.16"
 
 rm -f "$DIST/api.zip"
 mkdir -p "$DIST"
 
 docker run --rm \
   --platform linux/amd64 \
-  --user $(id -u):$(id -g) \
+  --user "$(id -u):$(id -g)" \
+  --entrypoint bash \
+  -e HOME=/tmp \
   -v "$ROOT:/workspace:ro" \
   -v "$DIST:/out" \
   -w /workspace \
-  "$BUILDER_IMAGE" bash -c '
-    set -e
+  "$BUILDER_IMAGE" -c '
+    set -euo pipefail
 
     if [ ! -f /out/requirements.zip ]; then
       echo "Missing dependency layer artifact; run make build-layer first" >&2
       exit 1
     fi
 
-    mkdir -p /tmp/api
-    cp -r app /tmp/api/app
-    find /tmp/api/app -type d -name __pycache__ -prune -exec rm -rf {} +
-    find /tmp/api/app -type f -name "*.pyc" -delete
-
-    cd /tmp/api
-    zip -qr api.zip app
-
-    mv api.zip /out/api.zip
-    python3.14 /workspace/scripts/verify_lambda_artifacts.py \
+    python3.15 /workspace/scripts/zip_directory.py /workspace app /out/api.zip
+    python3.15 /workspace/scripts/verify_lambda_artifacts.py \
       /out/api.zip /out/requirements.zip
   '

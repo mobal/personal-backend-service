@@ -2,7 +2,7 @@
 
 ## Project Facts
 
-- Runtime: Python 3.14 (`.python-version`, `requires-python >=3.14`)
+- Runtime: Python 3.15 (`.python-version`, `requires-python >=3.15`)
 - Package manager: `uv` (`uv sync`, lockfile: `uv.lock`)
 - Build: `make build`
 - Tests: `make test`

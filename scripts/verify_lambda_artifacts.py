@@ -11,7 +11,7 @@ from pathlib import Path, PurePosixPath
 
 MAX_COMPRESSED_BYTES = 50 * 1024 * 1024
 MAX_UNCOMPRESSED_BYTES = 250 * 1024 * 1024
-SITE_PACKAGES = "python/lib/python3.14/site-packages/"
+SITE_PACKAGES = "python/lib/python3.15/site-packages/"
 REQUIRED_LAYER_IMPORTS = (
     "aws_lambda_powertools/",
     "boto3/",
@@ -115,7 +115,7 @@ def main() -> None:
             env["PYTHONPATH"] = os.pathsep.join(
                 (
                     str(assembled),
-                    str(assembled / "python/lib/python3.14/site-packages"),
+                    str(assembled / "python/lib/python3.15/site-packages"),
                 )
             )
             subprocess.run(

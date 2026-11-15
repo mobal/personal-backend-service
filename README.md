@@ -31,7 +31,7 @@ A production-grade personal blog backend. Posts are stored in **DynamoDB**, rend
 | Category | Technology |
 |---|---|
 | Framework | FastAPI |
-| Runtime | Python 3.14+ |
+| Runtime | Python 3.15+ |
 | API Adapter | Mangum (AWS Lambda + API Gateway V2) |
 | Database | DynamoDB (single table, 3 GSIs) |
 | Object Storage | S3 (private attachments, stable API download links) |
@@ -333,7 +333,7 @@ Error responses use a standard `ErrorResponse` shape: `{ status, id, message }`.
 | Resource | Description |
 |---|---|
 | `aws_apigatewayv2_api` | HTTP API Gateway |
-| `aws_lambda_function` | FastAPI handler (Python 3.14, 768 MB, 15 s timeout) |
+| `aws_lambda_function` | FastAPI handler (Python 3.15, 768 MB, 15 s timeout) |
 | `aws_lambda_layer_version` | Dependencies layer (built via Docker) |
 | `aws_dynamodb_table` | Posts table with 3 GSIs |
 | `aws_s3_bucket` | Private attachments bucket with public access blocked |
@@ -345,7 +345,7 @@ Production (`stage = "prod"` or `"production"`) enables DynamoDB deletion protec
 
 Lambda logs use CloudWatch Logs' default encryption at rest and are retained for `log_retention_days` (7 days by default). Custom KMS keys, API Gateway access-log ingestion, alarms, and custom metrics are omitted to keep recurring costs low. API Gateway access logging can be enabled later if operational needs justify the ingestion and retention costs.
 
-The Lambda layer is built inside the versioned `public.ecr.aws/sam/build-python3.14:1.151.0` image. Build scripts install pinned uv `0.12.19`; the locked runtime layer includes boto3 and aws-lambda-powertools, while tests and typing tools remain development-only. `make build` checks ZIP size and required imports, then imports `app.api_handler` from the exact assembled API ZIP and dependency layer using Python 3.14.
+The Lambda artifacts are built inside the versioned `public.ecr.aws/lambda/python:3.15.2026.11.11.16` base image, the same interpreter the function runs on (AWS has not published a SAM build image for Python 3.15 yet). The image has no `zip` binary, so `scripts/zip_directory.py` assembles the archives. Build scripts install pinned uv `0.12.19`; the locked runtime layer includes boto3 and aws-lambda-powertools, while tests and typing tools remain development-only. `make build` checks ZIP size and required imports, then imports `app.api_handler` from the exact assembled API ZIP and dependency layer using Python 3.15.
 
 ---
 
@@ -358,7 +358,7 @@ OpenTofu formatting/validation and TFLint.
 
 ```mermaid
 flowchart LR
-    A["Checkout"] --> B["Setup Python 3.14"]
+    A["Checkout"] --> B["Setup Python 3.15"]
     B --> C["Install uv"]
     C --> D["uv sync --locked"]
     D --> E["Bandit"]
