@@ -3,6 +3,7 @@ import uuid
 from unittest.mock import ANY
 
 import pytest
+from fastapi import HTTPException, status
 from pytest_mock import MockerFixture
 
 from app.exceptions import AttachmentNotFoundException, PostNotFoundException
@@ -11,7 +12,11 @@ from app.models.response import (
     Attachment as AttachmentResponse,
     Post as PostResponse,
 )
-from app.schemas.attachment_schema import MAX_ENCODED_ATTACHMENT_SIZE, CreateAttachment
+from app.schemas.attachment_schema import (
+    MAX_ATTACHMENT_SIZE,
+    MAX_ENCODED_ATTACHMENT_SIZE,
+    CreateAttachment,
+)
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.s3_storage_service import S3StorageService
@@ -468,16 +473,16 @@ class TestAttachmentService:
         mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
         mocker.patch.object(PostService, "append_attachment")
 
-        large_data = b"x" * (5 * 1024 * 1024 + 1)  # 5MB + 1 byte
+        large_data = b"x" * (MAX_ATTACHMENT_SIZE + 1)
         encoded_data = base64.b64encode(large_data).decode("utf-8")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             attachment_service.add_attachment(
                 posts[0].id, ATTACHMENT_NAME, encoded_data, ATTACHMENT_NAME
             )
 
-        assert "exceeds maximum size" in str(exc_info.value)
-        assert "5242880" in str(exc_info.value)  # 5MB in bytes
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        assert "exceeds maximum size" in exc_info.value.detail
 
     def test_successfully_add_attachment_under_limit(
         self,
@@ -513,7 +518,17 @@ class TestAttachmentService:
         s3_storage_service.put_object.assert_called_once()
         post_service.append_attachment.assert_called_once()
 
-    def test_add_attachment_with_exactly_5mb(
+    def test_largest_attachment_fits_the_lambda_request_payload_limit(self):
+        lambda_request_payload_limit = 6 * 1024 * 1024
+        request_body = CreateAttachment(
+            name="n" * 255,
+            data=base64.b64encode(b"x" * MAX_ATTACHMENT_SIZE).decode(),
+            display_name="d" * 255,
+        ).model_dump_json(by_alias=True)
+
+        assert len(request_body) < lambda_request_payload_limit
+
+    def test_add_attachment_with_exactly_the_maximum_size(
         self,
         mocker: MockerFixture,
         attachment_service: AttachmentService,
@@ -521,18 +536,17 @@ class TestAttachmentService:
         posts: list[Post],
         s3_storage_service: S3StorageService,
     ):
-        """Test that adding an attachment exactly 5MB succeeds."""
         mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
         mocker.patch.object(PostService, "append_attachment")
 
-        exact_5mb_data = b"x" * (5 * 1024 * 1024)
-        encoded_data = base64.b64encode(exact_5mb_data).decode("utf-8")
+        largest_data = b"x" * MAX_ATTACHMENT_SIZE
+        encoded_data = base64.b64encode(largest_data).decode("utf-8")
 
         mocker.patch.object(
             S3StorageService,
             "put_object",
             return_value={
-                "ContentLength": len(exact_5mb_data),
+                "ContentLength": len(largest_data),
                 "ContentType": "plain/text",
             },
         )
@@ -541,6 +555,6 @@ class TestAttachmentService:
             posts[0].id, ATTACHMENT_NAME, encoded_data, ATTACHMENT_NAME
         )
 
-        assert result.content_length == len(exact_5mb_data)
-        assert result.content_length == 5 * 1024 * 1024
+        assert result.content_length == len(largest_data)
+        assert result.content_length == MAX_ATTACHMENT_SIZE
         s3_storage_service.put_object.assert_called_once()

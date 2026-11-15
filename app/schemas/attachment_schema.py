@@ -5,8 +5,15 @@ from pydantic import ConfigDict, Field, field_validator
 
 from app.models.camel_model import CamelModel
 
-MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024
+# Lambda accepts at most 6 MB per request. The file travels base64-encoded
+# inside the JSON body, which inflates it by a third, so 4 MB is the largest
+# size that still reaches the function.
+MAX_ATTACHMENT_SIZE_MB = 4
+MAX_ATTACHMENT_SIZE = MAX_ATTACHMENT_SIZE_MB * 1024 * 1024
 MAX_ENCODED_ATTACHMENT_SIZE = 4 * ((MAX_ATTACHMENT_SIZE + 2) // 3)
+ERROR_ATTACHMENT_TOO_LARGE = (
+    f"Attachment exceeds maximum size of {MAX_ATTACHMENT_SIZE_MB} MB"
+)
 
 
 class CreateAttachment(CamelModel):
@@ -14,14 +21,15 @@ class CreateAttachment(CamelModel):
         str,
         Field(
             description="File name, including the extension the MIME type is "
-            "guessed from (up to 5 MB)",
+            "guessed from",
             examples=["lorem.txt"],
         ),
     ]
     data: Annotated[
         str,
         Field(
-            description="Binary content of the file, base64-encoded",
+            description="Binary content of the file, base64-encoded "
+            f"(up to {MAX_ATTACHMENT_SIZE_MB} MB before encoding)",
             examples=["TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQu"],
         ),
     ]
@@ -51,7 +59,7 @@ class CreateAttachment(CamelModel):
     @classmethod
     def validate_data(cls, value: str) -> str:
         if len(value) > MAX_ENCODED_ATTACHMENT_SIZE:
-            raise ValueError("Attachment exceeds maximum size of 5 MB")
+            raise ValueError(ERROR_ATTACHMENT_TOO_LARGE)
         try:
             decoded = base64.b64decode(value, validate=True)
         except ValueError as exc:
@@ -59,5 +67,5 @@ class CreateAttachment(CamelModel):
         if not decoded:
             raise ValueError("Attachment must not be empty")
         if len(decoded) > MAX_ATTACHMENT_SIZE:
-            raise ValueError("Attachment exceeds maximum size of 5 MB")
+            raise ValueError(ERROR_ATTACHMENT_TOO_LARGE)
         return value

@@ -14,6 +14,7 @@ from app.exceptions import AttachmentNotFoundException
 from app.models.post import Attachment
 from app.models.response import Attachment as AttachmentResponse
 from app.schemas.attachment_schema import (
+    ERROR_ATTACHMENT_TOO_LARGE,
     MAX_ATTACHMENT_SIZE,
     MAX_ENCODED_ATTACHMENT_SIZE,
 )
@@ -47,7 +48,7 @@ class AttachmentService:
         mime_type = self._get_mime_type(attachment_name)
         attachment_id = str(uuid.uuid4())
         object_key = f"/{post.post_path}/{attachment_id}-{attachment_name}"
-        file_data = self._decode_attachment(base64_data, attachment_name)
+        file_data = self._decode_attachment(base64_data)
 
         self._storage_service.put_object(
             self._settings.attachments_bucket_name,
@@ -102,11 +103,12 @@ class AttachmentService:
         )
         return "application/octet-stream"
 
-    def _decode_attachment(self, base64_data: str, attachment_name: str) -> bytes:
+    @staticmethod
+    def _decode_attachment(base64_data: str) -> bytes:
         if len(base64_data) > MAX_ENCODED_ATTACHMENT_SIZE:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Attachment exceeds maximum size of 5 MB",
+                detail=ERROR_ATTACHMENT_TOO_LARGE,
             )
         try:
             file_data = base64.b64decode(base64_data, validate=True)
@@ -121,13 +123,13 @@ class AttachmentService:
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Attachment must not be empty",
             )
+        # Padding lets a payload of the maximum encoded length decode to a
+        # couple of bytes more than the limit.
         if len(file_data) > MAX_ATTACHMENT_SIZE:
-            error_message = (
-                f"Attachment {attachment_name} exceeds maximum size of "
-                f"{MAX_ATTACHMENT_SIZE} bytes"
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=ERROR_ATTACHMENT_TOO_LARGE,
             )
-            self._logger.error(error_message)
-            raise ValueError(error_message)
         return file_data
 
     def _delete_uploaded_object(self, object_key: str) -> None:

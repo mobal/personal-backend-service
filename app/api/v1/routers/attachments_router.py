@@ -11,7 +11,7 @@ from app.models.response import (
     ErrorResponse,
     ValidationErrorResponse,
 )
-from app.schemas.attachment_schema import CreateAttachment
+from app.schemas.attachment_schema import MAX_ATTACHMENT_SIZE_MB, CreateAttachment
 from app.services.attachment_service import AttachmentService
 
 logger = Logger()
@@ -54,7 +54,8 @@ ATTACHMENT_UUID = Path(
     },
     summary="Add an attachment to a post",
     description=(
-        "Uploads a file (base64-encoded, up to 5 MB) to S3 and links it to "
+        f"Uploads a file (base64-encoded, up to {MAX_ATTACHMENT_SIZE_MB} MB) to S3 "
+        "and links it to "
         "the post. The MIME type is guessed from the file extension. Requires "
         "a valid JWT. On success the response body is empty and the new "
         "attachment is addressed in the `Location` header."
