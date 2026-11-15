@@ -241,6 +241,10 @@ class PostService:
             {"id": exclusive_start_key} if exclusive_start_key else None,
             ["id", "title", "meta", "post_path", "published_at", "updated_at"],
         )
+        # A scan returns items in hash order. Sorting gives readers a stable
+        # newest-first list for as long as all posts fit into one scan page
+        # (1 MB of stored items); across pages only each page is ordered.
+        posts.sort(key=lambda post: post["published_at"], reverse=True)
         for post in posts:
             self._attach_download_urls(post)
             if post.get("post_path"):

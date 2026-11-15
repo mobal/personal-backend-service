@@ -47,6 +47,25 @@ class TestPostsApi:
             post = next(post for post in posts if post.id == post_response["id"])
             assert post_response.items() <= post.model_dump(by_alias=True).items()
 
+    def test_get_posts_returns_newest_first(
+        self, posts: list[Post], posts_table, test_client: TestClient
+    ):
+        now = datetime.now(UTC)
+        for age_in_days, post in enumerate(random.sample(posts, len(posts))):
+            posts_table.update_item(
+                Key={"id": post.id},
+                UpdateExpression="SET published_at = :published_at",
+                ExpressionAttributeValues={
+                    ":published_at": (now - timedelta(days=age_in_days)).isoformat()
+                },
+            )
+
+        response = test_client.get(BASE_URL)
+
+        published = [post["publishedAt"] for post in response.json()["posts"]]
+        assert len(published) == len(posts)
+        assert published == sorted(published, reverse=True)
+
     def test_fail_to_get_post_by_uuid_due_to_not_found(
         self, posts: list[Post], test_client: TestClient
     ):

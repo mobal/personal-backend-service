@@ -439,10 +439,11 @@ class TestPostService:
         result = post_service.get_posts()
 
         assert len(result.posts) == len(posts)
-        for idx, post in enumerate(result.posts, start=0):
+        expected = {post.id: post for post in posts}
+        for post in result.posts:
             assert (
                 post.model_dump(exclude="attachments").items()
-                <= posts[idx].model_dump(exclude="attachments").items()
+                <= expected[post.id].model_dump(exclude="attachments").items()
             )
         post_repository.get_posts.assert_called_once_with(ANY, None, ANY)
 
