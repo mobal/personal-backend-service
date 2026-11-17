@@ -25,7 +25,7 @@ resource "aws_lambda_function" "fastapi" {
       BLOG_URL                    = var.blog_url
       DEBUG                       = var.debug
       JWT_SECRET_SSM_PARAM_NAME   = var.jwt_secret_ssm_param_name
-      POWERTOOLS_LOG_LEVEL        = var.powertools_logger_log_level
+      POWERTOOLS_LOG_LEVEL        = var.powertools_log_level
       POWERTOOLS_LOGGER_LOG_EVENT = var.powertools_logger_log_event
       POWERTOOLS_SERVICE_NAME     = var.powertools_service_name
       POWERTOOLS_DEBUG            = var.debug

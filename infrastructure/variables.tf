@@ -89,7 +89,7 @@ variable "ssh_username" {
   type = string
 }
 
-variable "powertools_logger_log_level" {
+variable "powertools_log_level" {
   default = "INFO"
   type    = string
 }
