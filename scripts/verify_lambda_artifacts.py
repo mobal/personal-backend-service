@@ -35,7 +35,6 @@ IMPORT_ENV = {
     "AWS_SECRET_ACCESS_KEY": "test",
     "AWS_DEFAULT_REGION": "eu-central-1",
     "DEBUG": "true",
-    "DEFAULT_TIMEZONE": "UTC",
     "JWT_SECRET_SSM_PARAM_NAME": "/artifact-smoke-test/jwt",
     "SSH_HOST": "localhost",
     "SSH_PASSWORD_SSM_PARAM_NAME": "/artifact-smoke-test/ssh/password",

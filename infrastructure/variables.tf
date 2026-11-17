@@ -40,11 +40,6 @@ variable "debug" {
   type    = bool
 }
 
-variable "default_timezone" {
-  default = "UTC"
-  type    = string
-}
-
 variable "jwt_secret_ssm_param_name" {
   type = string
 }

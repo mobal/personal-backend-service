@@ -52,7 +52,6 @@ services:
       AWS_ENDPOINT_URL: https://127.0.0.1:9297
       AWS_CA_BUNDLE: /emulator-home/.aws/emulator/9297/ca.pem
       DEBUG: "true"
-      DEFAULT_TIMEZONE: Europe/Budapest
       JWT_SECRET_SSM_PARAM_NAME: /e2e/secrets/jwt
       SSH_HOST: localhost
       SSH_PASSWORD_SSM_PARAM_NAME: /e2e/personal-backend-service/ssh/password

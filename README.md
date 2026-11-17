@@ -315,7 +315,6 @@ Configuration values sourced from env vars. AWS credentials are not application 
 | `BLOG_URL` | `https://blog.example.com` (optional: base URL the feed links to) |
 | `BLOG_TITLE` / `BLOG_DESCRIPTION` | Feed title and description (optional, default `Personal Backend Service` / `Published articles`) |
 | `DEBUG` | true/false |
-| `DEFAULT_TIMEZONE` | Europe/Budapest |
 | `JWT_SECRET_SSM_PARAM_NAME` | /dev/secrets/jwt |
 | `SSH_HOST` / `SSH_USERNAME` / `SSH_ROOT_PATH` | SFTP publish target |
 | `SSH_KNOWN_HOSTS` | `blog.example.com ssh-ed25519 AAAA...` (optional, see below) |
@@ -463,7 +462,7 @@ export AWS_CA_BUNDLE="$(mktemp)"
 docker compose cp emulator:/home/emulator/.aws/emulator/9297/ca.pem "$AWS_CA_BUNDLE"
 export AWS_DEFAULT_REGION=eu-central-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test
 export STAGE=e2e APP_NAME=personal-backend-service ATTACHMENTS_BUCKET_NAME=attachments
-export DEBUG=true DEFAULT_TIMEZONE=Europe/Budapest
+export DEBUG=true
 export JWT_SECRET_SSM_PARAM_NAME=/e2e/secrets/jwt
 export SSH_HOST=localhost SSH_USERNAME=ci SSH_ROOT_PATH=/root
 export SSH_PASSWORD_SSM_PARAM_NAME=/e2e/personal-backend-service/ssh/password

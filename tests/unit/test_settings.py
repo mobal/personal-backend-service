@@ -61,3 +61,12 @@ class TestSettings:
         assert settings.blog_url == "https://blog.example.com/"
         assert settings.blog_title == "My blog"
         assert settings.blog_description == "Notes"
+
+    def test_settings_do_not_require_a_default_timezone(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        # The application never read it; only Terraform and the docs still
+        # carried it around.
+        monkeypatch.delenv("DEFAULT_TIMEZONE", raising=False)
+
+        assert Settings().app_name
