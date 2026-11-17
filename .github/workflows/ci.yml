@@ -98,6 +98,11 @@ jobs:
       # builds both images; the app seeds the emulator on start
       run: docker compose up -d --build --wait --wait-timeout 300 app
 
+    - name: Log the AWS Emulator version
+      # The package is not pinned (AWS publishes no versioned URL and `latest`
+      # changes daily), so record which build this run was tested against.
+      run: docker compose exec -T emulator aws-emulator --version
+
     - name: Run Bruno collection
       # The Bruno CLI joins the emulator's network namespace: the app is reached
       # as localhost and presigned S3 URLs point at the emulator's 127.0.0.1:9297.

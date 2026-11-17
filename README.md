@@ -425,8 +425,9 @@ uv run bandit --severity-level high --confidence-level high -r app/
 
 The app needs DynamoDB, S3 and SSM, which [AWS Emulator](https://docs.aws.amazon.com/emulator/latest/userguide/)
 (CC0, runs in Docker) provides. AWS publishes no prebuilt image, so compose builds
-`docker/aws-emulator/Dockerfile` (the documented recipe, installing `LTS/latest`; rebuild
-to pick up new releases). On ARM, build with `--build-arg EMULATOR_RPM=aws-emulator-aarch64.rpm`.
+`docker/aws-emulator/Dockerfile` (the documented recipe, installing `LTS/latest`, which AWS
+updates daily and offers no versioned URL for; rebuild with `--no-cache` to pick up a
+new build, and CI logs the version it ran against). On ARM, build with `--build-arg EMULATOR_RPM=aws-emulator-aarch64.rpm`.
 State is kept in memory: stopping the emulator wipes it.
 
 The emulator only serves HTTPS and its self-signed certificate is valid for `localhost`
