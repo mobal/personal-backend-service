@@ -1,17 +1,28 @@
-from typing import Annotated, Any
+from datetime import date
+from typing import Annotated
 
 from aws_lambda_powertools import Logger
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from fastapi.responses import Response
 
-from app.dependencies import get_jwt_bearer, get_post_service
+from app.dependencies import (
+    get_attachment_service,
+    get_jwt_bearer,
+    get_optional_jwt_bearer,
+    get_post_service,
+    get_publisher_service,
+)
 from app.models.auth import JWTToken
 from app.models.response import (
+    ErrorResponse,
     Page,
     Post as PostResponse,
+    ValidationErrorResponse,
 )
 from app.schemas.post_schema import CreatePost, UpdatePost
+from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
+from app.services.publisher_service import PublisherService
 
 MIN_YEAR = 1970
 MAX_YEAR = 2100
@@ -24,8 +35,50 @@ logger = Logger()
 
 router = APIRouter()
 
+ERROR_RESPONSE_FORBIDDEN = {
+    403: {"model": ErrorResponse, "description": "Missing or invalid JWT"}
+}
+ERROR_RESPONSE_NOT_FOUND = {
+    404: {"model": ErrorResponse, "description": "Post not found"}
+}
+ERROR_RESPONSE_CONFLICT = {
+    409: {
+        "model": ErrorResponse,
+        "description": "A post with this title, or with the same date and slug, "
+        "already exists",
+    }
+}
+ERROR_RESPONSE_UNPROCESSABLE_CONTENT = {
+    422: {
+        "model": ValidationErrorResponse,
+        "description": "Request body or path parameters failed validation",
+    }
+}
 
-@router.post("")
+POST_UUID = Path(
+    description="UUID of the post",
+    examples=["84898870-a3f6-45b7-b2af-542728b2d290"],
+)
+
+
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        **ERROR_RESPONSE_FORBIDDEN,
+        **ERROR_RESPONSE_CONFLICT,
+        **ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
+    },
+    summary="Create a new post",
+    description=(
+        "The content is stored as Markdown and rendered to HTML when read. "
+        "Requires a valid JWT. Returns 409 when a post with the same title "
+        "already exists. On success the response body is empty and the new "
+        "post is addressed in the `Location` header."
+    ),
+    response_description="Created — the response body is empty; the new post "
+    "is addressed in the Location header",
+)
 def create_post(
     create_model: CreatePost,
     post_service: Annotated[PostService, Depends(get_post_service)],
@@ -41,46 +94,139 @@ def create_post(
 @router.delete(
     "/{uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        **ERROR_RESPONSE_FORBIDDEN,
+        **ERROR_RESPONSE_NOT_FOUND,
+        **ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
+    },
+    summary="Soft-delete a post",
+    description=(
+        "Sets `deletedAt` on the item, so the post is excluded from every "
+        "read path while the item is kept in the table. Afterwards the "
+        "attachment files in S3 and the published file on the blog server are "
+        "removed on a best-effort basis: a failure there is logged and does "
+        "not fail the request. Requires a valid JWT."
+    ),
+    response_description="Deleted — no content",
 )
 def delete_post(
-    uuid: str,
+    uuid: Annotated[str, POST_UUID],
     post_service: Annotated[PostService, Depends(get_post_service)],
+    attachment_service: Annotated[AttachmentService, Depends(get_attachment_service)],
+    publisher_service: Annotated[PublisherService, Depends(get_publisher_service)],
     token: Annotated[JWTToken, Depends(get_jwt_bearer)],
 ):
+    post = post_service.get_post_by_uuid(uuid)
     post_service.delete_post(uuid)
+    attachment_service.delete_attachments(post)
+    publisher_service.remove_published(post)
 
 
-@router.get("/archive", status_code=status.HTTP_200_OK)
+@router.post(
+    "/{uuid}/publish",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        **ERROR_RESPONSE_FORBIDDEN,
+        **ERROR_RESPONSE_NOT_FOUND,
+        409: {
+            "model": ErrorResponse,
+            "description": "The post is a draft or scheduled for the future",
+        },
+    },
+    summary="Publish a post to the remote blog server",
+    description=(
+        "Writes the raw Markdown to the configured remote blog server. The "
+        "post needs a publication timestamp in the past; drafts and scheduled "
+        "posts are rejected with 409. Requires a valid JWT."
+    ),
+    response_description="Published — no content",
+)
+def publish_post(
+    uuid: Annotated[str, POST_UUID],
+    publisher_service: Annotated[PublisherService, Depends(get_publisher_service)],
+    token: Annotated[JWTToken, Depends(get_jwt_bearer)],
+):
+    publisher_service.publish(uuid)
+
+
+@router.get(
+    "/archive",
+    status_code=status.HTTP_200_OK,
+    summary="Get the archive of published posts",
+    description=(
+        "Maps each year-month to the number of posts published in it, "
+        'e.g. `{"2024-02": 3, "2026-08": 1}`.'
+    ),
+)
 def get_archive(
     post_service: Annotated[PostService, Depends(get_post_service)],
-) -> dict[str, Any]:
+) -> dict[str, int]:
     return post_service.get_archive()
 
 
-@router.get("/{year}/{month}/{day}/{slug}", status_code=status.HTTP_200_OK)
+@router.get(
+    "/{year}/{month}/{day}/{slug}",
+    status_code=status.HTTP_200_OK,
+    responses={
+        **{
+            400: {
+                "model": ErrorResponse,
+                "description": "Date in the path is out of range",
+            }
+        },
+        **ERROR_RESPONSE_NOT_FOUND,
+        **ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
+    },
+    summary="Get a published post by its date path and slug",
+    description=(
+        "Resolves the post published on the given date with the given URL "
+        "slug, e.g. `/api/v1/posts/2026/09/05/notes-on-the-analytical-engine`."
+    ),
+)
 def get_by_post_path(
-    slug: str,
-    post_service: Annotated[PostService, Depends(get_post_service)],
-    year: str = Annotated[str, Path(pattern=r"^\d{4}$", description="4 digit year")],
-    month: str = Annotated[
-        str, Path(pattern=r"^(0[1-9]|1[0-2])$", description="2 digit month (01-12)")
+    slug: Annotated[
+        str,
+        Path(
+            description="URL slug of the post",
+            examples=["notes-on-the-analytical-engine"],
+        ),
     ],
-    day: str = Annotated[
-        str, Path(pattern=r"^(0[1-9]|[12]\d|3[01])$", description="2 digit day (01-31)")
+    post_service: Annotated[PostService, Depends(get_post_service)],
+    year: Annotated[
+        str,
+        Path(
+            pattern=r"^\d{4}$",
+            description="4 digit year",
+            examples=["2026"],
+        ),
+    ],
+    month: Annotated[
+        str,
+        Path(
+            pattern=r"^(0[1-9]|1[0-2])$",
+            description="2 digit month (01-12)",
+            examples=["09"],
+        ),
+    ],
+    day: Annotated[
+        str,
+        Path(
+            pattern=r"^(0[1-9]|[12]\d|3[01])$",
+            description="2 digit day (01-31)",
+            examples=["05"],
+        ),
     ],
 ) -> PostResponse:
     year_int = int(year)
     month_int = int(month)
     day_int = int(day)
 
-    if not (
-        MIN_YEAR <= year_int <= MAX_YEAR
-        and MIN_MONTH <= month_int <= MAX_MONTH
-        and MIN_DAY <= day_int <= MAX_DAY
-    ):
+    try:
+        date(year_int, month_int, day_int)
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date"
-        )
+        ) from exc
 
     return post_service.get_by_post_path(f"{year}/{month}/{day}/{slug}")
 
@@ -89,22 +235,50 @@ def get_by_post_path(
     "/{uuid}",
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
+    responses={
+        **ERROR_RESPONSE_FORBIDDEN,
+        **ERROR_RESPONSE_NOT_FOUND,
+        **ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
+    },
+    summary="Get a single post by UUID",
+    description=(
+        "Returns one published post. With a valid JWT it also returns drafts "
+        "and scheduled posts, so the `Location` of a new post can be read "
+        "back; credentials that are sent must be valid, otherwise the request "
+        "fails with 403. Soft-deleted posts are never returned."
+    ),
 )
 def get_post_by_uuid(
-    uuid: str,
+    uuid: Annotated[str, POST_UUID],
     post_service: Annotated[PostService, Depends(get_post_service)],
+    token: Annotated[JWTToken | None, Depends(get_optional_jwt_bearer)],
 ) -> PostResponse:
-    return post_service.get_post(uuid)
+    return post_service.get_post(uuid, include_unpublished=token is not None)
 
 
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
+    responses={**ERROR_RESPONSE_UNPROCESSABLE_CONTENT},
+    summary="List published posts",
+    description=(
+        "Public endpoint. Posts are returned newest first across all pages. "
+        "Results are paginated; pass the returned `exclusiveStartKey` to fetch "
+        "the next page, a page without one is the last. A cursor that was not "
+        "returned by this endpoint is rejected with 422. Soft-deleted posts "
+        "are never returned."
+    ),
 )
 def get_posts(
     post_service: Annotated[PostService, Depends(get_post_service)],
-    exclusive_start_key: str | None = None,
+    exclusive_start_key: Annotated[
+        str | None,
+        Query(
+            description="Opaque pagination cursor; pass the `exclusiveStartKey` "
+            "from the previous page to fetch the next one"
+        ),
+    ] = None,
 ) -> Page:
     return post_service.get_posts(exclusive_start_key)
 
@@ -112,11 +286,23 @@ def get_posts(
 @router.put(
     "/{uuid}",
     status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        **ERROR_RESPONSE_FORBIDDEN,
+        **ERROR_RESPONSE_NOT_FOUND,
+        **ERROR_RESPONSE_CONFLICT,
+        **ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
+    },
+    summary="Update an existing post",
+    description=(
+        "Partial update: only the fields present in the body are replaced, "
+        "all fields are optional. Requires a valid JWT."
+    ),
+    response_description="Updated — no content",
 )
 def update_post(
     update_model: UpdatePost,
-    uuid: str,
+    uuid: Annotated[str, POST_UUID],
     post_service: Annotated[PostService, Depends(get_post_service)],
     token: Annotated[JWTToken, Depends(get_jwt_bearer)],
 ):
-    post_service.update_post(uuid, update_model.model_dump(exclude_none=True))
+    post_service.update_post(uuid, update_model.model_dump(exclude_unset=True))

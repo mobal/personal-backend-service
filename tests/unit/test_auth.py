@@ -1,8 +1,8 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 
 import jwt
-import pendulum
 import pytest
 from fastapi import HTTPException, status
 from fastapi.requests import Request
@@ -13,13 +13,13 @@ from app.settings import Settings
 
 NOT_AUTHENTICATED = "Not authenticated"
 TEST_JWT_SECRET = "test-secret"
+TEST_JWT_AUDIENCE = "https://test-personal-backend-service"
 
 
 @pytest.fixture
 def empty_request() -> Mock:
     request = Mock()
     request.headers = {}
-    request.query_params = {}
     return request
 
 
@@ -45,7 +45,7 @@ class TestJWTAuth:
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_fail_to_authorize_request_due_to_authorization_header_is_missing(
@@ -54,26 +54,55 @@ class TestJWTAuth:
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_fail_to_authorize_request_due_to_bearer_token_is_invalid(
-        self, empty_request: Mock, jwt_bearer: JWTBearer
+        self,
+        empty_request: Mock,
+        jwt_bearer: JWTBearer,
+        caplog: pytest.LogCaptureFixture,
     ):
-        empty_request.headers = {"Authorization": "Bearer asdf"}
+        submitted_token = "submitted-secret-token-value"
+        empty_request.headers = {"Authorization": f"Bearer {submitted_token}"}
 
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
+        assert submitted_token not in caplog.text
+
+    @pytest.mark.parametrize("claim", ["exp", "iat", "aud", "sub", "jti"])
+    def test_fail_to_authorize_request_when_required_claim_is_missing(
+        self,
+        claim: str,
+        empty_request: Mock,
+        jwt_bearer: JWTBearer,
+        jwt_token: JWTToken,
+        settings: Settings,
+    ):
+        payload = jwt_token.model_dump()
+        payload.pop(claim)
+        token = jwt.encode(payload, settings.jwt_secret)
+        empty_request.headers = {"Authorization": f"Bearer {token}"}
+
+        with pytest.raises(HTTPException) as excinfo:
+            jwt_bearer(empty_request)
+
+        assert excinfo.value.status_code == status.HTTP_403_FORBIDDEN
+        assert excinfo.value.detail == NOT_AUTHENTICATED
 
     def test_fail_to_authorize_request_due_to_invalid_token_without_auto_error(
         self, empty_request: Mock
     ):
         empty_request.headers = {"Authorization": "Bearer asdf"}
 
-        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, auto_error=False)
+        jwt_bearer = JWTBearer(
+            jwt_secret=TEST_JWT_SECRET,
+            audience=TEST_JWT_AUDIENCE,
+            auto_error=False,
+        )
 
         result = jwt_bearer(empty_request)
         assert result is None
@@ -86,14 +115,18 @@ class TestJWTAuth:
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_fail_to_authorize_request_due_to_token_is_missing_without_auto_error(
         self, empty_request: Mock
     ):
         empty_request.headers = {"Authorization": "Bearer "}
-        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, auto_error=False)
+        jwt_bearer = JWTBearer(
+            jwt_secret=TEST_JWT_SECRET,
+            audience=TEST_JWT_AUDIENCE,
+            auto_error=False,
+        )
 
         assert jwt_bearer(empty_request) is None
 
@@ -126,25 +159,33 @@ class TestJWTAuth:
         empty_request.headers = {
             "Authorization": f"Bear {bearer_token}",
         }
-        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, auto_error=False)
+        jwt_bearer = JWTBearer(
+            jwt_secret=TEST_JWT_SECRET,
+            audience=TEST_JWT_AUDIENCE,
+            auto_error=False,
+        )
 
         assert jwt_bearer(empty_request) is None
 
     def test_fail_to_authorize_request_due_to_missing_credentials(
         self, empty_request: Mock
     ):
-        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET)
+        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, audience=TEST_JWT_AUDIENCE)
 
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
 
     def test_fail_to_authorize_request_due_to_missing_credentials_with_auto_error_false(
         self, empty_request: Mock
     ):
-        jwt_bearer = JWTBearer(jwt_secret=TEST_JWT_SECRET, auto_error=False)
+        jwt_bearer = JWTBearer(
+            jwt_secret=TEST_JWT_SECRET,
+            audience=TEST_JWT_AUDIENCE,
+            auto_error=False,
+        )
 
         result = jwt_bearer(empty_request)
 
@@ -165,15 +206,21 @@ class TestJWTAuth:
         assert excinfo.value.status_code == status.HTTP_403_FORBIDDEN
         assert excinfo.value.detail == "Invalid authentication credentials"
 
-    def test_fail_to_authorize_request_due_to_empty_token_query_param(
-        self, empty_request: Mock, jwt_bearer: JWTBearer
+    def test_fail_to_authorize_request_with_valid_query_token(
+        self,
+        empty_request: Mock,
+        jwt_bearer: JWTBearer,
+        jwt_token: JWTToken,
+        settings: Settings,
     ):
-        empty_request.query_params = {"token": ""}
+        empty_request.query_params = {
+            "token": generate_bearer_token(jwt_token, settings.jwt_secret)
+        }
 
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_fail_to_authorize_request_due_to_expired_token(
@@ -182,10 +229,11 @@ class TestJWTAuth:
         jwt_bearer: JWTBearer,
         settings: Settings,
     ):
-        now = pendulum.now()
+        now = datetime.now(UTC)
         expired_token = JWTToken(
-            exp=now.subtract(years=1).int_timestamp,
-            iat=now.int_timestamp,
+            exp=int((now - timedelta(days=365)).timestamp()),
+            iat=int(now.timestamp()),
+            aud=TEST_JWT_AUDIENCE,
             iss="https://netcode.hu",
             jti=str(uuid.uuid4()),
             sub="test-user-id",
@@ -193,7 +241,7 @@ class TestJWTAuth:
                 "id": "test-user-id",
                 "email": "test@example.com",
                 "display_name": "test",
-                "created_at": now.to_iso8601_string(),
+                "created_at": now.isoformat(),
                 "deleted_at": None,
                 "updated_at": None,
             },
@@ -204,7 +252,7 @@ class TestJWTAuth:
         with pytest.raises(HTTPException) as excinfo:
             jwt_bearer(empty_request)
 
-        assert NOT_AUTHENTICATED == excinfo.value.detail
+        assert excinfo.value.detail == NOT_AUTHENTICATED
         assert status.HTTP_403_FORBIDDEN == excinfo.value.status_code
 
     def test_successfully_authorize_request(
@@ -214,20 +262,5 @@ class TestJWTAuth:
         valid_request: Request,
     ):
         result = jwt_bearer(valid_request)
-
-        assert jwt_token.model_dump() == result.model_dump()
-
-    def test_successfully_authorize_request_with_query_token(
-        self,
-        jwt_bearer: JWTBearer,
-        jwt_token: JWTToken,
-        settings: Settings,
-    ):
-        request = Mock()
-        request.headers = {}
-        request.query_params = {
-            "token": jwt.encode(jwt_token.model_dump(), settings.jwt_secret)
-        }
-        result = jwt_bearer(request)
 
         assert jwt_token.model_dump() == result.model_dump()

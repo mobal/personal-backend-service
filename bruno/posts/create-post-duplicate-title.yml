@@ -1,0 +1,49 @@
+info:
+  name: Create post — duplicate title
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/posts"
+  body:
+    type: json
+    data: |-
+      {
+        "author": "Bruno E2E",
+        "title": "{{postTitle}}",
+        "content": "**Hello** from the Bruno e2e collection.",
+        "tags": ["e2e", "bruno"],
+        "meta": {
+          "category": "e2e",
+          "description": "Post created by the Bruno e2e collection.",
+          "language": "en",
+          "keywords": ["bruno", "e2e"],
+          "title": "Bruno e2e post"
+        },
+        "publishedAt": "2024-02-03T12:00:00+00:00"
+      }
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 409', () => {
+          expect(res.status).to.equal(409);
+        });
+        test('reports the duplicate title', () => {
+          expect(res.body.status).to.equal(409);
+          expect(res.body.message).to.equal('There is already a post with this title');
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "Replays the title of the post just created: the title uniqueness check must reject a second, non-deleted post with the same title."

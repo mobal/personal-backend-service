@@ -1,26 +1,23 @@
 import uuid
-from collections.abc import Sequence
-from typing import Any
+from collections.abc import Mapping
 
 import uvicorn
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.logging.logger import set_package_logger
 from botocore.exceptions import BotoCoreError, ClientError
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.v1.api import router as api_v1_router
-from app.middlewares import (
-    ClientValidationMiddleware,
-    CorrelationIdMiddleware,
-    RateLimitingMiddleware,
-)
-from app.models.camel_model import CamelModel
-from app.services.rate_limiter_service import RateLimiterService
+from app.middlewares import X_CORRELATION_ID, CorrelationIdMiddleware, correlation_id
+from app.models.response import ErrorResponse, ValidationErrorResponse
+from app.rss_router import router as rss_router
 from app.settings import Settings
 
 settings = Settings()
@@ -30,20 +27,83 @@ if settings.debug:
 
 logger = Logger()
 
-app = FastAPI(debug=settings.debug, title="PersonalBackendApplication", version="1.0.0")
+INTERNAL_SERVER_ERROR = "Internal Server Error"
+
+OPENAPI_TAGS = [
+    {
+        "name": "posts",
+        "description": (
+            "Markdown blog posts. Read endpoints are public; create, update "
+            "and delete require a valid JWT."
+        ),
+    },
+    {
+        "name": "attachments",
+        "description": (
+            "Attachments nested under a post (`/posts/{postUuid}/attachments`). "
+            "Adding an attachment requires a valid JWT."
+        ),
+    },
+    {
+        "name": "system",
+        "description": "Operational endpoints that are not part of the v1 API.",
+    },
+]
+
+app = FastAPI(
+    debug=settings.debug,
+    title="Personal Backend Service",
+    summary="A secure API for managing and publishing Markdown blog content",
+    description=(
+        "## Overview\n\n"
+        "Personal Backend Service provides the backend for a Markdown-based "
+        "blog. Posts are stored in DynamoDB and rendered as HTML when "
+        "requested. Attachments are stored in S3, and publishing sends the "
+        "original Markdown to a remote blog server over SFTP.\n\n"
+        "## API conventions\n\n"
+        "- All routes use the `/api/v1` prefix.\n"
+        "- Request and response bodies use camelCase JSON.\n"
+        "- Protected operations require an HS256 JWT.\n"
+        "- Tokens must be sent as `Authorization: Bearer <token>`.\n"
+        "- Errors use `{status, id, message}`.\n"
+        "- Validation errors additionally include an `errors` array.\n"
+        "- Every response includes an `X-Correlation-ID` header.\n\n"
+        "## Authentication\n\n"
+        "Reading published content is public. Creating, updating, publishing, "
+        "uploading attachments, and deleting content require authentication."
+    ),
+    version="1.0.0",
+    license_info={
+        "name": "Apache-2.0",
+        "identifier": "Apache-2.0",
+    },
+    openapi_tags=OPENAPI_TAGS,
+)
 app.add_middleware(CorrelationIdMiddleware)
-app.add_middleware(ClientValidationMiddleware)
+app.add_middleware(GZipMiddleware)
 app.add_middleware(
-    RateLimitingMiddleware,
-    rate_limiter_service=RateLimiterService(
-        settings=settings,
+    CORSMiddleware,
+    # Authentication is a bearer header, never a cookie, so browsers do not
+    # need credentialed CORS; without it any origin may read the public API.
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["Location", X_CORRELATION_ID],
+)
+app.include_router(api_v1_router)
+app.include_router(rss_router)
+
+
+@app.get(
+    "/health",
+    tags=["system"],
+    summary="Liveness probe",
+    description=(
+        'Returns HTTP 200 with `{"status": "healthy"}` while the app is '
+        "up. Used by container healthchecks and load balancer target groups."
     ),
 )
-app.add_middleware(GZipMiddleware)
-app.include_router(api_v1_router)
-
-
-@app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "healthy"}
 
@@ -52,40 +112,45 @@ handler = Mangum(app)
 handler = logger.inject_lambda_context(handler, clear_state=True)
 
 
-class ErrorResponse(CamelModel):
-    status: int
-    id: uuid.UUID
-    message: str
-
-
-class ValidationErrorResponse(ErrorResponse):
-    errors: Sequence[Any]
+def _error_response(
+    status_code: int,
+    message: str,
+    error_id: uuid.UUID,
+    headers: Mapping[str, str] | None = None,
+) -> JSONResponse:
+    return JSONResponse(
+        content=jsonable_encoder(
+            ErrorResponse(status=status_code, id=error_id, message=message)
+        ),
+        status_code=status_code,
+        headers=headers,
+    )
 
 
 @app.exception_handler(BotoCoreError)
 @app.exception_handler(ClientError)
-def botocore_error_handler(request: Request, error: BotoCoreError) -> JSONResponse:
+def botocore_error_handler(
+    request: Request, error: BotoCoreError | ClientError
+) -> JSONResponse:
     error_id = uuid.uuid4()
-    error_message = str(error) if settings.debug else "Internal Server Error"
-    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    logger.exception(f"Received botocore error {error_id=}")
-    return JSONResponse(
-        content=jsonable_encoder(
-            ErrorResponse(status=status_code, id=error_id, message=error_message)
-        ),
-        status_code=status_code,
+    error_message = str(error) if settings.debug else INTERNAL_SERVER_ERROR
+    logger.error(f"Received botocore error {error_id=}", exc_info=error)
+    return _error_response(
+        status.HTTP_500_INTERNAL_SERVER_ERROR, error_message, error_id
     )
 
 
-@app.exception_handler(HTTPException)
-def http_exception_handler(request: Request, error: HTTPException) -> JSONResponse:
+# Starlette raises its own HTTPException for unknown routes and unsupported
+# methods; FastAPI's HTTPException is a subclass, so this covers both.
+@app.exception_handler(StarletteHTTPException)
+def http_exception_handler(
+    request: Request, error: StarletteHTTPException
+) -> JSONResponse:
     error_id = uuid.uuid4()
-    logger.exception(f"Received http exception {error_id=}")
-    return JSONResponse(
-        content=jsonable_encoder(
-            ErrorResponse(status=error.status_code, id=error_id, message=error.detail)
-        ),
-        status_code=error.status_code,
+    log = logger.error if error.status_code >= 500 else logger.info
+    log(f"Received http exception {error_id=} status_code={error.status_code}")
+    return _error_response(
+        error.status_code, str(error.detail), error_id, error.headers
     )
 
 
@@ -95,17 +160,40 @@ def request_validation_error_handler(
 ) -> JSONResponse:
     error_id = uuid.uuid4()
     status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
-    logger.exception(f"Received request validation error {error_id=}")
+    logger.info(f"Received request validation error {error_id=}")
     return JSONResponse(
         content=jsonable_encoder(
             ValidationErrorResponse(
                 status=status_code,
                 id=error_id,
-                message=str(error),
-                errors=error.errors(),
+                message="Request validation failed",
+                # "input" echoes the rejected value, which can be a multi-megabyte
+                # attachment payload; "ctx" may hold non-serializable exceptions.
+                errors=[
+                    {
+                        key: value
+                        for key, value in item.items()
+                        if key not in ("ctx", "input")
+                    }
+                    for item in error.errors()
+                ],
             )
         ),
         status_code=status_code,
+    )
+
+
+@app.exception_handler(Exception)
+def unhandled_exception_handler(request: Request, error: Exception) -> JSONResponse:
+    error_id = uuid.uuid4()
+    logger.error(f"Received unhandled error {error_id=}", exc_info=error)
+    # This response is produced outside CorrelationIdMiddleware.
+    request_correlation_id = correlation_id.get(None)
+    return _error_response(
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+        INTERNAL_SERVER_ERROR,
+        error_id,
+        {X_CORRELATION_ID: request_correlation_id} if request_correlation_id else None,
     )
 
 

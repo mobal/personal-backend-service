@@ -1,8 +1,10 @@
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Any
 
 import boto3
 from fastapi import Depends, Request
+from fastapi.security import HTTPBearer
+from fastapi.security.http import HTTPAuthorizationCredentials
 
 from app.jwt_bearer import JWTBearer
 from app.models.auth import JWTToken
@@ -10,7 +12,7 @@ from app.repositories.post_repository import PostRepository
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
-from app.services.rate_limiter_service import RateLimiterService
+from app.services.rss_service import RSSService
 from app.services.s3_storage_service import S3StorageService
 from app.services.sshfs_storage_service import SSHFSStorageService
 from app.settings import Settings
@@ -21,28 +23,22 @@ def get_settings() -> Settings:
     return Settings()
 
 
-def get_db_client() -> boto3.resource:
+def get_db_client() -> Any:
     return boto3.resource("dynamodb")
 
 
-def get_s3_client() -> boto3.client:
+def get_s3_client() -> Any:
     return boto3.client("s3")
 
 
 def get_post_repository(
     settings: Annotated[Settings, Depends(get_settings)],
-    db: Annotated[boto3.resource, Depends(get_db_client)],
+    db: Annotated[Any, Depends(get_db_client)],
 ) -> PostRepository:
     return PostRepository(
-        table_name=f"{settings.stage}-posts",
+        table_name=f"{settings.stage}-{settings.app_name}-posts",
         db=db,
     )
-
-
-def get_post_service(
-    post_repository: Annotated[PostRepository, Depends(get_post_repository)],
-) -> PostService:
-    return PostService(post_repository=post_repository)
 
 
 def get_s3_storage_service(
@@ -53,8 +49,23 @@ def get_s3_storage_service(
     )
 
 
-def get_sshfs_storage_service() -> SSHFSStorageService:
-    return SSHFSStorageService()
+def get_post_service(
+    post_repository: Annotated[PostRepository, Depends(get_post_repository)],
+) -> PostService:
+    return PostService(post_repository=post_repository)
+
+
+def get_rss_service(
+    post_service: Annotated[PostService, Depends(get_post_service)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> RSSService:
+    return RSSService(post_service=post_service, settings=settings)
+
+
+def get_sshfs_storage_service(
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> SSHFSStorageService:
+    return SSHFSStorageService(known_hosts=settings.ssh_known_hosts)
 
 
 def get_attachment_service(
@@ -81,23 +92,45 @@ def get_publisher_service(
     )
 
 
-def get_rate_limiter_service(
-    settings: Annotated[Settings, Depends(get_settings)],
-    db: Annotated[boto3.resource, Depends(get_db_client)],
-) -> RateLimiterService:
-    return RateLimiterService(
-        settings=settings,
-        db=db,
-    )
+# auto_error=False: this scheme only advertises the security requirement in
+# OpenAPI; JWTBearer below does the actual parsing/validation and raises 403.
+_bearer_security = HTTPBearer(
+    auto_error=False,
+    bearerFormat="JWT",
+    description=(
+        "JWT (HS256) for this service, sent as `Authorization: Bearer <token>`."
+    ),
+)
 
 
 def get_jwt_bearer(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
+    _security: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(_bearer_security)
+    ] = None,
 ) -> JWTToken:
     """FastAPI dependency that validates JWT and returns the decoded token."""
-    bearer = JWTBearer(jwt_secret=settings.jwt_secret)
+    bearer = JWTBearer(jwt_secret=settings.jwt_secret, audience=settings.jwt_audience)
     token = bearer(request)
     # JWTBearer with auto_error=True (default) always returns JWTToken or raises
     assert token is not None
     return token
+
+
+def get_optional_jwt_bearer(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+    _security: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(_bearer_security)
+    ] = None,
+) -> JWTToken | None:
+    """Return the decoded token, or None when the request carries no credentials.
+
+    Public reads use this to serve more to the author. Credentials that are
+    present must be valid: a bad or expired token is rejected with 403 rather
+    than silently treated as an anonymous reader.
+    """
+    if request.headers.get("Authorization") is None:
+        return None
+    return get_jwt_bearer(request, settings, _security)

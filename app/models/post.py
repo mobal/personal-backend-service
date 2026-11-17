@@ -1,6 +1,11 @@
-from pydantic import BaseModel, computed_field, conlist, constr
+from typing import Annotated
+
+from pydantic import BaseModel, Field, StringConstraints
 
 from app.models.camel_model import CamelModel
+
+PostText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3)]
+Tags = Annotated[list[str], Field(min_length=1)]
 
 
 class Attachment(CamelModel):
@@ -13,35 +18,60 @@ class Attachment(CamelModel):
     name: str
     region: str
 
-    @computed_field
-    @property
-    def url(self) -> str:
-        return (
-            f"https://{self.bucket}.s3.{self.region}.amazonaws.com/"
-            f"{self.name.lstrip('/')}"
-        )
-
 
 class Meta(BaseModel):
-    category: str
-    description: str
-    language: str
-    keywords: conlist(item_type=str, min_length=1)
-    title: str
+    category: Annotated[
+        str,
+        Field(
+            description="Section of the blog the post belongs to",
+            examples=["tech"],
+        ),
+    ]
+    description: Annotated[
+        str,
+        Field(
+            description="One-paragraph summary of the post, used in listings and feeds",
+            examples=["Working notes on the Analytical Engine."],
+        ),
+    ]
+    language: Annotated[
+        str,
+        Field(
+            description="Language of the post",
+            examples=["en"],
+        ),
+    ]
+    keywords: Annotated[
+        Tags,
+        Field(
+            description="Search keywords describing the post",
+            examples=[["engine", "notes"]],
+        ),
+    ]
+    title: Annotated[
+        str,
+        Field(
+            description="SEO title of the page; may differ from the post title",
+            examples=["Notes on the Analytical Engine"],
+        ),
+    ]
 
 
 class Post(CamelModel):
     id: str
-    author: constr(strip_whitespace=True, min_length=3)
-    title: constr(strip_whitespace=True, min_length=3)
-    content: constr(strip_whitespace=True, min_length=3)
+    author: PostText
+    title: PostText
+    content: PostText
     post_path: str
     created_at: str
     deleted_at: str | None = None
     published_at: str | None = None
+    publish_status: str | None = Field(default=None, exclude=True)
+    publish_attempted_at: str | None = Field(default=None, exclude=True)
+    publish_error: str | None = Field(default=None, exclude=True)
     updated_at: str | None = None
     slug: str
-    tags: conlist(item_type=str, min_length=1)
+    tags: Tags
     meta: Meta
     attachments: list[Attachment] | None = None
 

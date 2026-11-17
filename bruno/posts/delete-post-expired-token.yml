@@ -1,0 +1,31 @@
+info:
+  name: Delete post — expired token
+  type: http
+  seq: 17
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/v1/posts/{{postId}}"
+  auth:
+    type: bearer
+    token: "{{expiredToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 403', () => {
+          expect(res.status).to.equal(403);
+        });
+        test('rejects the expired token as unauthenticated', () => {
+          expect(res.body.message).to.equal('Not authenticated');
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: A correctly signed token whose `exp` is in the past must be rejected as unauthenticated. The collection-level pre-request script mints it into `expiredToken`.

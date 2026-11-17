@@ -1,0 +1,8 @@
+info:
+  name: Attachments
+  type: folder
+  seq: 3
+
+docs:
+  content: Attachment upload and download for a dedicated fixture post, which is soft-deleted at the end.
+  type: text/markdown

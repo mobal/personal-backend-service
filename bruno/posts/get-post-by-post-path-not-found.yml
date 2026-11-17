@@ -1,0 +1,36 @@
+info:
+  name: Get post by post path — not found
+  type: http
+  seq: 10
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v1/posts/{{todayYear}}/{{todayMonth}}/{{todayDay}}/{{unknownSlug}}"
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const now = new Date();
+        const pad = (value) => String(value).padStart(2, '0');
+        bru.setVar('todayYear', String(now.getUTCFullYear()));
+        bru.setVar('todayMonth', pad(now.getUTCMonth() + 1));
+        bru.setVar('todayDay', pad(now.getUTCDate()));
+        bru.setVar('unknownSlug', 'e2e-slug-' + bru.interpolate('{{$guid}}'));
+    - type: tests
+      code: |-
+        test('responds with 404', () => {
+          expect(res.status).to.equal(404);
+        });
+        test('reports the post as not found', () => {
+          expect(res.body.message).to.equal('The requested post was not found');
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Date-path lookups (`/{year}/{month}/{day}/{slug}`) accept zero-padded segments only. The pre-request script pins the padded current UTC date and a random slug, which cannot exist, so this deterministically returns 404.

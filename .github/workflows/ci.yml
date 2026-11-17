@@ -13,6 +13,9 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     name: Build and test
@@ -22,18 +25,19 @@ jobs:
     continue-on-error: false
     steps:
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 0
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version-file: ".python-version"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v10.0.1
       with:
+        version: 0.12.19
         cache-dependency-glob: "uv.lock"
         enable-cache: true
 
@@ -49,9 +53,15 @@ jobs:
         uv run ruff check app/ tests/ --statistics
         uv run ruff format --check app/ tests/
 
+    - name: Run ty type checker
+      run: make ty
+
     - name: Running tests with Pytest and generate coverage
       run: |
         uv run -m pytest --cov-report=term --cov-report=xml:$Coverage_File --cov=app
+
+    - name: Build and verify Lambda artifacts
+      run: make build
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v5
@@ -71,3 +81,68 @@ jobs:
           -Dsonar.tests=tests/
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  bruno:
+    name: Docker end-to-end (Bruno)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Docker tests are the last gate: only run them when the static checks and
+    # the unit/integration suite passed (they are the slowest and least
+    # diagnostic step).
+    needs: build-and-test
+    steps:
+
+    - uses: actions/checkout@v7
+
+    - name: Start AWS Emulator and the application
+      # builds both images; the app seeds the emulator on start
+      run: docker compose up -d --build --wait --wait-timeout 300 app
+
+    - name: Log the AWS Emulator version
+      # The package is not pinned (AWS publishes no versioned URL and `latest`
+      # changes daily), so record which build this run was tested against.
+      run: docker compose exec -T emulator aws-emulator --version
+
+    - name: Run Bruno collection
+      # The Bruno CLI joins the emulator's network namespace: the app is reached
+      # as localhost and presigned S3 URLs point at the emulator's 127.0.0.1:9297.
+      # --insecure because the emulator uses a self-signed certificate.
+      run: |
+        docker run --rm --network "container:$(docker compose ps -q emulator)" \
+          -v "$PWD/bruno:/bruno:ro" \
+          usebruno/cli:4.3.0 run --env e2e -r \
+          --env-var baseUrl=http://localhost:8080 \
+          --insecure
+
+    - name: Clean up containers
+      if: always()
+      run: docker compose down -v --remove-orphans || true
+
+  infrastructure:
+    name: Validate infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_version: 1.12.6
+          tofu_wrapper: false
+
+      - name: Set up TFLint
+        uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: v0.64.0
+
+      - name: Check formatting
+        run: tofu fmt -check -recursive infrastructure/
+
+      - name: Initialize providers
+        run: tofu -chdir=infrastructure init -backend=false -lockfile=readonly
+
+      - name: Validate configuration
+        run: tofu -chdir=infrastructure validate
+
+      - name: Lint Terraform
+        run: tflint --init && tflint --chdir=./infrastructure

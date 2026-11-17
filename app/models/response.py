@@ -1,3 +1,9 @@
+import uuid
+from collections.abc import Sequence
+from typing import Any
+
+from pydantic import Field
+
 from app.models.camel_model import CamelModel
 from app.models.post import Meta
 
@@ -8,7 +14,7 @@ class Attachment(CamelModel):
     description: str | None = None
     display_name: str
     mime_type: str
-    url: str
+    url: str = Field(description="Stable, API-relative attachment download URL")
 
 
 class Post(CamelModel):
@@ -28,3 +34,13 @@ class Post(CamelModel):
 class Page(CamelModel):
     exclusive_start_key: str | None = None
     posts: list[Post]
+
+
+class ErrorResponse(CamelModel):
+    status: int
+    id: uuid.UUID
+    message: str
+
+
+class ValidationErrorResponse(ErrorResponse):
+    errors: Sequence[Any]

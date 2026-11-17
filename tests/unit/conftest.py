@@ -1,7 +1,6 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 
-import boto3
-import pendulum
 import pytest
 from boto3.dynamodb.conditions import Attr, ConditionBase
 
@@ -11,7 +10,6 @@ from app.repositories.post_repository import PostRepository
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
-from app.services.rate_limiter_service import RateLimiterService
 from app.services.s3_storage_service import S3StorageService
 from app.services.sshfs_storage_service import SSHFSStorageService
 from app.settings import Settings
@@ -32,7 +30,7 @@ def attachment_service(
 
 @pytest.fixture
 def jwt_bearer() -> JWTBearer:
-    return JWTBearer(jwt_secret=Settings().jwt_secret)
+    return JWTBearer(jwt_secret=Settings().jwt_secret, audience=Settings().jwt_audience)
 
 
 @pytest.fixture
@@ -42,10 +40,11 @@ def filter_expression() -> ConditionBase:
 
 @pytest.fixture
 def jwt_token(user_dict: dict[str, str | None]) -> JWTToken:
-    now = pendulum.now()
+    now = datetime.now(UTC)
     return JWTToken(
-        exp=now.add(years=1).int_timestamp,
-        iat=now.int_timestamp,
+        exp=int((now + timedelta(days=365)).timestamp()),
+        iat=int(now.timestamp()),
+        aud=Settings().jwt_audience,
         iss="https://netcode.hu",
         jti=str(uuid.uuid4()),
         sub=user_dict["id"],
@@ -58,13 +57,15 @@ def post_repository(
     initialize_posts_table, dynamodb_resource, settings: Settings
 ) -> PostRepository:
     return PostRepository(
-        table_name=f"{settings.stage}-posts",
+        table_name=f"{settings.stage}-{settings.app_name}-posts",
         db=dynamodb_resource,
     )
 
 
 @pytest.fixture
-def post_service(post_repository: PostRepository) -> PostService:
+def post_service(
+    post_repository: PostRepository,
+) -> PostService:
     return PostService(post_repository=post_repository)
 
 
@@ -89,28 +90,3 @@ def s3_storage_service(aws_default_region: str) -> S3StorageService:
 @pytest.fixture
 def sshfs_storage_service() -> SSHFSStorageService:
     return SSHFSStorageService()
-
-
-@pytest.fixture
-def initialize_rate_limits_table(aws_default_region: str):
-    client = boto3.client("dynamodb", region_name=aws_default_region)
-    client.create_table(
-        TableName="test-rate-limits",
-        KeySchema=[
-            {"AttributeName": "client_id", "KeyType": "HASH"},
-            {"AttributeName": "endpoint", "KeyType": "RANGE"},
-        ],
-        AttributeDefinitions=[
-            {"AttributeName": "client_id", "AttributeType": "S"},
-            {"AttributeName": "endpoint", "AttributeType": "S"},
-        ],
-        BillingMode="PAY_PER_REQUEST",
-    )
-    yield
-
-
-@pytest.fixture
-def rate_limiter_service(
-    initialize_rate_limits_table, settings: Settings
-) -> RateLimiterService:
-    return RateLimiterService(settings=settings)

@@ -1,0 +1,70 @@
+# The whole stack on AWS Emulator (DynamoDB, S3 and SSM):
+#   docker compose up -d --build --wait app
+#
+# AWS Emulator only serves HTTPS and its self-signed certificate is valid for
+# localhost/127.0.0.1 only, so the app shares the emulator's network namespace
+# and reaches it as https://127.0.0.1:9297. Consequences:
+#   - the app is published (and reachable from other containers) through the
+#     `emulator` service: http://localhost:8080 on the host, http://emulator:8080
+#     from other containers on the compose network
+#   - presigned S3 URLs point at https://127.0.0.1:9297, so the Bruno CLI has to run
+#     in the same namespace and skip certificate checks (see bruno/):
+#       docker run --rm --network container:$(docker compose ps -q emulator) \
+#         -v "$PWD/bruno:/bruno:ro" usebruno/cli:4.3.0 run --env e2e -r \
+#         --env-var baseUrl=http://localhost:8080 --insecure
+#   - the CA is generated on every start into the shared `emulator-home` volume
+#   - state lives in memory and is gone when the emulator stops
+services:
+  emulator:
+    build: docker/aws-emulator
+    # -a off: accept unsigned requests (any dummy credentials work); -t off: no telemetry
+    command: ["-a", "off", "-t", "off"]
+    volumes:
+      - emulator-home:/home/emulator
+    ports:
+      - "127.0.0.1:9297:9297"
+      - "127.0.0.1:8080:8080" # the app, see network_mode below
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS --cacert /home/emulator/.aws/emulator/9297/ca.pem https://127.0.0.1:9297/__admin/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  app:
+    build: .
+    network_mode: "service:emulator"
+    # The runtime image intentionally excludes dev dependencies (aws-lambda-
+    # powertools ships in the Lambda layer in production); sync the full lock
+    # here so the app and the seed script can run in the container.
+    command: >
+      sh -c "uv sync --frozen &&
+             uv run python scripts/init_emulator.py &&
+             uv run uvicorn app.api_handler:app --host 0.0.0.0 --port 8080"
+    volumes:
+      - emulator-home:/emulator-home:ro
+    environment:
+      APP_NAME: personal-backend-service
+      STAGE: e2e
+      ATTACHMENTS_BUCKET_NAME: attachments
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: eu-central-1
+      AWS_ENDPOINT_URL: https://127.0.0.1:9297
+      AWS_CA_BUNDLE: /emulator-home/.aws/emulator/9297/ca.pem
+      DEBUG: "true"
+      JWT_SECRET_SSM_PARAM_NAME: /e2e/secrets/jwt
+      SSH_HOST: localhost
+      SSH_PASSWORD_SSM_PARAM_NAME: /e2e/personal-backend-service/ssh/password
+      SSH_USERNAME: ci
+      SSH_ROOT_PATH: /root
+    depends_on:
+      emulator:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+volumes:
+  emulator-home:

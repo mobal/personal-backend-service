@@ -1,6 +1,7 @@
 import uuid
+from datetime import UTC, datetime
+from urllib.parse import parse_qs, urlsplit
 
-import pendulum
 import pytest
 from botocore.exceptions import ClientError
 from fastapi import status
@@ -17,7 +18,6 @@ class TestS3StorageService:
     @pytest.fixture(autouse=True)
     def setup_function(self, aws_default_region: str, s3_resource):
         bucket = s3_resource.create_bucket(
-            ACL="public-read-write",
             Bucket=BUCKET_NAME,
             CreateBucketConfiguration={"LocationConstraint": aws_default_region},
         )
@@ -161,15 +161,65 @@ class TestS3StorageService:
         s3_resource,
         s3_storage_service: S3StorageService,
     ):
-        object_body = pendulum.now().to_iso8601_string()
+        object_body = datetime.now(UTC).isoformat()
         object_key = str(uuid.uuid4())
 
         s3_storage_service.put_object(
             BUCKET_NAME, object_key, object_body.encode("utf-8")
         )
 
-        obj = s3_resource.Object(bucket_name=BUCKET_NAME, key=OBJECT_KEY)
-        assert obj.get()["Body"].read().decode("utf-8") == OBJECT_BODY
+        obj = s3_resource.Object(bucket_name=BUCKET_NAME, key=object_key)
+        assert obj.get()["Body"].read().decode("utf-8") == object_body
+        assert not any(
+            grant["Permission"] == "READ"
+            for grant in obj.Acl().grants
+            if grant["Grantee"].get("URI")
+            == "http://acs.amazonaws.com/groups/global/AllUsers"
+        )
+
+    def test_generate_presigned_download_url(
+        self, s3_storage_service: S3StorageService
+    ):
+        url = s3_storage_service.generate_presigned_download_url(
+            BUCKET_NAME, OBJECT_KEY
+        )
+
+        query = parse_qs(urlsplit(url).query)
+        assert query["X-Amz-Algorithm"] == ["AWS4-HMAC-SHA256"]
+        assert query["X-Amz-Expires"] == ["3600"]
+        assert query["X-Amz-Signature"]
+
+    def test_put_object_does_not_send_an_acl(
+        self, s3_storage_service: S3StorageService, mocker
+    ):
+        s3_object = mocker.Mock()
+        mocker.patch.object(s3_storage_service._s3, "Object", return_value=s3_object)
+
+        s3_storage_service.put_object(BUCKET_NAME, OBJECT_KEY, b"data")
+
+        s3_object.put.assert_called_once_with(
+            Body=b"data", ContentType="application/octet-stream"
+        )
+
+    def test_put_object_persists_content_metadata(
+        self, s3_storage_service: S3StorageService, mocker
+    ):
+        s3_object = mocker.Mock()
+        mocker.patch.object(s3_storage_service._s3, "Object", return_value=s3_object)
+
+        s3_storage_service.put_object(
+            BUCKET_NAME,
+            OBJECT_KEY,
+            b"data",
+            content_type="text/plain",
+            content_disposition="attachment; filename*=UTF-8''hello.txt",
+        )
+
+        s3_object.put.assert_called_once_with(
+            Body=b"data",
+            ContentType="text/plain",
+            ContentDisposition="attachment; filename*=UTF-8''hello.txt",
+        )
 
     def test_fail_to_put_object_due_to_non_existent_bucket(
         self,

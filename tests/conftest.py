@@ -1,10 +1,10 @@
 import base64
 import os
 import uuid
+from datetime import UTC, datetime
 from random import randint
 
 import boto3
-import pendulum
 import pytest
 from moto import mock_aws
 
@@ -29,6 +29,11 @@ def setup(monkeypatch):
             Value=os.getenv("JWT_SECRET_SSM_PARAM_VALUE"),
             Type="SecureString",
         )
+        ssm_client.put_parameter(
+            Name=os.getenv("SSH_PASSWORD_SSM_PARAM_NAME"),
+            Value="test-only-ssh-password",
+            Type="SecureString",
+        )
         yield
 
 
@@ -39,7 +44,7 @@ def settings() -> Settings:
 
 @pytest.fixture
 def attachment(test_data: bytes, aws_default_region: str) -> Attachment:
-    now = pendulum.now()
+    now = datetime.now(UTC)
     file_name = "lorem.txt"
     return Attachment(
         id=str(uuid.uuid4()),
@@ -58,18 +63,20 @@ def aws_default_region() -> str:
 
 
 @pytest.fixture
-def dynamodb_resource(aws_default_region: str, settings: Settings):
-    yield boto3.Session().resource(
+def dynamodb_resource(aws_default_region: str):
+    return boto3.Session().resource(
         "dynamodb",
         region_name=aws_default_region,
-        aws_access_key_id=settings.aws_access_key_id,
-        aws_secret_access_key=settings.aws_secret_access_key,
     )
 
 
 @pytest.fixture
 def initialize_posts_table(
-    dynamodb_resource, posts: list[Post], post_with_attachment: Post, posts_table
+    dynamodb_resource,
+    posts: list[Post],
+    post_with_attachment: Post,
+    posts_table,
+    settings: Settings,
 ):
     dynamodb_resource.create_table(
         AttributeDefinitions=[
@@ -90,7 +97,7 @@ def initialize_posts_table(
                 "AttributeType": "S",
             },
         ],
-        TableName="test-posts",
+        TableName=f"{settings.stage}-{settings.app_name}-posts",
         KeySchema=[
             {"AttributeName": "id", "KeyType": "HASH"},
         ],
@@ -148,16 +155,16 @@ def jwt_secret_ssm_param_value() -> str:
 @pytest.fixture
 def make_post(faker):
     def make() -> Post:
-        now = pendulum.now()
+        now = datetime.now(UTC)
         slug = faker.slug()
         return Post(
             id=str(uuid.uuid4()),
             author=faker.name(),
             content=faker.text(),
-            post_path=f"{now.format('YYYY/MM/DD')}/{slug}",
-            created_at=now.to_iso8601_string(),
+            post_path=f"{now.strftime('%Y/%m/%d')}/{slug}",
+            created_at=now.isoformat(),
             deleted_at=None,
-            published_at=now.to_iso8601_string(),
+            published_at=now.isoformat(),
             slug=slug,
             tags=faker.words(randint(1, 6)),
             title=faker.sentence(),
@@ -190,17 +197,15 @@ def posts(make_post) -> list[Post]:
 
 
 @pytest.fixture
-def posts_table(dynamodb_resource):
-    return dynamodb_resource.Table("test-posts")
+def posts_table(dynamodb_resource, settings: Settings):
+    return dynamodb_resource.Table(f"{settings.stage}-{settings.app_name}-posts")
 
 
 @pytest.fixture
-def s3_resource(aws_default_region: str, settings: Settings):
-    yield boto3.Session().resource(
+def s3_resource(aws_default_region: str):
+    return boto3.Session().resource(
         "s3",
         region_name=aws_default_region,
-        aws_access_key_id=settings.aws_access_key_id,
-        aws_secret_access_key=settings.aws_secret_access_key,
     )
 
 
@@ -215,7 +220,7 @@ def user_dict() -> dict[str, str | None]:
         "id": str(uuid.uuid4()),
         "email": "info@netcode.hu",
         "display_name": "root",
-        "created_at": pendulum.now().to_iso8601_string(),
+        "created_at": datetime.now(UTC).isoformat(),
         "deleted_at": None,
         "updated_at": None,
     }

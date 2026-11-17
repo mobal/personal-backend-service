@@ -15,12 +15,15 @@ class S3StorageService:
         retry_config: Config | None = None,
     ):
         self._logger = Logger()
-        self._retry_config = retry_config or Config(
-            retries={
-                "max_attempts": 5,
-                "mode": "adaptive",
-            }
-        )
+        self._retry_config = (
+            retry_config
+            or Config(
+                retries={
+                    "max_attempts": 5,
+                    "mode": "adaptive",
+                }
+            )
+        ).merge(Config(signature_version="s3v4"))
         self._s3 = boto3.resource(
             "s3",
             region_name=region,
@@ -73,29 +76,42 @@ class S3StorageService:
         return [obj.get() for obj in self._s3.Bucket(name=bucket).objects.all()]
 
     def put_object(
-        self, bucket: str, key: str, data: bytes, acl: str = "public-read"
+        self,
+        bucket: str,
+        key: str,
+        data: bytes,
+        content_type: str = "application/octet-stream",
+        content_disposition: str | None = None,
     ) -> dict[str, Any]:
-        self._logger.info(
-            f"Uploading object key={key} with acl={acl} to bucket={bucket}"
+        self._logger.info(f"Uploading object key={key} to bucket={bucket}")
+        parameters: dict[str, Any] = {"Body": data, "ContentType": content_type}
+        if content_disposition is not None:
+            parameters["ContentDisposition"] = content_disposition
+        return self._s3.Object(bucket_name=bucket, key=key).put(**parameters)
+
+    def generate_presigned_download_url(
+        self, bucket: str, key: str, expires_in: int = 3600
+    ) -> str:
+        return self._s3_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket, "Key": key},
+            ExpiresIn=expires_in,
         )
-        return self._s3.Object(bucket_name=bucket, key=key).put(Body=data)
 
     def put_object_multipart(
         self,
         bucket: str,
         key: str,
         data: bytes,
-        acl: str = "public-read",
         part_size: int = 5 * 1024 * 1024,  # 5MB parts
     ) -> dict[str, Any]:
         """Upload object using multipart upload for large files."""
         self._logger.info(
-            f"Uploading object key={key} with acl={acl} to bucket={bucket} using multipart upload"
+            f"Uploading object key={key} to bucket={bucket} using multipart upload"
         )
         upload = self._s3_client.create_multipart_upload(
             Bucket=bucket,
             Key=key,
-            ACL=acl,
             ContentType="application/octet-stream",
         )
         upload_id = upload["UploadId"]

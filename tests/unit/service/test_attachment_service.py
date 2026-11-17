@@ -1,14 +1,22 @@
 import base64
-import copy
 import uuid
 from unittest.mock import ANY
 
 import pytest
+from fastapi import HTTPException, status
 from pytest_mock import MockerFixture
 
 from app.exceptions import AttachmentNotFoundException, PostNotFoundException
 from app.models.post import Attachment, Post
-from app.models.response import Attachment as AttachmentResponse
+from app.models.response import (
+    Attachment as AttachmentResponse,
+    Post as PostResponse,
+)
+from app.schemas.attachment_schema import (
+    MAX_ATTACHMENT_SIZE,
+    MAX_ENCODED_ATTACHMENT_SIZE,
+    CreateAttachment,
+)
 from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.s3_storage_service import S3StorageService
@@ -17,7 +25,32 @@ ATTACHMENT_NAME = "lorem.txt"
 UNKNOWN_EXT = "lorem.xyz"
 
 
+def post_response_with_attachment(attachment: Attachment) -> PostResponse:
+    return PostResponse(
+        attachments=[
+            AttachmentResponse(
+                id=attachment.id,
+                content_length=attachment.content_length,
+                description=attachment.description,
+                display_name=attachment.display_name,
+                mime_type=attachment.mime_type,
+                url="https://example.com/signed-download",
+            )
+        ]
+    )
+
+
 class TestAttachmentService:
+    def test_rejects_oversized_encoded_data_before_decoding(self, mocker):
+        decode = mocker.patch("app.schemas.attachment_schema.base64.b64decode")
+
+        with pytest.raises(ValueError, match="maximum size"):
+            CreateAttachment(
+                name="large.bin", data="A" * (MAX_ENCODED_ATTACHMENT_SIZE + 1)
+            )
+
+        decode.assert_not_called()
+
     def test_successfully_add_attachment(
         self,
         mocker: MockerFixture,
@@ -27,7 +60,7 @@ class TestAttachmentService:
         s3_storage_service: S3StorageService,
         test_data: bytes,
     ):
-        mocker.patch.object(PostService, "get_post", return_value=posts[0])
+        mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
         mocker.patch.object(
             S3StorageService,
             "put_object",
@@ -36,7 +69,7 @@ class TestAttachmentService:
                 "ContentType": "plain/text",
             },
         )
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
 
         encoded_data = base64.b64encode(test_data).decode("utf-8")
         result = attachment_service.add_attachment(
@@ -47,11 +80,11 @@ class TestAttachmentService:
         assert result.content_length == len(test_data)
         assert result.display_name == ATTACHMENT_NAME
         assert result.name
-        assert result.url
-        post_service.get_post.assert_called_once_with(posts[0].id)
+        assert "url" not in result.model_dump()
+        post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         s3_storage_service.put_object.assert_called_once()
-        post_service.update_post.assert_called_once_with(
-            posts[0].id, {"attachments": [result.model_dump(exclude_none=True)]}
+        post_service.append_attachment.assert_called_once_with(
+            posts[0].id, result.model_dump(exclude_none=True)
         )
 
     def test_successfully_add_attachment_with_custom_display_name(
@@ -63,7 +96,7 @@ class TestAttachmentService:
         s3_storage_service: S3StorageService,
         test_data: bytes,
     ):
-        mocker.patch.object(PostService, "get_post", return_value=posts[0])
+        mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
         mocker.patch.object(
             S3StorageService,
             "put_object",
@@ -72,7 +105,7 @@ class TestAttachmentService:
                 "ContentType": "plain/text",
             },
         )
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
 
         encoded_data = base64.b64encode(test_data).decode("utf-8")
         result = attachment_service.add_attachment(
@@ -83,10 +116,10 @@ class TestAttachmentService:
         assert result.content_length == len(test_data)
         assert result.display_name == ATTACHMENT_NAME
         assert result.name
-        assert result.url
-        post_service.get_post.assert_called_once_with(posts[0].id)
+        assert "url" not in result.model_dump()
+        post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         s3_storage_service.put_object.assert_called_once()
-        post_service.update_post.assert_called_once_with(posts[0].id, ANY)
+        post_service.append_attachment.assert_called_once_with(posts[0].id, ANY)
 
     def test_successfully_extend_attachments(
         self,
@@ -97,13 +130,15 @@ class TestAttachmentService:
         s3_storage_service: S3StorageService,
         test_data: bytes,
     ):
-        mocker.patch.object(PostService, "get_post", return_value=post_with_attachment)
+        mocker.patch.object(
+            PostService, "get_post_by_uuid", return_value=post_with_attachment
+        )
         mocker.patch.object(
             S3StorageService,
             "put_object",
             return_value={"ContentLength": len(test_data), "ContentType": "plain/text"},
         )
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
 
         encoded_data = base64.b64encode(test_data).decode("utf-8")
         result = attachment_service.add_attachment(
@@ -111,18 +146,67 @@ class TestAttachmentService:
         )
 
         assert post_with_attachment.attachments
-        post_service.get_post.assert_called_once_with(post_with_attachment.id)
+        post_service.get_post_by_uuid.assert_called_once_with(post_with_attachment.id)
         s3_storage_service.put_object.assert_called_once()
-        extended_attachments = copy.deepcopy(post_with_attachment.attachments)
-        extended_attachments.append(result)
-        post_service.update_post.assert_called_once_with(
-            post_with_attachment.id,
-            {
-                "attachments": [
-                    attachment.model_dump(exclude_none=True)
-                    for attachment in extended_attachments
-                ]
-            },
+        post_service.append_attachment.assert_called_once_with(
+            post_with_attachment.id, result.model_dump(exclude_none=True)
+        )
+
+    def test_sanitizes_object_name_and_sets_safe_content_metadata(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        posts: list[Post],
+        s3_storage_service: S3StorageService,
+        test_data: bytes,
+    ):
+        mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
+        mocker.patch.object(PostService, "append_attachment")
+        mocker.patch.object(S3StorageService, "put_object")
+
+        result = attachment_service.add_attachment(
+            posts[0].id,
+            "../../hello world.txt",
+            base64.b64encode(test_data).decode("ascii"),
+            'report"\r\nX-Evil: true.txt',
+        )
+
+        assert result.name.endswith("-hello_world.txt")
+        assert ".." not in result.name
+        call = s3_storage_service.put_object.call_args
+        assert call.kwargs == {
+            "content_type": "text/plain",
+            "content_disposition": (
+                "attachment; filename*=UTF-8''report%22X-Evil%3A%20true.txt"
+            ),
+        }
+
+    def test_deletes_uploaded_object_when_post_update_fails(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        posts: list[Post],
+        s3_storage_service: S3StorageService,
+        test_data: bytes,
+    ):
+        mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
+        mocker.patch.object(
+            PostService, "append_attachment", side_effect=RuntimeError("db failed")
+        )
+        mocker.patch.object(S3StorageService, "put_object")
+        mocker.patch.object(S3StorageService, "delete_object")
+
+        with pytest.raises(RuntimeError, match="db failed"):
+            attachment_service.add_attachment(
+                posts[0].id,
+                ATTACHMENT_NAME,
+                base64.b64encode(test_data).decode("ascii"),
+                ATTACHMENT_NAME,
+            )
+
+        s3_storage_service.put_object.assert_called_once()
+        s3_storage_service.delete_object.assert_called_once_with(
+            "attachments", s3_storage_service.put_object.call_args.args[1]
         )
 
     def test_fail_to_add_attachment_due_to_post_not_found(
@@ -134,7 +218,7 @@ class TestAttachmentService:
         test_data: bytes,
     ):
         mocker.patch.object(
-            PostService, "get_post", side_effect=PostNotFoundException()
+            PostService, "get_post_by_uuid", side_effect=PostNotFoundException()
         )
 
         with pytest.raises(PostNotFoundException) as exc_info:
@@ -144,7 +228,7 @@ class TestAttachmentService:
             )
 
         assert exc_info.type == PostNotFoundException
-        post_service.get_post.assert_called_once_with(posts[0].id)
+        post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
 
     def test_successfully_get_attachments(
         self,
@@ -154,12 +238,16 @@ class TestAttachmentService:
         post_service: PostService,
         post_with_attachment: Post,
     ):
-        mocker.patch.object(PostService, "get_post", return_value=post_with_attachment)
+        mocker.patch.object(
+            PostService,
+            "get_post",
+            return_value=post_response_with_attachment(attachment),
+        )
 
         attachments = attachment_service.get_attachments(post_with_attachment.id)
 
-        assert attachments[0].model_dump().items() <= attachment.model_dump().items()
-        post_service.get_post.assert_called_once_with(post_with_attachment.id)
+        assert attachments == post_response_with_attachment(attachment).attachments
+        post_service.get_post.assert_called_once_with(post_with_attachment.id, False)
 
     def test_successfully_get_attachments_when_none(
         self,
@@ -189,7 +277,7 @@ class TestAttachmentService:
             attachment_service.get_attachments(posts[0].id)
 
         assert exc_info.type == PostNotFoundException
-        post_service.get_post.assert_called_once_with(posts[0].id)
+        post_service.get_post.assert_called_once_with(posts[0].id, False)
 
     def test_successfully_get_attachment_by_name(
         self,
@@ -199,14 +287,20 @@ class TestAttachmentService:
         post_service: PostService,
         post_with_attachment: Post,
     ):
-        mocker.patch.object(PostService, "get_post", return_value=post_with_attachment)
+        mocker.patch.object(
+            PostService,
+            "get_post",
+            return_value=post_response_with_attachment(attachment),
+        )
 
         post_attachment = attachment_service.get_attachment_by_id(
             post_with_attachment.id, attachment.id
         )
 
-        assert AttachmentResponse(**attachment.model_dump()) == post_attachment
-        post_service.get_post.assert_called_once_with(post_with_attachment.id)
+        assert post_response_with_attachment(attachment).attachments == [
+            post_attachment
+        ]
+        post_service.get_post.assert_called_once_with(post_with_attachment.id, False)
 
     def test_fail_to_get_attachment_by_name_due_to_post_not_found(
         self,
@@ -224,7 +318,7 @@ class TestAttachmentService:
             attachment_service.get_attachment_by_id(posts[0].id, attachment.id)
 
         assert exc_info.type == PostNotFoundException
-        post_service.get_post.assert_called_once_with(posts[0].id)
+        post_service.get_post.assert_called_once_with(posts[0].id, False)
 
     def test_fail_to_get_attachment_by_name_due_to_not_found(
         self,
@@ -234,7 +328,11 @@ class TestAttachmentService:
         post_service: PostService,
         post_with_attachment: Post,
     ):
-        mocker.patch.object(PostService, "get_post", return_value=post_with_attachment)
+        mocker.patch.object(
+            PostService,
+            "get_post",
+            return_value=post_response_with_attachment(attachment),
+        )
 
         with pytest.raises(AttachmentNotFoundException) as exc_info:
             attachment_service.get_attachment_by_id(
@@ -242,7 +340,99 @@ class TestAttachmentService:
             )
 
         assert exc_info.type == AttachmentNotFoundException
-        post_service.get_post.assert_called_once_with(post_with_attachment.id)
+        post_service.get_post.assert_called_once_with(post_with_attachment.id, False)
+
+    def test_fail_to_get_attachment_when_post_has_no_attachments(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+        posts: list[Post],
+    ):
+        mocker.patch.object(PostService, "get_post", return_value=PostResponse())
+        exception_log = mocker.patch.object(attachment_service._logger, "exception")
+        error_log = mocker.patch.object(attachment_service._logger, "error")
+
+        with pytest.raises(AttachmentNotFoundException):
+            attachment_service.get_attachment_by_id(posts[0].id, str(uuid.uuid4()))
+
+        post_service.get_post.assert_called_once_with(posts[0].id, False)
+        exception_log.assert_not_called()
+        error_log.assert_called_once()
+
+    def test_get_attachment_by_id_sanitizes_control_characters_in_logs(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+    ):
+        mocker.patch.object(PostService, "get_post", return_value=PostResponse())
+        info_log = mocker.patch.object(attachment_service._logger, "info")
+        error_log = mocker.patch.object(attachment_service._logger, "error")
+
+        with pytest.raises(AttachmentNotFoundException):
+            attachment_service.get_attachment_by_id(
+                "post-id\r\nforged-post-log", "attachment-id\r\nforged-attachment-log"
+            )
+
+        post_service.get_post.assert_called_once_with(
+            "post-id\r\nforged-post-log", False
+        )
+        for log in (info_log, error_log):
+            message = log.call_args.args[0]
+            assert "\r" not in message
+            assert "\n" not in message
+            assert "\\r" not in message
+            assert "\\n" not in message
+
+    def test_download_url_signs_published_attachment_on_demand(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+        post_with_attachment: Post,
+        s3_storage_service: S3StorageService,
+    ):
+        attachment = post_with_attachment.attachments[0]
+        mocker.patch.object(
+            PostService, "get_published_post_by_uuid", return_value=post_with_attachment
+        )
+        mocker.patch.object(
+            S3StorageService,
+            "generate_presigned_download_url",
+            return_value="https://example.com/signed-download",
+        )
+
+        result = attachment_service.get_attachment_download_url(
+            post_with_attachment.id, attachment.id
+        )
+
+        assert result == "https://example.com/signed-download"
+        post_service.get_published_post_by_uuid.assert_called_once_with(
+            post_with_attachment.id
+        )
+        s3_storage_service.generate_presigned_download_url.assert_called_once_with(
+            attachment.bucket, attachment.name
+        )
+
+    def test_download_url_rejects_unknown_attachment(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_with_attachment: Post,
+        s3_storage_service: S3StorageService,
+    ):
+        mocker.patch.object(
+            PostService, "get_published_post_by_uuid", return_value=post_with_attachment
+        )
+        mocker.patch.object(S3StorageService, "generate_presigned_download_url")
+
+        with pytest.raises(AttachmentNotFoundException):
+            attachment_service.get_attachment_download_url(
+                post_with_attachment.id, str(uuid.uuid4())
+            )
+
+        s3_storage_service.generate_presigned_download_url.assert_not_called()
 
     def test_successfully_add_attachment_with_unknown_mime_type(
         self,
@@ -253,7 +443,7 @@ class TestAttachmentService:
         s3_storage_service: S3StorageService,
         test_data: bytes,
     ):
-        mocker.patch.object(PostService, "get_post", return_value=posts[0])
+        mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
         mocker.patch.object(
             S3StorageService,
             "put_object",
@@ -262,17 +452,17 @@ class TestAttachmentService:
                 "ContentType": "application/octet-stream",
             },
         )
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
 
         result = attachment_service.add_attachment(
             posts[0].id, "test.foo", test_data.decode(), "test.foo"
         )
 
         assert result.mime_type == "application/octet-stream"
-        post_service.get_post.assert_called_once_with(posts[0].id)
+        post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         s3_storage_service.put_object.assert_called_once()
-        post_service.update_post.assert_called_once_with(
-            posts[0].id, {"attachments": [result.model_dump(exclude_none=True)]}
+        post_service.append_attachment.assert_called_once_with(
+            posts[0].id, result.model_dump(exclude_none=True)
         )
 
     def test_fail_to_add_attachment_due_to_file_too_large(
@@ -282,19 +472,19 @@ class TestAttachmentService:
         post_service: PostService,
         posts: list[Post],
     ):
-        mocker.patch.object(PostService, "get_post", return_value=posts[0])
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
+        mocker.patch.object(PostService, "append_attachment")
 
-        large_data = b"x" * (5 * 1024 * 1024 + 1)  # 5MB + 1 byte
+        large_data = b"x" * (MAX_ATTACHMENT_SIZE + 1)
         encoded_data = base64.b64encode(large_data).decode("utf-8")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(HTTPException) as exc_info:
             attachment_service.add_attachment(
                 posts[0].id, ATTACHMENT_NAME, encoded_data, ATTACHMENT_NAME
             )
 
-        assert "exceeds maximum size" in str(exc_info.value)
-        assert "5242880" in str(exc_info.value)  # 5MB in bytes
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        assert "exceeds maximum size" in exc_info.value.detail
 
     def test_successfully_add_attachment_under_limit(
         self,
@@ -305,7 +495,7 @@ class TestAttachmentService:
         s3_storage_service: S3StorageService,
         test_data: bytes,
     ):
-        mocker.patch.object(PostService, "get_post", return_value=posts[0])
+        mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
         mocker.patch.object(
             S3StorageService,
             "put_object",
@@ -314,7 +504,7 @@ class TestAttachmentService:
                 "ContentType": "plain/text",
             },
         )
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "append_attachment")
 
         encoded_data = base64.b64encode(test_data).decode("utf-8")
         result = attachment_service.add_attachment(
@@ -325,12 +515,22 @@ class TestAttachmentService:
         assert result.content_length == len(test_data)
         assert result.display_name == ATTACHMENT_NAME
         assert result.name
-        assert result.url
-        post_service.get_post.assert_called_once_with(posts[0].id)
+        assert "url" not in result.model_dump()
+        post_service.get_post_by_uuid.assert_called_once_with(posts[0].id)
         s3_storage_service.put_object.assert_called_once()
-        post_service.update_post.assert_called_once()
+        post_service.append_attachment.assert_called_once()
 
-    def test_add_attachment_with_exactly_5mb(
+    def test_largest_attachment_fits_the_lambda_request_payload_limit(self):
+        lambda_request_payload_limit = 6 * 1024 * 1024
+        request_body = CreateAttachment(
+            name="n" * 255,
+            data=base64.b64encode(b"x" * MAX_ATTACHMENT_SIZE).decode(),
+            display_name="d" * 255,
+        ).model_dump_json(by_alias=True)
+
+        assert len(request_body) < lambda_request_payload_limit
+
+    def test_add_attachment_with_exactly_the_maximum_size(
         self,
         mocker: MockerFixture,
         attachment_service: AttachmentService,
@@ -338,18 +538,17 @@ class TestAttachmentService:
         posts: list[Post],
         s3_storage_service: S3StorageService,
     ):
-        """Test that adding an attachment exactly 5MB succeeds."""
-        mocker.patch.object(PostService, "get_post", return_value=posts[0])
-        mocker.patch.object(PostService, "update_post")
+        mocker.patch.object(PostService, "get_post_by_uuid", return_value=posts[0])
+        mocker.patch.object(PostService, "append_attachment")
 
-        exact_5mb_data = b"x" * (5 * 1024 * 1024)
-        encoded_data = base64.b64encode(exact_5mb_data).decode("utf-8")
+        largest_data = b"x" * MAX_ATTACHMENT_SIZE
+        encoded_data = base64.b64encode(largest_data).decode("utf-8")
 
         mocker.patch.object(
             S3StorageService,
             "put_object",
             return_value={
-                "ContentLength": len(exact_5mb_data),
+                "ContentLength": len(largest_data),
                 "ContentType": "plain/text",
             },
         )
@@ -358,6 +557,105 @@ class TestAttachmentService:
             posts[0].id, ATTACHMENT_NAME, encoded_data, ATTACHMENT_NAME
         )
 
-        assert result.content_length == len(exact_5mb_data)
-        assert result.content_length == 5 * 1024 * 1024
+        assert result.content_length == len(largest_data)
+        assert result.content_length == MAX_ATTACHMENT_SIZE
         s3_storage_service.put_object.assert_called_once()
+
+    def test_delete_attachments_removes_every_object(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_with_attachment: Post,
+        s3_storage_service: S3StorageService,
+    ):
+        second = post_with_attachment.attachments[0].model_copy(
+            update={"id": str(uuid.uuid4()), "name": "/2026/09/05/post/second.txt"}
+        )
+        post_with_attachment.attachments.append(second)
+        delete_object = mocker.patch.object(S3StorageService, "delete_object")
+
+        attachment_service.delete_attachments(post_with_attachment)
+
+        assert [call.args for call in delete_object.call_args_list] == [
+            (attachment.bucket, attachment.name)
+            for attachment in post_with_attachment.attachments
+        ]
+
+    def test_delete_attachments_keeps_going_after_a_failure(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_with_attachment: Post,
+        s3_storage_service: S3StorageService,
+    ):
+        second = post_with_attachment.attachments[0].model_copy(
+            update={"id": str(uuid.uuid4()), "name": "/2026/09/05/post/second.txt"}
+        )
+        post_with_attachment.attachments.append(second)
+        delete_object = mocker.patch.object(
+            S3StorageService, "delete_object", side_effect=[RuntimeError("boom"), {}]
+        )
+
+        attachment_service.delete_attachments(post_with_attachment)
+
+        assert delete_object.call_count == 2
+
+    def test_delete_attachments_without_attachments_does_nothing(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        posts: list[Post],
+        s3_storage_service: S3StorageService,
+    ):
+        delete_object = mocker.patch.object(S3StorageService, "delete_object")
+        posts[0].attachments = None
+
+        attachment_service.delete_attachments(posts[0])
+
+        delete_object.assert_not_called()
+
+    def test_get_attachments_can_include_unpublished_posts(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+        post_with_attachment: Post,
+    ):
+        mocker.patch.object(
+            PostService,
+            "get_post",
+            return_value=post_response_with_attachment(
+                post_with_attachment.attachments[0]
+            ),
+        )
+
+        attachment_service.get_attachments(
+            post_with_attachment.id, include_unpublished=True
+        )
+
+        post_service.get_post.assert_called_once_with(post_with_attachment.id, True)
+
+    def test_get_attachment_download_url_can_include_unpublished_posts(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+        post_with_attachment: Post,
+        s3_storage_service: S3StorageService,
+    ):
+        readable = mocker.patch.object(
+            PostService, "get_readable_post_by_uuid", return_value=post_with_attachment
+        )
+        mocker.patch.object(
+            S3StorageService,
+            "generate_presigned_download_url",
+            return_value="https://example.com/signed",
+        )
+
+        attachment_service.get_attachment_download_url(
+            post_with_attachment.id,
+            post_with_attachment.attachments[0].id,
+            include_unpublished=True,
+        )
+
+        readable.assert_called_once_with(post_with_attachment.id, True)

@@ -1,18 +1,28 @@
 import base64
 import mimetypes
+import re
 import uuid
+from collections.abc import Sequence
+from typing import TypeVar
+from urllib.parse import quote
 
 from aws_lambda_powertools import Logger
+from fastapi import HTTPException, status
 from unidecode import unidecode
 
 from app.exceptions import AttachmentNotFoundException
-from app.models.post import Attachment
+from app.models.post import Attachment, Post
 from app.models.response import Attachment as AttachmentResponse
+from app.schemas.attachment_schema import (
+    ERROR_ATTACHMENT_TOO_LARGE,
+    MAX_ATTACHMENT_SIZE,
+    MAX_ENCODED_ATTACHMENT_SIZE,
+)
 from app.services.post_service import PostService
 from app.services.s3_storage_service import S3StorageService
 from app.settings import Settings
 
-MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024  # 5MB limit
+AttachmentType = TypeVar("AttachmentType", Attachment, AttachmentResponse)
 
 
 class AttachmentService:
@@ -30,81 +40,184 @@ class AttachmentService:
     def add_attachment(
         self, post_uuid: str, attachment_name: str, base64_data: str, display_name: str
     ) -> Attachment:
-        attachment_name = unidecode(attachment_name)
+        attachment_name = self._sanitize_attachment_name(attachment_name)
+        safe_display_name = self._sanitize_display_name(display_name, attachment_name)
         self._logger.info(f"Adding attachment {attachment_name=} to {post_uuid=}")
 
-        post = self._post_service.get_post(post_uuid)
-        mime_type = mimetypes.guess_type(attachment_name)[0]
-        if mime_type is None:
-            self._logger.info(
-                f"Unknown MIME type for {attachment_name=}, defaulting to application/octet-stream"
-            )
-            mime_type = "application/octet-stream"
-        object_key = f"/{post.post_path}/{attachment_name}"
-
-        file_data = base64.b64decode(base64_data)
-
-        # Validate file size (5MB limit)
-        if len(file_data) > MAX_ATTACHMENT_SIZE:
-            error_msg = f"Attachment {attachment_name} exceeds maximum size of {MAX_ATTACHMENT_SIZE} bytes"
-            self._logger.error(error_msg)
-            raise ValueError(error_msg)
+        post = self._post_service.get_post_by_uuid(post_uuid)
+        mime_type = self._get_mime_type(attachment_name)
+        attachment_id = str(uuid.uuid4())
+        object_key = f"/{post.post_path}/{attachment_id}-{attachment_name}"
+        file_data = self._decode_attachment(base64_data)
 
         self._storage_service.put_object(
-            self._settings.attachments_bucket_name, object_key, file_data
+            self._settings.attachments_bucket_name,
+            object_key,
+            file_data,
+            content_type=mime_type,
+            content_disposition=(
+                f"attachment; filename*=UTF-8''{quote(safe_display_name, safe='')}"
+            ),
         )
 
         attachment = Attachment(
-            id=str(uuid.uuid4()),
+            id=attachment_id,
             bucket=self._settings.attachments_bucket_name,
             content_length=len(file_data),
-            display_name=display_name,
+            display_name=safe_display_name,
             mime_type=mime_type,
             name=object_key,
             region=self._settings.aws_region,
         )
 
-        updated_attachments = list(post.attachments or []) + [attachment]
-        self._post_service.update_post(
-            post_uuid,
-            {
-                "attachments": [
-                    att.model_dump(exclude_none=True) for att in updated_attachments
-                ]
-            },
-        )
+        try:
+            self._post_service.append_attachment(
+                post_uuid, attachment.model_dump(exclude_none=True)
+            )
+        except Exception:
+            self._delete_uploaded_object(object_key)
+            raise
 
         return attachment
 
-    def get_attachments(self, post_uuid: str) -> list[AttachmentResponse]:
-        self._logger.info(f"Get attachments for {post_uuid=}")
-        post = self._post_service.get_post(post_uuid)
-        return (
-            [
-                AttachmentResponse(**attachment.model_dump())
-                for attachment in post.attachments
-            ]
-            if post.attachments
-            else []
+    @staticmethod
+    def _sanitize_attachment_name(name: str) -> str:
+        name = unidecode(name).replace("\\", "/").split("/")[-1]
+        name = re.sub(r"[^A-Za-z0-9._-]", "_", name).strip("._-")
+        return name[:180] or "attachment"
+
+    @staticmethod
+    def _sanitize_display_name(display_name: str, fallback: str) -> str:
+        safe_name = "".join(
+            char for char in display_name if char.isprintable() and char not in "\r\n"
+        )[:180]
+        return safe_name or fallback
+
+    def _get_mime_type(self, attachment_name: str) -> str:
+        mime_type = mimetypes.guess_type(attachment_name)[0]
+        if mime_type is not None:
+            return mime_type
+
+        self._logger.info(
+            f"Unknown MIME type for {attachment_name=}, defaulting to application/octet-stream"
         )
+        return "application/octet-stream"
+
+    @staticmethod
+    def _decode_attachment(base64_data: str) -> bytes:
+        if len(base64_data) > MAX_ENCODED_ATTACHMENT_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=ERROR_ATTACHMENT_TOO_LARGE,
+            )
+        try:
+            file_data = base64.b64decode(base64_data, validate=True)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Attachment data must be valid base64",
+            ) from exc
+
+        if not file_data:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Attachment must not be empty",
+            )
+        # Padding lets a payload of the maximum encoded length decode to a
+        # couple of bytes more than the limit.
+        if len(file_data) > MAX_ATTACHMENT_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=ERROR_ATTACHMENT_TOO_LARGE,
+            )
+        return file_data
+
+    def delete_attachments(self, post: Post) -> None:
+        """Remove the S3 objects of a deleted post; failures are only logged.
+
+        The post is already soft-deleted when this runs, so one object that
+        cannot be removed must neither fail the request nor keep the others.
+        """
+        for attachment in post.attachments or []:
+            try:
+                self._storage_service.delete_object(attachment.bucket, attachment.name)
+            except Exception as error:
+                self._logger.error(
+                    f"Failed to delete attachment object {attachment.name=} "
+                    f"of {post.id=}: {error}"
+                )
+
+    def _delete_uploaded_object(self, object_key: str) -> None:
+        try:
+            self._storage_service.delete_object(
+                self._settings.attachments_bucket_name, object_key
+            )
+        except Exception as cleanup_error:
+            self._logger.error(
+                f"Failed to clean up attachment object {object_key=}: {cleanup_error}"
+            )
+
+    def get_attachments(
+        self, post_uuid: str, include_unpublished: bool = False
+    ) -> list[AttachmentResponse]:
+        self._logger.info(f"Get attachments for {post_uuid=}")
+        post = self._post_service.get_post(post_uuid, include_unpublished)
+        return [
+            AttachmentResponse(**attachment.model_dump())
+            for attachment in post.attachments or []
+        ]
 
     def get_attachment_by_id(
-        self, post_uuid: str, attachment_uuid: str
+        self,
+        post_uuid: str,
+        attachment_uuid: str,
+        include_unpublished: bool = False,
     ) -> AttachmentResponse:
-        self._logger.info(f"Get attachment {attachment_uuid=} from {post_uuid=}")
-        post = self._post_service.get_post(post_uuid)
-        attachment = next(
+        safe_post_uuid = post_uuid.replace("\r", "").replace("\n", "")
+        safe_attachment_uuid = attachment_uuid.replace("\r", "").replace("\n", "")
+        self._logger.info(
+            f"Get attachment attachment_uuid={safe_attachment_uuid!r} "
+            f"from post_uuid={safe_post_uuid!r}"
+        )
+        post = self._post_service.get_post(post_uuid, include_unpublished)
+        attachment = self._find_attachment(post.attachments, attachment_uuid)
+        if attachment is None:
+            error_message = (
+                f"The requested attachment_uuid={safe_attachment_uuid!r} was not found "
+                f"for post_uuid={safe_post_uuid!r}"
+            )
+            self._logger.error(error_message)
+            raise AttachmentNotFoundException(error_message)
+        return AttachmentResponse(**attachment.model_dump())
+
+    def get_attachment_download_url(
+        self,
+        post_uuid: str,
+        attachment_uuid: str,
+        include_unpublished: bool = False,
+    ) -> str:
+        post = self._post_service.get_readable_post_by_uuid(
+            post_uuid, include_unpublished
+        )
+        attachment = self._find_attachment(post.attachments, attachment_uuid)
+        if attachment is None:
+            raise AttachmentNotFoundException(
+                f"The requested {attachment_uuid=} was not found for {post_uuid=}"
+            )
+        return self._storage_service.generate_presigned_download_url(
+            attachment.bucket, attachment.name
+        )
+
+    @staticmethod
+    def _find_attachment(
+        attachments: Sequence[AttachmentType] | None,
+        attachment_uuid: str,
+    ) -> AttachmentType | None:
+        return next(
             (
                 attachment
-                for attachment in post.attachments
+                for attachment in attachments or []
                 if attachment.id == attachment_uuid
             ),
             None,
         )
-        if attachment is None:
-            error_message = (
-                f"The requested {attachment_uuid=} was not found for {post_uuid=}"
-            )
-            self._logger.exception(error_message)
-            raise AttachmentNotFoundException(error_message)
-        return AttachmentResponse(**attachment.model_dump())

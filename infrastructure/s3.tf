@@ -1,4 +1,4 @@
-resource "random_string" "random_suffix"{
+resource "random_string" "random_suffix" {
   length  = 8
   special = false
   upper   = false
@@ -21,10 +21,10 @@ resource "aws_s3_bucket_ownership_controls" "attachments" {
 resource "aws_s3_bucket_public_access_block" "attachments" {
   bucket = aws_s3_bucket.attachments.id
 
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 resource "aws_s3_bucket_acl" "attachments" {
@@ -34,5 +34,5 @@ resource "aws_s3_bucket_acl" "attachments" {
   ]
 
   bucket = aws_s3_bucket.attachments.id
-  acl    = "public-read"
+  acl    = "private"
 }

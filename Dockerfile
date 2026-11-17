@@ -1,4 +1,4 @@
-FROM python:3.14-alpine
+FROM python:3.15-alpine
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -9,7 +9,7 @@ RUN apk add --no-cache gcc musl-dev libffi-dev curl
 
 COPY pyproject.toml uv.lock ./
 
-RUN pip install --no-cache-dir uv \
+RUN pip install --no-cache-dir uv==0.12.19 \
     && uv sync --frozen --no-dev
 
 COPY . .

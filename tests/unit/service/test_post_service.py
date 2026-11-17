@@ -1,10 +1,10 @@
 import uuid
+from datetime import UTC, datetime, timedelta
 from unittest.mock import ANY
 
-import pendulum
 import pytest
 from botocore.exceptions import ClientError
-from fastapi import status
+from fastapi import HTTPException, status
 from pytest_mock import MockerFixture
 
 from app.exceptions import PostAlreadyExistsException, PostNotFoundException
@@ -15,6 +15,8 @@ from app.services.post_service import PostService
 
 ERROR_MESSAGE_POST_WAS_NOT_FOUND = "The requested post was not found"
 ERROR_MESSAGE_POST_ALREADY_EXISTS = "There is already a post with this title"
+# Padded and unpadded paths only differ for single-digit months and days.
+SINGLE_DIGIT_DATE = datetime(2026, 2, 3, tzinfo=UTC)
 
 
 class TestPostService:
@@ -71,7 +73,7 @@ class TestPostService:
             )
 
         assert status.HTTP_409_CONFLICT == excinfo.value.status_code
-        assert ERROR_MESSAGE_POST_ALREADY_EXISTS == excinfo.value.detail
+        assert excinfo.value.detail == ERROR_MESSAGE_POST_ALREADY_EXISTS
         post_repository.get_post_by_title.assert_called_once_with(posts[0].title, ANY)
 
     def test_successfully_create_post_despite_soft_deleted_post_with_same_title(
@@ -135,7 +137,7 @@ class TestPostService:
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
-        assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
+        assert excinfo.value.detail == ERROR_MESSAGE_POST_WAS_NOT_FOUND
 
     def test_successfully_get_post(
         self,
@@ -170,6 +172,28 @@ class TestPostService:
 
         assert "<strong>bold</strong>" in result.content
         assert "<em>italic</em>" in result.content
+
+    def test_get_post_returns_stable_attachment_url(
+        self,
+        mocker: MockerFixture,
+        post_with_attachment: Post,
+        post_service: PostService,
+    ):
+        stored_post = post_with_attachment.model_dump()
+        stored_post["attachments"][0]["url"] = "https://old-public-url.example.com"
+        mocker.patch.object(
+            PostRepository,
+            "get_post_by_uuid",
+            return_value=stored_post,
+        )
+
+        result = post_service.get_post(post_with_attachment.id)
+
+        assert result.attachments
+        assert result.attachments[0].url == (
+            f"/api/v1/posts/{post_with_attachment.id}/attachments/"
+            f"{post_with_attachment.attachments[0].id}/download"
+        )
 
     def test_successfully_get_post_sanitizes_xss_from_markdown(
         self,
@@ -210,8 +234,29 @@ class TestPostService:
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
-        assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
+        assert excinfo.value.detail == ERROR_MESSAGE_POST_WAS_NOT_FOUND
         post_repository.get_post_by_uuid.assert_called_once_with(posts[0].id)
+
+    def test_fail_to_get_unpublished_post(
+        self, mocker, posts, post_repository, post_service
+    ):
+        unpublished = posts[0].model_dump() | {"published_at": None}
+        mocker.patch.object(
+            PostRepository, "get_post_by_uuid", return_value=unpublished
+        )
+
+        with pytest.raises(PostNotFoundException):
+            post_service.get_post(posts[0].id)
+
+    def test_fail_to_get_future_post(
+        self, mocker, posts, post_repository, post_service
+    ):
+        future = (datetime.now(UTC) + timedelta(days=1)).isoformat()
+        scheduled = posts[0].model_dump() | {"published_at": future}
+        mocker.patch.object(PostRepository, "get_post_by_uuid", return_value=scheduled)
+
+        with pytest.raises(PostNotFoundException):
+            post_service.get_post(posts[0].id)
 
     def test_successfully_update_post(
         self,
@@ -228,12 +273,51 @@ class TestPostService:
         post_repository.update_post.assert_called_once()
         args, _ = post_repository.update_post.call_args
         assert args[0] == posts[0].id
+        # posts[0] is published, so its permalink must not move with the title.
         assert args[1] == {
             "content": "Updated content",
             "title": "Updated title",
             "updated_at": ANY,
         }
         assert args[2] is not None
+
+    @pytest.mark.parametrize("publication_state", ["draft", "scheduled"])
+    def test_renaming_an_unpublished_post_recomputes_slug_and_path(
+        self,
+        publication_state: str,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_repository: PostRepository,
+        post_service: PostService,
+    ) -> None:
+        posts[0].published_at = (
+            None
+            if publication_state == "draft"
+            else (datetime.now(UTC) + timedelta(days=1)).isoformat()
+        )
+        mocker.patch.object(
+            PostRepository, "get_post_by_uuid", return_value=posts[0].model_dump()
+        )
+        mocker.patch.object(PostRepository, "update_post")
+
+        post_service.update_post(posts[0].id, {"title": "Updated title"})
+
+        args, _ = post_repository.update_post.call_args
+        assert args[1]["slug"] == "updated-title"
+        assert args[1]["post_path"] == (
+            f"{datetime.fromisoformat(posts[0].created_at):%Y/%m/%d}/updated-title"
+        )
+
+    def test_renaming_a_published_post_still_rejects_a_duplicate_title(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_service: PostService,
+    ) -> None:
+        mocker.patch.object(PostRepository, "update_post")
+
+        with pytest.raises(PostAlreadyExistsException):
+            post_service.update_post(posts[0].id, {"title": posts[1].title})
 
     def test_fail_to_update_post_due_post_not_found_exception(
         self,
@@ -259,7 +343,7 @@ class TestPostService:
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
-        assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
+        assert excinfo.value.detail == ERROR_MESSAGE_POST_WAS_NOT_FOUND
 
     def test_successfully_get_archive(
         self,
@@ -273,7 +357,10 @@ class TestPostService:
 
         result = post_service.get_archive()
 
-        assert result.get(pendulum.parse(posts[0].published_at).format("YYYY-MM")) == 1
+        assert (
+            result.get(datetime.fromisoformat(posts[0].published_at).strftime("%Y-%m"))
+            == 1
+        )
 
     def test_successfully_get_archive_and_return_none(
         self,
@@ -284,69 +371,27 @@ class TestPostService:
 
         result = post_service.get_archive()
 
-        assert 0 == len(result)
+        assert len(result) == 0
 
-    def test_successfully_get_archive_paginated(
+    def test_archive_counts_every_post_of_a_busy_month(
         self,
         mocker: MockerFixture,
-        posts: list[Post],
         post_service: PostService,
     ):
-        all_posts = [post.model_dump() for post in posts]
+        january = [
+            {"id": str(uuid.uuid4()), "published_at": "2026-01-15T10:00:00+00:00"}
+        ] * 150
+        february = [
+            {"id": str(uuid.uuid4()), "published_at": "2026-02-01T10:00:00+00:00"}
+        ]
         mocker.patch.object(
-            PostRepository, "get_posts", return_value=(posts[-1].id, all_posts)
+            PostRepository, "get_all_posts", return_value=february + january
         )
 
-        result = post_service.get_archive_paginated()
+        result = post_service.get_archive()
 
-        assert "count" in result
-        assert "last_evaluated_key" in result
-        assert result["count"] == len(all_posts)
-
-    def test_successfully_get_archive_paginated_with_custom_params(
-        self,
-        mocker: MockerFixture,
-        posts: list[Post],
-        post_service: PostService,
-    ):
-        """Test pagination with custom max_results."""
-        all_posts = [post.model_dump() for post in posts]
-        mocker.patch.object(PostRepository, "get_posts", return_value=(None, all_posts))
-
-        result = post_service.get_archive_paginated(max_results=50)
-
-        assert result["count"] == len(all_posts)
-
-    def test_successfully_get_archive_paginated_with_exclusive_start_key(
-        self,
-        mocker: MockerFixture,
-        posts: list[Post],
-        post_service: PostService,
-    ):
-        """Test pagination with exclusive_start_key for continuation."""
-        all_posts = [post.model_dump() for post in posts]
-        mocker.patch.object(PostRepository, "get_posts", return_value=(None, all_posts))
-
-        first_page = post_service.get_archive_paginated(max_results=2)
-        exclusive_start_key = first_page["last_evaluated_key"]
-
-        second_page = post_service.get_archive_paginated(
-            max_results=2, exclusive_start_key=exclusive_start_key
-        )
-
-        assert second_page["count"] == len(all_posts)
-
-    def test_successfully_get_archive_paginated_empty_result(
-        self,
-        mocker: MockerFixture,
-        post_service: PostService,
-    ):
-        mocker.patch.object(PostRepository, "get_posts", return_value=(None, []))
-
-        result = post_service.get_archive_paginated()
-
-        assert result["count"] == 0
-        assert result["last_evaluated_key"] is None
+        assert result == {"2026-01": 150, "2026-02": 1}
+        assert list(result) == ["2026-01", "2026-02"]
 
     def test_successfully_get_post_by_post_path(
         self,
@@ -359,13 +404,36 @@ class TestPostService:
             PostRepository, "get_post_by_post_path", return_value=posts[0].model_dump()
         )
 
-        dt = pendulum.parse(posts[0].published_at)
-        post_path = f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}"
+        dt = datetime.fromisoformat(posts[0].published_at)
+        post_path = f"{dt:%Y/%m/%d}/{posts[0].slug}"
         result = post_service.get_by_post_path(post_path)
 
         assert posts[0].slug == result.slug
         assert posts[0].published_at == result.published_at
         post_repository.get_post_by_post_path.assert_called_once_with(post_path, ANY)
+
+    def test_get_post_by_post_path_falls_back_to_unpadded_path(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_service: PostService,
+        post_repository: PostRepository,
+    ):
+        """Legacy posts stored with unpadded month/day are still found."""
+        mocker.patch.object(
+            PostRepository,
+            "get_post_by_post_path",
+            side_effect=[None, posts[0].model_dump()],
+        )
+
+        dt = SINGLE_DIGIT_DATE
+        post_path = f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}"
+        post_service.get_by_post_path(post_path)
+
+        calls = post_repository.get_post_by_post_path.call_args_list
+        assert len(calls) == 2
+        assert calls[0].args[0] == post_path
+        assert calls[1].args[0] == f"{dt:%Y/%m/%d}/{posts[0].slug}"
 
     def test_fail_to_get_post_by_post_path_due_post_not_found_exception(
         self,
@@ -376,15 +444,19 @@ class TestPostService:
     ):
         mocker.patch.object(PostRepository, "get_post_by_post_path", return_value=None)
 
-        dt = pendulum.parse(posts[0].published_at)
-        post_path = f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}"
+        dt = SINGLE_DIGIT_DATE
+        post_path = f"{dt:%Y/%m/%d}/{posts[0].slug}"
         with pytest.raises(PostNotFoundException) as excinfo:
             post_service.get_by_post_path(post_path)
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
-        assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
-        post_repository.get_post_by_post_path.assert_called_once_with(post_path, ANY)
+        assert excinfo.value.detail == ERROR_MESSAGE_POST_WAS_NOT_FOUND
+        calls = post_repository.get_post_by_post_path.call_args_list
+        assert [call.args[0] for call in calls] == [
+            post_path,
+            f"{dt.year}/{dt.month}/{dt.day}/{posts[0].slug}",
+        ]
 
     def test_successfully_get_posts(
         self,
@@ -395,19 +467,20 @@ class TestPostService:
     ):
         mocker.patch.object(
             PostRepository,
-            "get_posts",
-            return_value=[None, [post.model_dump() for post in posts]],
+            "get_all_posts",
+            return_value=[post.model_dump() for post in posts],
         )
 
         result = post_service.get_posts()
 
         assert len(result.posts) == len(posts)
-        for idx, post in enumerate(result.posts, start=0):
+        expected = {post.id: post for post in posts}
+        for post in result.posts:
             assert (
                 post.model_dump(exclude="attachments").items()
-                <= posts[idx].model_dump(exclude="attachments").items()
+                <= expected[post.id].model_dump(exclude="attachments").items()
             )
-        post_repository.get_posts.assert_called_once_with(ANY, None, ANY)
+        post_repository.get_all_posts.assert_called_once_with(ANY, ANY)
 
     def test_successfully_get_post_by_uuid(
         self,
@@ -440,7 +513,7 @@ class TestPostService:
 
         assert PostNotFoundException.__name__ == excinfo.typename
         assert status.HTTP_404_NOT_FOUND == excinfo.value.status_code
-        assert ERROR_MESSAGE_POST_WAS_NOT_FOUND == excinfo.value.detail
+        assert excinfo.value.detail == ERROR_MESSAGE_POST_WAS_NOT_FOUND
         post_repository.get_post_by_uuid.assert_called_once_with(invalid_id)
 
     def test_fail_to_delete_post_due_to_unexpected_client_error(
@@ -490,26 +563,106 @@ class TestPostService:
 
         assert excinfo.value.response["Error"]["Code"] == "InternalServerError"
 
-    def test_sort_dates_and_group_by_month_with_multiple_months(
+    def test_get_post_returns_a_draft_only_when_unpublished_posts_are_included(
         self,
+        mocker: MockerFixture,
         post_service: PostService,
+        posts: list[Post],
     ):
-        dates = [
-            pendulum.parse("2025-01-15T12:00:00"),
-            pendulum.parse("2025-01-20T12:00:00"),
-            pendulum.parse("2025-02-10T12:00:00"),
-            pendulum.parse("2025-02-15T12:00:00"),
-            pendulum.parse("2025-02-20T12:00:00"),
+        posts[0].published_at = None
+        mocker.patch.object(
+            PostRepository, "get_post_by_uuid", return_value=posts[0].model_dump()
+        )
+
+        with pytest.raises(PostNotFoundException):
+            post_service.get_post(posts[0].id)
+        assert post_service.get_post(posts[0].id, include_unpublished=True).id == (
+            posts[0].id
+        )
+
+    def test_get_post_never_returns_a_deleted_post(
+        self,
+        mocker: MockerFixture,
+        post_service: PostService,
+        posts: list[Post],
+    ):
+        posts[0].deleted_at = datetime.now(UTC).isoformat()
+        mocker.patch.object(
+            PostRepository, "get_post_by_uuid", return_value=posts[0].model_dump()
+        )
+
+        with pytest.raises(PostNotFoundException):
+            post_service.get_post(posts[0].id, include_unpublished=True)
+
+    @staticmethod
+    def _summaries(count: int) -> list[dict]:
+        base = datetime(2026, 1, 1, tzinfo=UTC)
+        return [
+            {
+                "id": f"id-{index:02d}",
+                "title": f"Post {index}",
+                "published_at": (base + timedelta(days=index)).isoformat(),
+            }
+            for index in range(count)
         ]
 
-        result = post_service._sort_dates_and_group_by_month(dates)
-
-        assert result == {"2025-01": 2, "2025-02": 3}
-
-    def test_sort_dates_and_group_by_month_with_empty_dates(
-        self,
-        post_service: PostService,
+    def test_get_posts_pages_through_every_post_newest_first(
+        self, mocker: MockerFixture, post_service: PostService
     ):
-        result = post_service._sort_dates_and_group_by_month([])
+        summaries = self._summaries(7)
+        # The repository scans in hash order, not publication order.
+        mocker.patch.object(
+            PostRepository,
+            "get_all_posts",
+            return_value=sorted(summaries, key=lambda post: post["id"][::-1]),
+        )
+        mocker.patch("app.services.post_service.POSTS_PAGE_SIZE", 3)
 
-        assert result == {}
+        ids: list[str] = []
+        cursor = None
+        pages = 0
+        while True:
+            page = post_service.get_posts(cursor)
+            pages += 1
+            ids.extend(post.id for post in page.posts)
+            cursor = page.exclusive_start_key
+            if cursor is None:
+                break
+
+        assert pages == 3
+        assert ids == [post["id"] for post in reversed(summaries)]
+
+    def test_get_posts_returns_no_cursor_when_everything_fits_on_one_page(
+        self, mocker: MockerFixture, post_service: PostService
+    ):
+        mocker.patch.object(
+            PostRepository, "get_all_posts", return_value=self._summaries(3)
+        )
+
+        page = post_service.get_posts()
+
+        assert len(page.posts) == 3
+        assert page.exclusive_start_key is None
+
+    def test_get_posts_cursor_survives_the_removal_of_its_post(
+        self, mocker: MockerFixture, post_service: PostService
+    ):
+        summaries = self._summaries(5)
+        get_all = mocker.patch.object(
+            PostRepository, "get_all_posts", return_value=list(summaries)
+        )
+        mocker.patch("app.services.post_service.POSTS_PAGE_SIZE", 2)
+        first = post_service.get_posts()
+
+        # The last post of the first page is deleted before the next request.
+        remaining = [p for p in summaries if p["id"] != first.posts[-1].id]
+        get_all.return_value = remaining
+        second = post_service.get_posts(first.exclusive_start_key)
+
+        assert [post.id for post in second.posts] == ["id-02", "id-01"]
+
+    def test_get_posts_rejects_a_malformed_cursor(self, post_service: PostService):
+        with pytest.raises(HTTPException) as excinfo:
+            post_service.get_posts("not-a-cursor")
+
+        assert excinfo.value.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
