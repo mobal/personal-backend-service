@@ -385,7 +385,7 @@ Docker end-to-end (`bruno` job):
 - Builds the app image and the AWS Emulator image (DynamoDB, SSM, S3) and starts
   both; the app seeds the emulator with `scripts/init_emulator.py` on start
 - Gates on the app's healthcheck and runs the Bruno
-  collection in `bruno/` with the Bruno CLI, inside the emulator's network namespace (`/health`, post CRUD, archive, auth failures,
+  collection in `collections/` with the Bruno CLI, inside the emulator's network namespace (`/health`, post CRUD, archive, auth failures,
   attachments)
 
 ---
@@ -443,7 +443,7 @@ curl localhost:8080/health
 # namespace (presigned URLs point at 127.0.0.1:9297) and skip the self-signed
 # certificate check
 docker run --rm --network "container:$(docker compose ps -q emulator)" \
-  -v "$PWD/bruno:/bruno:ro" usebruno/cli:4.3.0 run --env e2e -r \
+  -v "$PWD/collections:/bruno:ro" usebruno/cli:4.3.0 run --env e2e -r \
   --env-var baseUrl=http://localhost:8080 --insecure
 
 docker compose down -v
@@ -481,12 +481,12 @@ Notes:
 
 ### API tests with Bruno
 
-`bruno/` is a [Bruno](https://www.usebruno.com/) collection in OpenCollection YAML. It
+`collections/` is a [Bruno](https://www.usebruno.com/) collection in OpenCollection YAML. It
 covers 29 requests (59 tests): `/health`, post CRUD, list, archive, RSS, auth failures and
 attachments. Open the folder in the Bruno app, or run it with the CLI as shown above.
 
 ```
-bruno/
+collections/
 ├── opencollection.yml       # collection config, docs and the pre-request script that mints JWTs
 ├── environments/e2e.yml     # baseUrl, jwtSecret, jwtAudience, jwtSubject
 ├── health/                  # one folder per area; folder.yml sets the run order (seq)
@@ -507,8 +507,10 @@ bruno/
 Following Bruno's [Git strategies](https://docs.usebruno.com/git-integration/git-strategies)
 guide, this is a collection-level setup: the collection lives in the repository of the one
 service it tests and is versioned with it, so there is no separate workspace or collection
-repository to keep in sync. Moving it into a shared Bruno workspace later only needs
-`bruno/` to be connected to that workspace.
+repository to keep in sync. It sits in `collections/`, the folder the guide's workspace layout
+uses (`collections/<name>/` next to a `workspace.yml`), but here the folder itself is the
+collection. The guide does not describe moving a standalone collection into a workspace, so
+check it before relying on that.
 
 ---
 
@@ -576,7 +578,7 @@ tests/
 terraform/*.tf              # Infra: API Gateway, Lambda, DynamoDB, S3, IAM
 
 .github/workflows/ci.yml    # CI: Bandit, Ruff, pytest, SonarQube, Bruno e2e
-bruno/                      # Bruno e2e collection (OpenCollection YAML)
+collections/                # Bruno e2e collection (OpenCollection YAML)
 scripts/                    # emulator seeding, Lambda build/packaging
 ```
 

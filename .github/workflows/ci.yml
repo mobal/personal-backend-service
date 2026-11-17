@@ -109,7 +109,7 @@ jobs:
       # --insecure because the emulator uses a self-signed certificate.
       run: |
         docker run --rm --network "container:$(docker compose ps -q emulator)" \
-          -v "$PWD/bruno:/bruno:ro" \
+          -v "$PWD/collections:/bruno:ro" \
           usebruno/cli:4.3.0 run --env e2e -r \
           --env-var baseUrl=http://localhost:8080 \
           --insecure

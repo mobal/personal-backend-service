@@ -107,7 +107,7 @@ docs:
     # against the compose stack, from the repository root
     docker compose up -d --build --wait app
     docker run --rm --network "container:$(docker compose ps -q emulator)" \
-      -v "$PWD/bruno:/bruno" usebruno/cli:<version> run --env e2e -r \
+      -v "$PWD/collections:/bruno" usebruno/cli:<version> run --env e2e -r \
       --env-var baseUrl=http://localhost:8080 --insecure
     ```
   type: text/markdown
