@@ -1,0 +1,115 @@
+opencollection: 1.0.0
+
+info:
+  name: personal-backend-service e2e
+
+request:
+  scripts:
+    - type: before-request
+      code: |-
+        // The service does not issue tokens: it only validates HS256 JWTs signed with
+        // the shared secret (issued by the auth-service in production). Before every
+        // request this collection-level script makes sure a valid `accessToken` exists
+        // (minted on the fly, refreshed one minute before it expires) and that an
+        // already expired `expiredToken` is available for the auth failure paths.
+        // Requests that must not authenticate send an empty bearer token instead.
+        const cjs = require('crypto-js');
+        const nowSec = Math.floor(Date.now() / 1000);
+        const secret = bru.getEnvVar('jwtSecret');
+        const audience = bru.getEnvVar('jwtAudience');
+        const subject = bru.getEnvVar('jwtSubject') || 'bruno-e2e';
+
+        const b64url = (value) =>
+          cjs.enc.Base64.stringify(cjs.enc.Utf8.parse(JSON.stringify(value)))
+            .replace(/=+$/, '')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_');
+
+        const sign = (issuedAt, expiresAt) => {
+          const header = { alg: 'HS256', typ: 'JWT' };
+          const payload = {
+            exp: expiresAt,
+            iat: issuedAt,
+            aud: audience,
+            iss: 'auth-service',
+            jti: bru.interpolate('{{$guid}}'),
+            sub: subject,
+            user: { id: subject, email: 'bruno-e2e@example.com', display_name: 'Bruno E2E' }
+          };
+          const signingInput = b64url(header) + '.' + b64url(payload);
+          const signature = cjs.enc.Base64.stringify(cjs.HmacSHA256(signingInput, secret))
+            .replace(/=+$/, '')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_');
+          return signingInput + '.' + signature;
+        };
+
+        const tokenValid = (token) => {
+          try {
+            let payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            payload += '='.repeat((4 - (payload.length % 4)) % 4);
+            const claims = JSON.parse(cjs.enc.Utf8.stringify(cjs.enc.Base64.parse(payload)));
+            return claims.exp > nowSec + 60;
+          } catch (error) {
+            return false;
+          }
+        };
+
+        if (!tokenValid(bru.getVar('accessToken') || '')) {
+          bru.setVar('accessToken', sign(nowSec, nowSec + 3600));
+        }
+        if (!bru.getVar('expiredToken')) {
+          // Correctly signed, but exp/iat are in the past.
+          bru.setVar('expiredToken', sign(nowSec - 7200, nowSec - 3600));
+        }
+
+docs:
+  content: |-
+    # personal-backend-service e2e
+
+    End-to-end API collection for the personal-backend-service (serverless blog API). Run it
+    against the local Docker stack (`docker compose up -d --build --wait app`) or against a
+    deployed API Gateway URL.
+
+    ## Environment `e2e`
+
+    | Variable | Default | Description |
+    |----------|---------|-------------|
+    | `baseUrl` | `http://localhost:8080` | App base URL. Override with `--env-var baseUrl=...` or point it at the deployed API Gateway URL. |
+    | `jwtSecret` | *(e2e sample from `.env.example`)* | Shared HS256 signing secret, the value behind `JWT_SECRET_SSM_PARAM_NAME`. |
+    | `jwtAudience` | `https://e2e-personal-backend-service` | `aud` claim minted into tokens. Must match `https://{stage}-{app_name}` of the target service. |
+    | `jwtSubject` | `bruno-e2e` | `sub` claim of the minted tokens. |
+
+    Requests share state through runtime variables (`postId`, `postTitle`, `updatedTitle`,
+    `attachmentPostId`, `attachmentId`, `attachmentDownloadPath`, `signedDownloadUrl`, the
+    `unknown*` ids and the `today*` date parts) that the scripts set while the collection runs.
+    Run whole folders in order; a single request relies on the variables set by earlier ones.
+
+    ## Notes
+
+    - The wire format is camelCase (Pydantic `to_camel` aliases) although the internal models are snake_case.
+    - Errors use the envelope `{ status, id, message }`; request-validation failures (422) add an `errors` array.
+    - Routes live under `/api/v1`. Writes require an HS256 JWT bearer in the `Authorization` header; reads are public.
+    - The service never issues tokens (the auth-service does in production): the collection-level
+      pre-request script mints a fresh `accessToken` whenever the stored one is missing or about to
+      expire, and an already expired `expiredToken` for the auth failure paths. Requests that must be
+      unauthenticated send an empty bearer token.
+    - Titles are unique per run (a `Date.now()` suffix) and fixture posts are soft-deleted at the end of
+      each folder, so the collection is safe to re-run against a populated database.
+    - "Get attachment download — redirect" disables redirect following so the 302 itself can be
+      asserted; "Download attachment via signed URL" then fetches the presigned S3 URL.
+    - Requires the environment seeded by `scripts/init_emulator.py`: the `{stage}-posts` DynamoDB table,
+      the SSM parameter behind `JWT_SECRET_SSM_PARAM_NAME`, and the attachments S3 bucket.
+
+    ## Running
+
+    ```bash
+    # against the compose stack, from the repository root
+    docker compose up -d --build --wait app
+    docker run --rm --network "container:$(docker compose ps -q emulator)" \
+      -v "$PWD/bruno:/bruno" usebruno/cli:<version> run --env e2e -r \
+      --env-var baseUrl=http://localhost:8080 --insecure
+    ```
+  type: text/markdown
+bundled: false
+extensions: {}

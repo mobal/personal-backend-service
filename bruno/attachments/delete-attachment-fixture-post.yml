@@ -1,0 +1,28 @@
+info:
+  name: Delete attachment fixture post
+  type: http
+  seq: 9
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/v1/posts/{{attachmentPostId}}"
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 204', () => {
+          expect(res.status).to.equal(204);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Soft-deletes the fixture post so repeated full-collection runs stay clean. The object stays in S3 — there is no attachment delete endpoint.

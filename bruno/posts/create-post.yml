@@ -1,0 +1,57 @@
+info:
+  name: Create post
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/posts"
+  body:
+    type: json
+    data: |-
+      {
+        "author": "Bruno E2E",
+        "title": "{{postTitle}}",
+        "content": "**Hello** from the Bruno e2e collection.",
+        "tags": ["e2e", "bruno"],
+        "meta": {
+          "category": "e2e",
+          "description": "Post created by the Bruno e2e collection.",
+          "language": "en",
+          "keywords": ["bruno", "e2e"],
+          "title": "Bruno e2e post"
+        },
+        "publishedAt": "2024-02-03T12:00:00+00:00"
+      }
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        // Unique title per run so reruns against a populated database do not 409.
+        bru.setVar('postTitle', 'Bruno e2e post ' + Date.now());
+    - type: tests
+      code: |-
+        test('responds with 201', () => {
+          expect(res.status).to.equal(201);
+        });
+        const location = res.getHeader('location');
+        test('returns the Location header of the new post', () => {
+          expect(location).to.be.a('string').and.not.empty;
+          expect(location.split('/')[3]).to.equal('posts');
+        });
+        if (location) {
+          bru.setVar('postId', location.split('/')[4]);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Creates a post (JWT required). The pre-request script picks a unique title per run, and `publishedAt` is fixed in the past so the list and archive endpoints serve it. The tests store the post id from the `Location` header.

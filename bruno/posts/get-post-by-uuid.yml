@@ -1,0 +1,41 @@
+info:
+  name: Get post by uuid
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v1/posts/{{postId}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 200', () => {
+          expect(res.status).to.equal(200);
+        });
+        const body = res.body;
+        test('returns the created post', () => {
+          expect(body.id).to.equal(bru.getVar('postId'));
+          expect(body.author).to.equal('Bruno E2E');
+          expect(body.title).to.equal(bru.getVar('postTitle'));
+          expect(body.tags).to.eql(['e2e', 'bruno']);
+          expect(body.publishedAt).to.equal('2024-02-03T12:00:00+00:00');
+          expect(body.meta.category).to.equal('e2e');
+        });
+        test('derives a slug and a post path', () => {
+          expect(body.slug).to.be.a('string').and.not.empty;
+          expect(body.postPath).to.match(/^\d{4}\/\d{1,2}\/\d{1,2}\//);
+        });
+        test('serves the content as sanitized HTML', () => {
+          expect(body.content).to.include('<strong>Hello</strong>');
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Fetches the full post by uuid (public). The markdown `content` is served as sanitized HTML, and `slug` / `postPath` are derived at creation.

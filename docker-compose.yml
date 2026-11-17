@@ -7,12 +7,11 @@
 #   - the app is published (and reachable from other containers) through the
 #     `emulator` service: http://localhost:8080 on the host, http://emulator:8080
 #     from other containers on the compose network
-#   - presigned S3 URLs point at https://127.0.0.1:9297, so Newman has to run in
-#     the same namespace and skip certificate checks:
+#   - presigned S3 URLs point at https://127.0.0.1:9297, so the Bruno CLI has to run
+#     in the same namespace and skip certificate checks (see bruno/):
 #       docker run --rm --network container:$(docker compose ps -q emulator) \
-#         -v "$PWD/postman:/postman:ro" postman/newman:latest \
-#         run /postman/personal_backend_service.postman_collection.json \
-#         --env-var baseUrl=http://localhost:8080 --ignore-redirects --insecure
+#         -v "$PWD/bruno:/bruno:ro" usebruno/cli:4.3.0 run --env e2e -r \
+#         --env-var baseUrl=http://localhost:8080 --insecure
 #   - the CA is generated on every start into the shared `emulator-home` volume
 #   - state lives in memory and is gone when the emulator stops
 services:

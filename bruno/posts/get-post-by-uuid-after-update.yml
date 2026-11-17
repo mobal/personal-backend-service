@@ -1,0 +1,31 @@
+info:
+  name: Get post by uuid — after update
+  type: http
+  seq: 12
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v1/posts/{{postId}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 200', () => {
+          expect(res.status).to.equal(200);
+        });
+        test('reflects the updated title', () => {
+          expect(res.body.title).to.equal(bru.getVar('updatedTitle'));
+        });
+        test('stamps the update timestamp', () => {
+          expect(res.body.updatedAt).to.be.a('string').and.not.empty;
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "Re-reads the post after the PUT: the title must reflect the update and `updatedAt` must be set."

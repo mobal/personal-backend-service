@@ -1,0 +1,37 @@
+info:
+  name: Get RSS feed
+  type: http
+  seq: 6
+
+http:
+  method: GET
+  url: "{{baseUrl}}/rss.xml"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 200', () => {
+          expect(res.status).to.equal(200);
+        });
+        test('returns RSS XML content type', () => {
+          expect(res.getHeader('content-type')).to.include('application/rss+xml');
+        });
+        const xml = String(res.body);
+        test('returns an RSS 2.0 document', () => {
+          expect(xml).to.match(/<rss\b[^>]*\bversion="2\.0"[^>]*>/);
+          expect(xml).to.include('<item>');
+        });
+        test('includes the published post created by this collection', () => {
+          expect(xml).to.include(bru.getVar('postTitle'));
+          expect(xml).to.include('<content:encoded>');
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Returns the public RSS 2.0 feed with published posts.

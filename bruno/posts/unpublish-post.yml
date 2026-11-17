@@ -1,0 +1,34 @@
+info:
+  name: Unpublish post
+  type: http
+  seq: 14
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/v1/posts/{{postId}}"
+  body:
+    type: json
+    data: |-
+      {
+        "publishedAt": null
+      }
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 204', () => {
+          expect(res.status).to.equal(204);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Explicit null clears publishedAt and returns the post to draft status.

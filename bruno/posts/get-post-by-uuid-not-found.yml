@@ -1,0 +1,31 @@
+info:
+  name: Get post by uuid — not found
+  type: http
+  seq: 9
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v1/posts/{{unknownPostId}}"
+
+runtime:
+  scripts:
+    - type: before-request
+      code: bru.setVar('unknownPostId', bru.interpolate('{{$guid}}'));
+    - type: tests
+      code: |-
+        test('responds with 404', () => {
+          expect(res.status).to.equal(404);
+        });
+        test('reports the post as not found', () => {
+          expect(res.body.status).to.equal(404);
+          expect(res.body.message).to.equal('The requested post was not found');
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: An unknown uuid must yield the 404 envelope with "The requested post was not found". The pre-request script picks a random uuid.

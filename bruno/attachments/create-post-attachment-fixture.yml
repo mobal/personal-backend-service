@@ -1,0 +1,54 @@
+info:
+  name: Create post — attachment fixture
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/posts"
+  body:
+    type: json
+    data: |-
+      {
+        "author": "Bruno E2E",
+        "title": "{{attachmentPostTitle}}",
+        "content": "Post hosting the attachment for the e2e collection.",
+        "tags": ["e2e"],
+        "meta": {
+          "category": "e2e",
+          "description": "Attachment fixture created by the Bruno e2e collection.",
+          "language": "en",
+          "keywords": ["attachment", "e2e"],
+          "title": "Attachment fixture"
+        },
+        "publishedAt": "2024-03-04T12:00:00+00:00"
+      }
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: before-request
+      code: bru.setVar('attachmentPostTitle', 'Attachment fixture ' + Date.now());
+    - type: tests
+      code: |-
+        test('responds with 201', () => {
+          expect(res.status).to.equal(201);
+        });
+        const location = res.getHeader('location');
+        test('returns the Location header of the new post', () => {
+          expect(location).to.be.a('string').and.not.empty;
+        });
+        if (location) {
+          bru.setVar('attachmentPostId', location.split('/')[4]);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Creates a dedicated post (unique title per run) to attach files to; the folder deletes it again at the end. The tests store the post id from the `Location` header.

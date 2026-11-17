@@ -43,7 +43,7 @@ A production-grade personal blog backend. Posts are stored in **DynamoDB**, rend
 | Lint / Format | Ruff |
 | Type Checking | ty |
 | Security | Bandit |
-| CI | GitHub Actions (pytest, SonarQube, Newman e2e) |
+| CI | GitHub Actions (pytest, SonarQube, Bruno e2e) |
 | Deployment | Terraform (AWS) |
 
 ---
@@ -353,7 +353,7 @@ The Lambda artifacts are built inside the versioned `public.ecr.aws/lambda/pytho
 ## CI/CD Pipeline (GitHub Actions)
 
 `.github/workflows/ci.yml` runs on every push. The `build-and-test` job
-mirrors the Makefile targets; the `newman` job (needs `build-and-test`)
+mirrors the Makefile targets; the `bruno` job (needs `build-and-test`)
 replays the Docker end-to-end suite, and a separate infrastructure job checks
 OpenTofu formatting/validation and TFLint.
 
@@ -366,7 +366,7 @@ flowchart LR
     E --> F["ruff check + format"]
     F --> G["pytest + coverage XML"]
     G --> H["SonarQube scan"]
-    H --> I["docker compose e2e (Newman)"]
+    H --> I["docker compose e2e (Bruno)"]
 ```
 
 Stages (`build-and-test`):
@@ -375,11 +375,11 @@ Stages (`build-and-test`):
 - **pytest** (branch coverage; XML report uploaded to Codecov/SonarQube)
 - **SonarQube** (Python analysis + coverage)
 
-Docker end-to-end (`newman` job):
+Docker end-to-end (`bruno` job):
 - Builds the app image and the AWS Emulator image (DynamoDB, SSM, S3) and starts
   both; the app seeds the emulator with `scripts/init_emulator.py` on start
-- Gates on the app's healthcheck and runs the Postman
-  collection with Newman, inside the emulator's network namespace (`/health`, post CRUD, archive, auth failures,
+- Gates on the app's healthcheck and runs the Bruno
+  collection in `bruno/` with the Bruno CLI, inside the emulator's network namespace (`/health`, post CRUD, archive, auth failures,
   attachments)
 
 ---
@@ -432,12 +432,12 @@ endpoint as `https://127.0.0.1:9297`:
 docker compose up -d --build --wait app
 curl localhost:8080/health
 
-# Postman collection: Newman must share the namespace (presigned URLs point at
-# 127.0.0.1:9297) and skip the self-signed certificate check
+# Bruno collection (see "API tests with Bruno" below): the CLI must share the
+# namespace (presigned URLs point at 127.0.0.1:9297) and skip the self-signed
+# certificate check
 docker run --rm --network "container:$(docker compose ps -q emulator)" \
-  -v "$PWD/postman:/postman:ro" postman/newman:latest \
-  run /postman/personal_backend_service.postman_collection.json \
-  --env-var baseUrl=http://localhost:8080 --ignore-redirects --insecure
+  -v "$PWD/bruno:/bruno:ro" usebruno/cli:4.3.0 run --env e2e -r \
+  --env-var baseUrl=http://localhost:8080 --insecure
 
 docker compose down -v
 ```
@@ -468,9 +468,40 @@ uv run uvicorn app.api_handler:app --reload --port 8080
 Notes:
 - Emulator health: `curl --cacert "$AWS_CA_BUNDLE" https://127.0.0.1:9297/__admin/health` returns `ok`.
 - After restarting the emulator, seed it again and restart the app (new CA, empty state).
-- Newman needs `--insecure` against it, because the presigned S3 download check
+- The Bruno CLI needs `--insecure` against it, because the presigned S3 download check
   follows an HTTPS URL with the self-signed certificate. The emulator is pinned to
   nothing: the Dockerfile installs `LTS/latest`, so rebuild to pick up new releases.
+
+### API tests with Bruno
+
+`bruno/` is a [Bruno](https://www.usebruno.com/) collection in OpenCollection YAML. It
+covers 29 requests (59 tests): `/health`, post CRUD, list, archive, RSS, auth failures and
+attachments. Open the folder in the Bruno app, or run it with the CLI as shown above.
+
+```
+bruno/
+├── opencollection.yml       # collection config, docs and the pre-request script that mints JWTs
+├── environments/e2e.yml     # baseUrl, jwtSecret, jwtAudience, jwtSubject
+├── health/                  # one folder per area; folder.yml sets the run order (seq)
+├── posts/
+└── attachments/
+```
+
+- Requests share state (`postId`, `attachmentId`, ...) through runtime variables, so run a
+  whole folder, or the whole collection with `-r`, in order.
+- The service never issues tokens: the collection-level script signs HS256 JWTs with
+  `jwtSecret` (the e2e sample from `.env.example`). Override `baseUrl` with
+  `--env-var baseUrl=...` to test a deployed API Gateway URL.
+- "Get attachment download — redirect" turns redirect following off to assert the 302;
+  the next request downloads the presigned URL.
+- The Docker image is pinned (`usebruno/cli:4.3.0`). Bump it deliberately, and re-run the
+  collection when you do.
+
+Following Bruno's [Git strategies](https://docs.usebruno.com/git-integration/git-strategies)
+guide, this is a collection-level setup: the collection lives in the repository of the one
+service it tests and is versioned with it, so there is no separate workspace or collection
+repository to keep in sync. Moving it into a shared Bruno workspace later only needs
+`bruno/` to be connected to that workspace.
 
 ---
 
@@ -537,8 +568,8 @@ tests/
 
 terraform/*.tf              # Infra: API Gateway, Lambda, DynamoDB, S3, IAM
 
-.github/workflows/ci.yml    # CI: Bandit, Ruff, pytest, SonarQube, Newman e2e
-postman/                    # Newman e2e collection
+.github/workflows/ci.yml    # CI: Bandit, Ruff, pytest, SonarQube, Bruno e2e
+bruno/                      # Bruno e2e collection (OpenCollection YAML)
 scripts/                    # emulator seeding, Lambda build/packaging
 ```
 

@@ -1,0 +1,48 @@
+info:
+  name: Create post — missing bearer token
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/posts"
+  headers:
+    - name: Authorization
+      value: "Bearer "
+  body:
+    type: json
+    data: |-
+      {
+        "author": "Bruno E2E",
+        "title": "{{postTitle}}",
+        "content": "**Hello** from the Bruno e2e collection.",
+        "tags": ["e2e", "bruno"],
+        "meta": {
+          "category": "e2e",
+          "description": "Post created by the Bruno e2e collection.",
+          "language": "en",
+          "keywords": ["bruno", "e2e"],
+          "title": "Bruno e2e post"
+        },
+        "publishedAt": "2024-02-03T12:00:00+00:00"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 403', () => {
+          expect(res.status).to.equal(403);
+        });
+        test('reports the request as unauthenticated', () => {
+          expect(res.body.message).to.equal('Not authenticated');
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: An empty bearer token must be rejected with 403 "Not authenticated" before the body is validated. Sends an empty bearer token instead of `{{accessToken}}`.

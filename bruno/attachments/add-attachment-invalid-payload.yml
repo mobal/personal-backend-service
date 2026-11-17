@@ -1,0 +1,36 @@
+info:
+  name: Add attachment — invalid payload
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/posts/{{attachmentPostId}}/attachments"
+  body:
+    type: json
+    data: "{}"
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 422', () => {
+          expect(res.status).to.equal(422);
+        });
+        test('returns the validation error envelope', () => {
+          expect(res.body.status).to.equal(422);
+          expect(res.body.id).to.be.a('string').and.not.empty;
+          expect(res.body.errors).to.be.an('array').and.not.empty;
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: An empty body misses the required `name` and `data` fields and must fail with the 422 validation envelope.

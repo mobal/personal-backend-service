@@ -1,0 +1,31 @@
+info:
+  name: Publish post — missing bearer token
+  type: http
+  seq: 13
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/posts/{{postId}}/publish"
+  headers:
+    - name: Authorization
+      value: "Bearer "
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 403', () => {
+          expect(res.status).to.equal(403);
+        });
+        test('reports the request as unauthenticated', () => {
+          expect(res.body.message).to.equal('Not authenticated');
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: The publish endpoint is protected by JWT. The collection checks the authentication boundary without contacting the remote SSH blog server.

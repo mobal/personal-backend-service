@@ -1,0 +1,28 @@
+info:
+  name: Get attachment download — redirect
+  type: http
+  seq: 6
+
+http:
+  method: GET
+  url: "{{baseUrl}}{{attachmentDownloadPath}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('stable URL redirects without caching', () => {
+          expect(res.status).to.equal(302);
+          expect(res.getHeader('cache-control')).to.equal('no-store');
+          expect(res.getHeader('location')).to.include('X-Amz-Signature=');
+        });
+        bru.setVar('signedDownloadUrl', res.getHeader('location'));
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: false
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Follows the stable download URL from the metadata (public). It must answer with a non-cached 302 to a presigned S3 URL; redirects are not followed so the response itself can be asserted. The tests store the `Location` for the next request.

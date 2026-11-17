@@ -82,8 +82,8 @@ jobs:
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  newman:
-    name: Docker end-to-end (Newman)
+  bruno:
+    name: Docker end-to-end (Bruno)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Docker tests are the last gate: only run them when the static checks and
@@ -98,16 +98,16 @@ jobs:
       # builds both images; the app seeds the emulator on start
       run: docker compose up -d --build --wait --wait-timeout 300 app
 
-    - name: Run Postman collection with Newman
-      # Newman joins the emulator's network namespace: the app is reached as
-      # localhost and presigned S3 URLs point at the emulator's 127.0.0.1:9297.
+    - name: Run Bruno collection
+      # The Bruno CLI joins the emulator's network namespace: the app is reached
+      # as localhost and presigned S3 URLs point at the emulator's 127.0.0.1:9297.
       # --insecure because the emulator uses a self-signed certificate.
       run: |
         docker run --rm --network "container:$(docker compose ps -q emulator)" \
-          -v "$PWD/postman:/postman:ro" \
-          postman/newman:latest run /postman/personal_backend_service.postman_collection.json \
+          -v "$PWD/bruno:/bruno:ro" \
+          usebruno/cli:4.3.0 run --env e2e -r \
           --env-var baseUrl=http://localhost:8080 \
-          --ignore-redirects --insecure
+          --insecure
 
     - name: Clean up containers
       if: always()

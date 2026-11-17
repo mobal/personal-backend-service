@@ -10,6 +10,7 @@ coverage.xml
 dist
 docs
 plans
+bruno
 docker
 infrastructure
 docker-compose.yml

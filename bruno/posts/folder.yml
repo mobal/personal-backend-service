@@ -1,0 +1,8 @@
+info:
+  name: Posts
+  type: folder
+  seq: 2
+
+docs:
+  content: Post CRUD, the public reads (list, RSS, archive) and the authentication boundary. Deletes the post at the end so repeated runs stay clean.
+  type: text/markdown

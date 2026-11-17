@@ -1,0 +1,36 @@
+info:
+  name: Update post
+  type: http
+  seq: 11
+
+http:
+  method: PUT
+  url: "{{baseUrl}}/api/v1/posts/{{postId}}"
+  body:
+    type: json
+    data: |-
+      {
+        "title": "{{updatedTitle}}"
+      }
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: before-request
+      code: bru.setVar('updatedTitle', 'Updated ' + (bru.getVar('postTitle') || 'post'));
+    - type: tests
+      code: |-
+        test('responds with 204', () => {
+          expect(res.status).to.equal(204);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Partial update (JWT required) — only the title is changed here. Returns 204; the follow-up GET proves the change and the `updatedAt` stamp. The slug and date-based post path are recomputed from the original creation date.

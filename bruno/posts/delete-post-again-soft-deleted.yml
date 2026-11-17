@@ -1,0 +1,31 @@
+info:
+  name: Delete post — again (soft-deleted)
+  type: http
+  seq: 19
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/v1/posts/{{postId}}"
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 404', () => {
+          expect(res.status).to.equal(404);
+        });
+        test('reports the post as not found', () => {
+          expect(res.body.message).to.equal('The requested post was not found');
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "Deletion is a soft delete guarded by a conditional write: deleting the same post again must fail the condition and surface as 404. Deleting at the end of the folder also keeps repeated runs clean."

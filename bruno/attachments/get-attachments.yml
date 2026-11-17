@@ -1,0 +1,29 @@
+info:
+  name: Get attachments
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v1/posts/{{attachmentPostId}}/attachments"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 200', () => {
+          expect(res.status).to.equal(200);
+        });
+        test('includes the added attachment', () => {
+          expect(res.body).to.be.an('array');
+          expect(res.body.some((a) => a.id === bru.getVar('attachmentId'))).to.be.true;
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Lists the attachment metadata embedded in the post (public). The attachment added above must be part of the list.

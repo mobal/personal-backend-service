@@ -1,0 +1,45 @@
+info:
+  name: Add attachment
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/v1/posts/{{attachmentPostId}}/attachments"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "lorem.txt",
+        "data": "TG9yZW0gaXBzdW0gb2RvciBhbWV0LCBjb25zZWN0ZXR1ZXIgYWRpcGlzY2luZyBlbGl0Lg==",
+        "displayName": "lorem.txt"
+      }
+  auth:
+    type: bearer
+    token: "{{accessToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 201', () => {
+          expect(res.status).to.equal(201);
+        });
+        const location = res.getHeader('location');
+        test('returns the Location header of the new attachment', () => {
+          expect(location).to.be.a('string').and.not.empty;
+          expect(location.split('/')[3]).to.equal('posts');
+          expect(location.split('/')[5]).to.equal('attachments');
+        });
+        if (location) {
+          bru.setVar('attachmentId', location.split('/')[6]);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Uploads a small base64 file to S3 and embeds its metadata into the post (JWT required). The `data` decodes to 52 bytes of text; the MIME type is guessed from the file name (`text/plain`). The tests store the attachment id from the `Location` header.

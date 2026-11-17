@@ -1,0 +1,40 @@
+info:
+  name: Get attachment by id
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v1/posts/{{attachmentPostId}}/attachments/{{attachmentId}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 200', () => {
+          expect(res.status).to.equal(200);
+        });
+        const body = res.body;
+        test('returns the attachment metadata', () => {
+          expect(body.id).to.equal(bru.getVar('attachmentId'));
+          expect(body.displayName).to.equal('lorem.txt');
+          expect(body.mimeType).to.equal('text/plain');
+          expect(body.url).to.equal(
+            '/api/v1/posts/' + bru.getVar('attachmentPostId') + '/attachments/' + bru.getVar('attachmentId') + '/download'
+          );
+        });
+        test('reports the decoded content length', () => {
+          // The base64 `data` sent by "Add attachment" decodes to 52 bytes.
+          expect(body.contentLength).to.equal(52);
+        });
+        // The next two requests follow the stable download URL.
+        bru.setVar('attachmentDownloadPath', body.url);
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "Fetches one attachment's metadata (public): camelCase fields, the content length computed from the decoded bytes, and a stable API-relative download URL."

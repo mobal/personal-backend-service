@@ -1,0 +1,29 @@
+info:
+  name: Get archive
+  type: http
+  seq: 7
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/v1/posts/archive"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test('responds with 200', () => {
+          expect(res.status).to.equal(200);
+        });
+        test('groups the created post under its published month', () => {
+          expect(res.body).to.have.property('2024-02');
+          expect(res.body['2024-02']).to.be.at.least(1);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "Returns published-post counts grouped by `YYYY-MM` (public). The created post was published with `publishedAt: 2024-02-03`, so the `2024-02` bucket must count at least one post."
