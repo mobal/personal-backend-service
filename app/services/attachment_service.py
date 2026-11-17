@@ -11,7 +11,7 @@ from fastapi import HTTPException, status
 from unidecode import unidecode
 
 from app.exceptions import AttachmentNotFoundException
-from app.models.post import Attachment
+from app.models.post import Attachment, Post
 from app.models.response import Attachment as AttachmentResponse
 from app.schemas.attachment_schema import (
     ERROR_ATTACHMENT_TOO_LARGE,
@@ -131,6 +131,21 @@ class AttachmentService:
                 detail=ERROR_ATTACHMENT_TOO_LARGE,
             )
         return file_data
+
+    def delete_attachments(self, post: Post) -> None:
+        """Remove the S3 objects of a deleted post; failures are only logged.
+
+        The post is already soft-deleted when this runs, so one object that
+        cannot be removed must neither fail the request nor keep the others.
+        """
+        for attachment in post.attachments or []:
+            try:
+                self._storage_service.delete_object(attachment.bucket, attachment.name)
+            except Exception as error:
+                self._logger.error(
+                    f"Failed to delete attachment object {attachment.name=} "
+                    f"of {post.id=}: {error}"
+                )
 
     def _delete_uploaded_object(self, object_key: str) -> None:
         try:

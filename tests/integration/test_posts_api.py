@@ -5,11 +5,14 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
+from pytest_mock import MockerFixture
 from tests.helpers.utils import generate_jwt_token
 
 from app.models.post import Post
 from app.schemas.post_schema import MAX_TITLE_LENGTH, CreatePost
+from app.services.attachment_service import AttachmentService
 from app.services.publisher_service import PublisherService
+from app.services.s3_storage_service import S3StorageService
 
 BASE_URL = "/api/v1/posts"
 ERROR_MESSAGE_INTERNAL_SERVER_ERROR = "Internal Server Error"
@@ -225,6 +228,76 @@ class TestPostsApi:
         )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_delete_post_cleans_up_its_attachments_and_published_file(
+        self,
+        jwt_secret_ssm_param_value: str,
+        mocker: MockerFixture,
+        post_with_attachment: Post,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        delete_attachments = mocker.patch.object(
+            AttachmentService, "delete_attachments"
+        )
+        remove_published = mocker.patch.object(PublisherService, "remove_published")
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.delete(
+            f"{BASE_URL}/{post_with_attachment.id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        for cleanup in (delete_attachments, remove_published):
+            cleanup.assert_called_once()
+            assert cleanup.call_args.args[0].id == post_with_attachment.id
+
+    def test_delete_post_succeeds_when_the_cleanup_fails(
+        self,
+        jwt_secret_ssm_param_value: str,
+        mocker: MockerFixture,
+        post_with_attachment: Post,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        mocker.patch.object(
+            S3StorageService, "delete_object", side_effect=RuntimeError("s3 down")
+        )
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.delete(
+            f"{BASE_URL}/{post_with_attachment.id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+        )
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert (
+            test_client.get(f"{BASE_URL}/{post_with_attachment.id}").status_code
+            == status.HTTP_404_NOT_FOUND
+        )
+
+    def test_delete_post_does_not_clean_up_a_post_that_was_not_found(
+        self,
+        jwt_secret_ssm_param_value: str,
+        mocker: MockerFixture,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        delete_attachments = mocker.patch.object(
+            AttachmentService, "delete_attachments"
+        )
+        remove_published = mocker.patch.object(PublisherService, "remove_published")
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.delete(
+            f"{BASE_URL}/{uuid.uuid4()}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        delete_attachments.assert_not_called()
+        remove_published.assert_not_called()
 
     def test_fail_to_create_post_due_to_bad_request(
         self,

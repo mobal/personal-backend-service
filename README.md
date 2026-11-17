@@ -94,7 +94,7 @@ non-deleted posts, newest first, with each post's summary and Markdown content.
 | GET | `/posts/{uuid}` | No | Get post by UUID |
 | PUT | `/posts/{uuid}` | JWT | Update post |
 | POST | `/posts/{uuid}/publish` | JWT | Write post Markdown to the remote blog server |
-| DELETE | `/posts/{uuid}` | JWT | Soft-delete post |
+| DELETE | `/posts/{uuid}` | JWT | Soft-delete post, then remove its attachment files (S3) and published file (blog server) |
 | GET | `/posts/archive` | No | Archive grouped by year-month |
 | GET | `/posts/{year}/{month}/{day}/{slug}` | No | Get post by date path + slug |
 
@@ -294,7 +294,7 @@ erDiagram
 - GSI `TitleIndex` on `title`
 - GSI `CreatedAtIndex` on `created_at`
 
-**Soft-delete pattern**: Posts with a non-null `deleted_at` are excluded from all queries.
+**Soft-delete pattern**: Posts with a non-null `deleted_at` are excluded from all queries. Deleting a post also removes its S3 attachment objects and the published `{id}.md` file on the blog server, best effort: a failure there is logged and does not fail the request (the item itself stays in the table).
 
 ---
 

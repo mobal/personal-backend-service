@@ -187,3 +187,77 @@ class TestPublisherService:
         post_service.get_post_by_uuid.assert_called_once_with(post.id)
         mock_write.assert_not_called()
         update_state.assert_not_called()
+
+    def test_remove_published_deletes_the_remote_file(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        publisher_service: PublisherService,
+        settings: Settings,
+        sshfs_storage_service: SSHFSStorageService,
+    ):
+        posts[0].publish_status = "published"
+        delete = mocker.patch.object(SSHFSStorageService, "delete")
+        mocker.patch(
+            "app.settings.parameters.get_parameter", return_value="runtime-password"
+        )
+
+        publisher_service.remove_published(posts[0])
+
+        delete.assert_called_once_with(
+            settings.ssh_host,
+            settings.ssh_username,
+            "runtime-password",
+            f"{settings.ssh_root_path}/{posts[0].id}.md",
+        )
+
+    def test_remove_published_skips_posts_that_were_never_published(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        publisher_service: PublisherService,
+        sshfs_storage_service: SSHFSStorageService,
+    ):
+        posts[0].publish_status = None
+        delete = mocker.patch.object(SSHFSStorageService, "delete")
+
+        publisher_service.remove_published(posts[0])
+
+        delete.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "error",
+        [SSHError(1, "ssh failed"), OSError("connection lost"), FileNotFoundError()],
+    )
+    def test_remove_published_does_not_raise_when_the_remote_fails(
+        self,
+        mocker: MockerFixture,
+        error: Exception,
+        posts: list[Post],
+        publisher_service: PublisherService,
+        sshfs_storage_service: SSHFSStorageService,
+    ):
+        posts[0].publish_status = "published"
+        mocker.patch.object(SSHFSStorageService, "delete", side_effect=error)
+        mocker.patch(
+            "app.settings.parameters.get_parameter", return_value="runtime-password"
+        )
+
+        publisher_service.remove_published(posts[0])
+
+    def test_remove_published_does_not_raise_when_the_password_lookup_fails(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        publisher_service: PublisherService,
+        sshfs_storage_service: SSHFSStorageService,
+    ):
+        posts[0].publish_status = "published"
+        delete = mocker.patch.object(SSHFSStorageService, "delete")
+        mocker.patch(
+            "app.settings.parameters.get_parameter", side_effect=RuntimeError("ssm")
+        )
+
+        publisher_service.remove_published(posts[0])
+
+        delete.assert_not_called()

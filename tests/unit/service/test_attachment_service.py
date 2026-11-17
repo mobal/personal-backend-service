@@ -558,3 +558,56 @@ class TestAttachmentService:
         assert result.content_length == len(largest_data)
         assert result.content_length == MAX_ATTACHMENT_SIZE
         s3_storage_service.put_object.assert_called_once()
+
+    def test_delete_attachments_removes_every_object(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_with_attachment: Post,
+        s3_storage_service: S3StorageService,
+    ):
+        second = post_with_attachment.attachments[0].model_copy(
+            update={"id": str(uuid.uuid4()), "name": "/2026/09/05/post/second.txt"}
+        )
+        post_with_attachment.attachments.append(second)
+        delete_object = mocker.patch.object(S3StorageService, "delete_object")
+
+        attachment_service.delete_attachments(post_with_attachment)
+
+        assert [call.args for call in delete_object.call_args_list] == [
+            (attachment.bucket, attachment.name)
+            for attachment in post_with_attachment.attachments
+        ]
+
+    def test_delete_attachments_keeps_going_after_a_failure(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_with_attachment: Post,
+        s3_storage_service: S3StorageService,
+    ):
+        second = post_with_attachment.attachments[0].model_copy(
+            update={"id": str(uuid.uuid4()), "name": "/2026/09/05/post/second.txt"}
+        )
+        post_with_attachment.attachments.append(second)
+        delete_object = mocker.patch.object(
+            S3StorageService, "delete_object", side_effect=[RuntimeError("boom"), {}]
+        )
+
+        attachment_service.delete_attachments(post_with_attachment)
+
+        assert delete_object.call_count == 2
+
+    def test_delete_attachments_without_attachments_does_nothing(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        posts: list[Post],
+        s3_storage_service: S3StorageService,
+    ):
+        delete_object = mocker.patch.object(S3StorageService, "delete_object")
+        posts[0].attachments = None
+
+        attachment_service.delete_attachments(posts[0])
+
+        delete_object.assert_not_called()

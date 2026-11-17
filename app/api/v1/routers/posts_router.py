@@ -5,7 +5,12 @@ from aws_lambda_powertools import Logger
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from fastapi.responses import Response
 
-from app.dependencies import get_jwt_bearer, get_post_service, get_publisher_service
+from app.dependencies import (
+    get_attachment_service,
+    get_jwt_bearer,
+    get_post_service,
+    get_publisher_service,
+)
 from app.models.auth import JWTToken
 from app.models.response import (
     ErrorResponse,
@@ -14,6 +19,7 @@ from app.models.response import (
     ValidationErrorResponse,
 )
 from app.schemas.post_schema import CreatePost, UpdatePost
+from app.services.attachment_service import AttachmentService
 from app.services.post_service import PostService
 from app.services.publisher_service import PublisherService
 
@@ -95,16 +101,24 @@ def create_post(
     summary="Soft-delete a post",
     description=(
         "Sets `deletedAt` on the item, so the post is excluded from every "
-        "read path while the item is kept in the table. Requires a valid JWT."
+        "read path while the item is kept in the table. Afterwards the "
+        "attachment files in S3 and the published file on the blog server are "
+        "removed on a best-effort basis: a failure there is logged and does "
+        "not fail the request. Requires a valid JWT."
     ),
     response_description="Deleted — no content",
 )
 def delete_post(
     uuid: Annotated[str, POST_UUID],
     post_service: Annotated[PostService, Depends(get_post_service)],
+    attachment_service: Annotated[AttachmentService, Depends(get_attachment_service)],
+    publisher_service: Annotated[PublisherService, Depends(get_publisher_service)],
     token: Annotated[JWTToken, Depends(get_jwt_bearer)],
 ):
+    post = post_service.get_post_by_uuid(uuid)
     post_service.delete_post(uuid)
+    attachment_service.delete_attachments(post)
+    publisher_service.remove_published(post)
 
 
 @router.post(
