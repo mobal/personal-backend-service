@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     app_name: str
     attachments_bucket_name: str
     aws_region: str = Field(alias="AWS_DEFAULT_REGION")
+    blog_description: str = "Published articles"
+    blog_title: str = "Personal Backend Service"
+    blog_url: str | None = None
     jwt_secret_ssm_param_name: str = Field(alias="JWT_SECRET_SSM_PARAM_NAME")
     default_timezone: str
     ssh_host: str

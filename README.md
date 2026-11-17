@@ -83,7 +83,9 @@ flowchart TD
 All routes are prefixed with `/api/v1`.
 
 The RSS 2.0 feed is available at `/rss.xml`. It includes all published,
-non-deleted posts, newest first, with each post's summary and Markdown content.
+non-deleted posts, newest first, with each post's summary and its content
+rendered as HTML (`content:encoded`). Set `BLOG_URL` so the items link to the
+blog (`{BLOG_URL}/{postPath}`); without it they link to this API.
 
 ### Posts
 
@@ -297,6 +299,8 @@ erDiagram
 
 **Soft-delete pattern**: Posts with a non-null `deleted_at` are excluded from all queries. Deleting a post also removes its S3 attachment objects and the published `{id}.md` file on the blog server, best effort: a failure there is logged and does not fail the request (the item itself stays in the table).
 
+**Permalinks**: `slug` and `postPath` are derived from the title and the creation date while a post is a draft or scheduled. Once a post is published its `slug` and `postPath` stay fixed, so renaming it changes the title but not its URL.
+
 ---
 
 ## Settings (Environment Variables)
@@ -308,6 +312,8 @@ Configuration values sourced from env vars. AWS credentials are not application 
 | `APP_NAME` | personal-backend-service |
 | `ATTACHMENTS_BUCKET_NAME` | dev-attachments-xxxxx |
 | `AWS_DEFAULT_REGION` | eu-central-1 |
+| `BLOG_URL` | `https://blog.example.com` (optional: base URL the feed links to) |
+| `BLOG_TITLE` / `BLOG_DESCRIPTION` | Feed title and description (optional, default `Personal Backend Service` / `Published articles`) |
 | `DEBUG` | true/false |
 | `DEFAULT_TIMEZONE` | Europe/Budapest |
 | `JWT_SECRET_SSM_PARAM_NAME` | /dev/secrets/jwt |

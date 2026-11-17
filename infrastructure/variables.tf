@@ -58,6 +58,24 @@ variable "memory_size" {
   type    = number
 }
 
+variable "blog_url" {
+  default     = ""
+  description = "Public base URL of the blog, e.g. https://blog.example.com. Feed items link to {blog_url}/{post_path}; while empty they link to this API."
+  type        = string
+}
+
+variable "blog_title" {
+  default     = "Personal Backend Service"
+  description = "Title of the RSS feed."
+  type        = string
+}
+
+variable "blog_description" {
+  default     = "Published articles"
+  description = "Description of the RSS feed."
+  type        = string
+}
+
 variable "ssh_host" {
   type = string
 }

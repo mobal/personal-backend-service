@@ -20,6 +20,9 @@ resource "aws_lambda_function" "fastapi" {
     variables = {
       APP_NAME                    = var.app_name
       ATTACHMENTS_BUCKET_NAME     = aws_s3_bucket.attachments.id
+      BLOG_DESCRIPTION            = var.blog_description
+      BLOG_TITLE                  = var.blog_title
+      BLOG_URL                    = var.blog_url
       DEBUG                       = var.debug
       DEFAULT_TIMEZONE            = var.default_timezone
       JWT_SECRET_SSM_PARAM_NAME   = var.jwt_secret_ssm_param_name

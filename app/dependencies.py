@@ -57,8 +57,9 @@ def get_post_service(
 
 def get_rss_service(
     post_service: Annotated[PostService, Depends(get_post_service)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> RSSService:
-    return RSSService(post_service=post_service)
+    return RSSService(post_service=post_service, settings=settings)
 
 
 def get_sshfs_storage_service(

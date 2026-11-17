@@ -4,22 +4,30 @@ from xml.etree import ElementTree
 
 from app.models.post import Post
 from app.services.post_service import PostService, render_markdown
+from app.settings import Settings
 
 CONTENT_NAMESPACE = "http://purl.org/rss/1.0/modules/content/"
 ElementTree.register_namespace("content", CONTENT_NAMESPACE)
 
 
 class RSSService:
-    def __init__(self, post_service: PostService):
+    def __init__(self, post_service: PostService, settings: Settings):
         self._post_service = post_service
+        self._settings = settings
 
     def generate_feed(self, base_url: str) -> bytes:
+        """Build the feed.
+
+        With BLOG_URL set the feed points at the blog (`{blog_url}/{post_path}`);
+        without it the links address this API, which is all it can know about.
+        """
         base_url = base_url.rstrip("/")
+        blog_url = (self._settings.blog_url or "").rstrip("/")
         rss = ElementTree.Element("rss", {"version": "2.0"})
         channel = ElementTree.SubElement(rss, "channel")
-        self._add_text(channel, "title", "Personal Backend Service")
-        self._add_text(channel, "link", base_url)
-        self._add_text(channel, "description", "Published articles")
+        self._add_text(channel, "title", self._settings.blog_title)
+        self._add_text(channel, "link", blog_url or base_url)
+        self._add_text(channel, "description", self._settings.blog_description)
 
         posts = self._post_service.get_published_posts()
         posts.sort(key=self._published_at, reverse=True)
@@ -31,7 +39,11 @@ class RSSService:
             self._add_text(
                 item,
                 "link",
-                f"{base_url}/api/v1/posts/{post.post_path}",
+                (
+                    f"{blog_url}/{post.post_path}"
+                    if blog_url
+                    else f"{base_url}/api/v1/posts/{post.post_path}"
+                ),
             )
             ElementTree.SubElement(
                 item, "guid", {"isPermaLink": "false"}

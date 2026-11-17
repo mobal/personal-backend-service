@@ -273,16 +273,51 @@ class TestPostService:
         post_repository.update_post.assert_called_once()
         args, _ = post_repository.update_post.call_args
         assert args[0] == posts[0].id
+        # posts[0] is published, so its permalink must not move with the title.
         assert args[1] == {
             "content": "Updated content",
             "title": "Updated title",
-            "slug": "updated-title",
-            "post_path": (
-                f"{datetime.fromisoformat(posts[0].created_at):%Y/%m/%d}/updated-title"
-            ),
             "updated_at": ANY,
         }
         assert args[2] is not None
+
+    @pytest.mark.parametrize("publication_state", ["draft", "scheduled"])
+    def test_renaming_an_unpublished_post_recomputes_slug_and_path(
+        self,
+        publication_state: str,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_repository: PostRepository,
+        post_service: PostService,
+    ) -> None:
+        posts[0].published_at = (
+            None
+            if publication_state == "draft"
+            else (datetime.now(UTC) + timedelta(days=1)).isoformat()
+        )
+        mocker.patch.object(
+            PostRepository, "get_post_by_uuid", return_value=posts[0].model_dump()
+        )
+        mocker.patch.object(PostRepository, "update_post")
+
+        post_service.update_post(posts[0].id, {"title": "Updated title"})
+
+        args, _ = post_repository.update_post.call_args
+        assert args[1]["slug"] == "updated-title"
+        assert args[1]["post_path"] == (
+            f"{datetime.fromisoformat(posts[0].created_at):%Y/%m/%d}/updated-title"
+        )
+
+    def test_renaming_a_published_post_still_rejects_a_duplicate_title(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        post_service: PostService,
+    ) -> None:
+        mocker.patch.object(PostRepository, "update_post")
+
+        with pytest.raises(PostAlreadyExistsException):
+            post_service.update_post(posts[0].id, {"title": posts[1].title})
 
     def test_fail_to_update_post_due_post_not_found_exception(
         self,

@@ -357,10 +357,22 @@ class PostService:
         if duplicate and duplicate.get("id") != post_uuid:
             raise PostAlreadyExistsException(self.ERROR_POST_EXISTS)
 
+        if self._is_published(current):
+            # A published post is linked from elsewhere (feeds, other sites,
+            # readers' bookmarks); renaming it must not move its permalink.
+            return
+
         update_data["slug"], update_data["post_path"] = self._slug_and_post_path(
             update_data["title"],
             datetime.fromisoformat(current["created_at"]),
             post_uuid,
+        )
+
+    @staticmethod
+    def _is_published(post: dict[str, Any]) -> bool:
+        published_at = post.get("published_at")
+        return bool(published_at) and (
+            datetime.fromisoformat(published_at) <= datetime.now(UTC)
         )
 
     def update_publish_state(

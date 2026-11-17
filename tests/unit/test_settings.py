@@ -38,3 +38,26 @@ class TestSettings:
         monkeypatch.delenv("AWS_SECRET_ACCESS_KEY")
 
         assert Settings().aws_region == "eu-central-1"
+
+    def test_feed_settings_default_to_the_api_feed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        for name in ("BLOG_URL", "BLOG_TITLE", "BLOG_DESCRIPTION"):
+            monkeypatch.delenv(name, raising=False)
+        settings = Settings()
+
+        assert settings.blog_url is None
+        assert settings.blog_title == "Personal Backend Service"
+        assert settings.blog_description == "Published articles"
+
+    def test_feed_settings_are_read_from_the_environment(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setenv("BLOG_URL", "https://blog.example.com/")
+        monkeypatch.setenv("BLOG_TITLE", "My blog")
+        monkeypatch.setenv("BLOG_DESCRIPTION", "Notes")
+        settings = Settings()
+
+        assert settings.blog_url == "https://blog.example.com/"
+        assert settings.blog_title == "My blog"
+        assert settings.blog_description == "Notes"

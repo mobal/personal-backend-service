@@ -601,14 +601,44 @@ class TestPostsApi:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
         assert response.json()["errors"][0]["loc"] == ["body", "title"]
 
+    def test_renaming_a_published_post_keeps_its_permalink(
+        self,
+        jwt_secret_ssm_param_value: str,
+        posts: list[Post],
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+        before = test_client.get(f"{BASE_URL}/{posts[0].id}").json()
+
+        renamed = test_client.put(
+            f"{BASE_URL}/{posts[0].id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json={"title": "A completely new title"},
+        )
+
+        after = test_client.get(f"{BASE_URL}/{posts[0].id}").json()
+        assert renamed.status_code == status.HTTP_204_NO_CONTENT
+        assert after["title"] == "A completely new title"
+        assert after["postPath"] == before["postPath"]
+        assert after["slug"] == before["slug"]
+        assert (
+            test_client.get(f"{BASE_URL}/{before['postPath']}").status_code
+            == status.HTTP_200_OK
+        )
+
     def test_fail_to_update_title_due_to_colliding_post_path(
         self,
         jwt_secret_ssm_param_value: str,
+        make_unpublished,
         posts: list[Post],
         posts_table,
         test_client: TestClient,
         user_dict: dict[str, str | None],
     ):
+        # Published posts keep their path when renamed, so only drafts collide.
+        make_unpublished(posts[0].id, "draft")
+        make_unpublished(posts[1].id, "draft")
         jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
         headers = {"Authorization": f"Bearer {jwt_token}"}
         renamed = test_client.put(
