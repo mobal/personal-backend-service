@@ -36,7 +36,7 @@ class TestRSSService:
             f"http://testserver/api/v1/posts/{newer.post_path}"
         )
         assert newer_item.findtext(f"{{{CONTENT_NAMESPACE}}}encoded") == (
-            "<p><strong>Bold</strong> alert(1)claim</p>"
+            "<p><strong>Bold</strong> claim</p>"
         )
 
     @pytest.fixture

@@ -7,8 +7,8 @@ from collections import Counter
 from datetime import UTC, datetime
 from typing import Any
 
-import bleach
 import markdown
+import nh3
 from aws_lambda_powertools import Logger
 from boto3.dynamodb.conditions import Attr
 from botocore.exceptions import ClientError
@@ -41,46 +41,51 @@ class FilterExpressions:
 POSTS_PAGE_SIZE = 100
 
 POST_PATH_RE = re.compile(r"^(\d{4})/(\d{1,2})/(\d{1,2})/(.+)$")
-ALLOWED_POST_TAGS = bleach.ALLOWED_TAGS | {
+ALLOWED_POST_TAGS = {
+    "a",
+    "abbr",
+    "acronym",
+    "b",
+    "blockquote",
+    "br",
+    "code",
+    "del",
+    "div",
+    "em",
     "h1",
     "h2",
     "h3",
     "h4",
     "h5",
     "h6",
-    "p",
-    "br",
     "hr",
-    "ul",
-    "ol",
-    "li",
-    "pre",
-    "code",
-    "blockquote",
-    "table",
-    "thead",
-    "tbody",
-    "tr",
-    "th",
-    "td",
+    "i",
     "img",
-    "a",
-    "strong",
-    "em",
-    "u",
-    "s",
-    "del",
     "ins",
-    "sup",
-    "sub",
-    "div",
+    "li",
+    "ol",
+    "p",
+    "pre",
+    "s",
     "span",
+    "strong",
+    "sub",
+    "sup",
+    "table",
+    "tbody",
+    "td",
+    "th",
+    "thead",
+    "tr",
+    "u",
+    "ul",
 }
 ALLOWED_POST_ATTRIBUTES = {
-    "a": ["href", "title", "rel"],
-    "img": ["src", "alt", "title", "width", "height"],
-    "*": ["class"],
+    "a": {"href", "title", "rel"},
+    "img": {"src", "alt", "title", "width", "height"},
+    "*": {"class"},
 }
+ALLOWED_POST_URL_SCHEMES = {"http", "https", "mailto"}
 
 
 def normalize_post_path(post_path: str) -> str | None:
@@ -93,11 +98,14 @@ def normalize_post_path(post_path: str) -> str | None:
 
 def render_markdown(content: str) -> str:
     """Render Markdown to HTML that is safe to embed in a page or a feed."""
-    return bleach.clean(
+    return nh3.clean(
         markdown.markdown(content),
         tags=ALLOWED_POST_TAGS,
         attributes=ALLOWED_POST_ATTRIBUTES,
-        strip=True,
+        url_schemes=ALLOWED_POST_URL_SCHEMES,
+        # Keep the author's own rel value instead of adding one.
+        link_rel=None,
+        strip_comments=True,
     )
 
 
