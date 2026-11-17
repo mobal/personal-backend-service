@@ -195,9 +195,19 @@ class PostService:
             raise PostNotFoundException(self.ERROR_POST_NOT_FOUND)
         return Post(**post)
 
-    def get_post(self, post_uuid: str) -> PostResponse:
+    def get_readable_post_by_uuid(
+        self, post_uuid: str, include_unpublished: bool = False
+    ) -> Post:
+        """Published posts for everyone; drafts and scheduled ones on request."""
+        if include_unpublished:
+            return self.get_post_by_uuid(post_uuid)
+        return self.get_published_post_by_uuid(post_uuid)
+
+    def get_post(
+        self, post_uuid: str, include_unpublished: bool = False
+    ) -> PostResponse:
         return self._post_to_response(
-            self.get_published_post_by_uuid(post_uuid).model_dump()
+            self.get_readable_post_by_uuid(post_uuid, include_unpublished).model_dump()
         )
 
     def get_by_post_path(self, post_path: str) -> PostResponse:

@@ -247,7 +247,7 @@ class TestAttachmentService:
         attachments = attachment_service.get_attachments(post_with_attachment.id)
 
         assert attachments == post_response_with_attachment(attachment).attachments
-        post_service.get_post.assert_called_once_with(post_with_attachment.id)
+        post_service.get_post.assert_called_once_with(post_with_attachment.id, False)
 
     def test_successfully_get_attachments_when_none(
         self,
@@ -277,7 +277,7 @@ class TestAttachmentService:
             attachment_service.get_attachments(posts[0].id)
 
         assert exc_info.type == PostNotFoundException
-        post_service.get_post.assert_called_once_with(posts[0].id)
+        post_service.get_post.assert_called_once_with(posts[0].id, False)
 
     def test_successfully_get_attachment_by_name(
         self,
@@ -300,7 +300,7 @@ class TestAttachmentService:
         assert post_response_with_attachment(attachment).attachments == [
             post_attachment
         ]
-        post_service.get_post.assert_called_once_with(post_with_attachment.id)
+        post_service.get_post.assert_called_once_with(post_with_attachment.id, False)
 
     def test_fail_to_get_attachment_by_name_due_to_post_not_found(
         self,
@@ -318,7 +318,7 @@ class TestAttachmentService:
             attachment_service.get_attachment_by_id(posts[0].id, attachment.id)
 
         assert exc_info.type == PostNotFoundException
-        post_service.get_post.assert_called_once_with(posts[0].id)
+        post_service.get_post.assert_called_once_with(posts[0].id, False)
 
     def test_fail_to_get_attachment_by_name_due_to_not_found(
         self,
@@ -340,7 +340,7 @@ class TestAttachmentService:
             )
 
         assert exc_info.type == AttachmentNotFoundException
-        post_service.get_post.assert_called_once_with(post_with_attachment.id)
+        post_service.get_post.assert_called_once_with(post_with_attachment.id, False)
 
     def test_fail_to_get_attachment_when_post_has_no_attachments(
         self,
@@ -356,7 +356,7 @@ class TestAttachmentService:
         with pytest.raises(AttachmentNotFoundException):
             attachment_service.get_attachment_by_id(posts[0].id, str(uuid.uuid4()))
 
-        post_service.get_post.assert_called_once_with(posts[0].id)
+        post_service.get_post.assert_called_once_with(posts[0].id, False)
         exception_log.assert_not_called()
         error_log.assert_called_once()
 
@@ -375,7 +375,9 @@ class TestAttachmentService:
                 "post-id\r\nforged-post-log", "attachment-id\r\nforged-attachment-log"
             )
 
-        post_service.get_post.assert_called_once_with("post-id\r\nforged-post-log")
+        post_service.get_post.assert_called_once_with(
+            "post-id\r\nforged-post-log", False
+        )
         for log in (info_log, error_log):
             message = log.call_args.args[0]
             assert "\r" not in message
@@ -611,3 +613,49 @@ class TestAttachmentService:
         attachment_service.delete_attachments(posts[0])
 
         delete_object.assert_not_called()
+
+    def test_get_attachments_can_include_unpublished_posts(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+        post_with_attachment: Post,
+    ):
+        mocker.patch.object(
+            PostService,
+            "get_post",
+            return_value=post_response_with_attachment(
+                post_with_attachment.attachments[0]
+            ),
+        )
+
+        attachment_service.get_attachments(
+            post_with_attachment.id, include_unpublished=True
+        )
+
+        post_service.get_post.assert_called_once_with(post_with_attachment.id, True)
+
+    def test_get_attachment_download_url_can_include_unpublished_posts(
+        self,
+        mocker: MockerFixture,
+        attachment_service: AttachmentService,
+        post_service: PostService,
+        post_with_attachment: Post,
+        s3_storage_service: S3StorageService,
+    ):
+        readable = mocker.patch.object(
+            PostService, "get_readable_post_by_uuid", return_value=post_with_attachment
+        )
+        mocker.patch.object(
+            S3StorageService,
+            "generate_presigned_download_url",
+            return_value="https://example.com/signed",
+        )
+
+        attachment_service.get_attachment_download_url(
+            post_with_attachment.id,
+            post_with_attachment.attachments[0].id,
+            include_unpublished=True,
+        )
+
+        readable.assert_called_once_with(post_with_attachment.id, True)

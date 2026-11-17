@@ -8,6 +8,7 @@ from fastapi.responses import Response
 from app.dependencies import (
     get_attachment_service,
     get_jwt_bearer,
+    get_optional_jwt_bearer,
     get_post_service,
     get_publisher_service,
 )
@@ -234,15 +235,25 @@ def get_by_post_path(
     "/{uuid}",
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
-    responses={**ERROR_RESPONSE_NOT_FOUND, **ERROR_RESPONSE_UNPROCESSABLE_CONTENT},
+    responses={
+        **ERROR_RESPONSE_FORBIDDEN,
+        **ERROR_RESPONSE_NOT_FOUND,
+        **ERROR_RESPONSE_UNPROCESSABLE_CONTENT,
+    },
     summary="Get a single post by UUID",
-    description="Returns one post. Soft-deleted posts are not returned.",
+    description=(
+        "Returns one published post. With a valid JWT it also returns drafts "
+        "and scheduled posts, so the `Location` of a new post can be read "
+        "back; credentials that are sent must be valid, otherwise the request "
+        "fails with 403. Soft-deleted posts are never returned."
+    ),
 )
 def get_post_by_uuid(
     uuid: Annotated[str, POST_UUID],
     post_service: Annotated[PostService, Depends(get_post_service)],
+    token: Annotated[JWTToken | None, Depends(get_optional_jwt_bearer)],
 ) -> PostResponse:
-    return post_service.get_post(uuid)
+    return post_service.get_post(uuid, include_unpublished=token is not None)
 
 
 @router.get(

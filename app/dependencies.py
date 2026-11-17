@@ -115,3 +115,21 @@ def get_jwt_bearer(
     # JWTBearer with auto_error=True (default) always returns JWTToken or raises
     assert token is not None
     return token
+
+
+def get_optional_jwt_bearer(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+    _security: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(_bearer_security)
+    ] = None,
+) -> JWTToken | None:
+    """Return the decoded token, or None when the request carries no credentials.
+
+    Public reads use this to serve more to the author. Credentials that are
+    present must be valid: a bad or expired token is rejected with 403 rather
+    than silently treated as an anonymous reader.
+    """
+    if request.headers.get("Authorization") is None:
+        return None
+    return get_jwt_bearer(request, settings, _security)

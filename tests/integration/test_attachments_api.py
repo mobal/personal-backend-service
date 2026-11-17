@@ -144,6 +144,84 @@ class TestAttachmentsApi:
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    @pytest.fixture
+    def unpublished_post_with_attachment(
+        self, post_with_attachment: Post, posts_table, request: pytest.FixtureRequest
+    ) -> Post:
+        if request.param == "draft":
+            posts_table.update_item(
+                Key={"id": post_with_attachment.id},
+                UpdateExpression="REMOVE published_at",
+            )
+        else:
+            posts_table.update_item(
+                Key={"id": post_with_attachment.id},
+                UpdateExpression="SET published_at = :published_at",
+                ExpressionAttributeValues={
+                    ":published_at": (datetime.now(UTC) + timedelta(days=1)).isoformat()
+                },
+            )
+        return post_with_attachment
+
+    @pytest.mark.parametrize(
+        "unpublished_post_with_attachment", ["draft", "scheduled"], indirect=True
+    )
+    def test_authenticated_reads_return_the_attachments_of_an_unpublished_post(
+        self,
+        jwt_secret_ssm_param_value: str,
+        test_client: TestClient,
+        unpublished_post_with_attachment: Post,
+        user_dict: dict[str, str | None],
+    ):
+        post = unpublished_post_with_attachment
+        attachment_id = post.attachments[0].id
+        base = f"/api/v1/posts/{post.id}/attachments"
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+        headers = {"Authorization": f"Bearer {jwt_token}"}
+
+        listing = test_client.get(base, headers=headers)
+        single = test_client.get(f"{base}/{attachment_id}", headers=headers)
+        download = test_client.get(
+            f"{base}/{attachment_id}/download", headers=headers, follow_redirects=False
+        )
+
+        assert listing.status_code == status.HTTP_200_OK
+        assert [item["id"] for item in listing.json()] == [attachment_id]
+        assert single.status_code == status.HTTP_200_OK
+        assert download.status_code == status.HTTP_302_FOUND
+
+    @pytest.mark.parametrize(
+        "unpublished_post_with_attachment", ["draft", "scheduled"], indirect=True
+    )
+    def test_anonymous_reads_still_hide_the_attachments_of_an_unpublished_post(
+        self,
+        test_client: TestClient,
+        unpublished_post_with_attachment: Post,
+    ):
+        post = unpublished_post_with_attachment
+        attachment_id = post.attachments[0].id
+        base = f"/api/v1/posts/{post.id}/attachments"
+
+        responses = [
+            test_client.get(base),
+            test_client.get(f"{base}/{attachment_id}"),
+            test_client.get(f"{base}/{attachment_id}/download", follow_redirects=False),
+        ]
+
+        assert [r.status_code for r in responses] == [status.HTTP_404_NOT_FOUND] * 3
+
+    def test_attachment_read_with_an_invalid_token_is_rejected(
+        self,
+        post_with_attachment: Post,
+        test_client: TestClient,
+    ):
+        response = test_client.get(
+            f"/api/v1/posts/{post_with_attachment.id}/attachments",
+            headers={"Authorization": "Bearer not-a-jwt"},
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
     def test_fail_to_add_attachment_due_to_bad_request(
         self,
         jwt_secret_ssm_param_value: str,

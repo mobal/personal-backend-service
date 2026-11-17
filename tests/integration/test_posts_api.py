@@ -182,6 +182,116 @@ class TestPostsApi:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
+    @pytest.fixture
+    def make_unpublished(self, posts_table):
+        def make(post_id: str, publication_state: str) -> None:
+            if publication_state == "draft":
+                posts_table.update_item(
+                    Key={"id": post_id}, UpdateExpression="REMOVE published_at"
+                )
+            else:
+                posts_table.update_item(
+                    Key={"id": post_id},
+                    UpdateExpression="SET published_at = :published_at",
+                    ExpressionAttributeValues={
+                        ":published_at": (
+                            datetime.now(UTC) + timedelta(days=1)
+                        ).isoformat()
+                    },
+                )
+
+        return make
+
+    @pytest.mark.parametrize("publication_state", ["draft", "scheduled"])
+    def test_authenticated_read_returns_an_unpublished_post(
+        self,
+        publication_state: str,
+        jwt_secret_ssm_param_value: str,
+        make_unpublished,
+        posts: list[Post],
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        make_unpublished(posts[0].id, publication_state)
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.get(
+            f"{BASE_URL}/{posts[0].id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["id"] == posts[0].id
+
+    @pytest.mark.parametrize("publication_state", ["draft", "scheduled"])
+    def test_anonymous_read_still_hides_an_unpublished_post(
+        self,
+        publication_state: str,
+        make_unpublished,
+        posts: list[Post],
+        test_client: TestClient,
+    ):
+        make_unpublished(posts[0].id, publication_state)
+
+        response = test_client.get(f"{BASE_URL}/{posts[0].id}")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_authenticated_read_still_hides_a_deleted_post(
+        self,
+        jwt_secret_ssm_param_value: str,
+        posts: list[Post],
+        posts_table,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        posts_table.update_item(
+            Key={"id": posts[0].id},
+            UpdateExpression="SET deleted_at = :deleted_at",
+            ExpressionAttributeValues={":deleted_at": datetime.now(UTC).isoformat()},
+        )
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.get(
+            f"{BASE_URL}/{posts[0].id}",
+            headers={"Authorization": f"Bearer {jwt_token}"},
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.parametrize("authorization", ["Bearer not-a-jwt", HEADER_EMPTY_BEARER])
+    def test_read_with_an_invalid_token_is_rejected(
+        self,
+        authorization: str,
+        posts: list[Post],
+        test_client: TestClient,
+    ):
+        response = test_client.get(
+            f"{BASE_URL}/{posts[0].id}", headers={"Authorization": authorization}
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_a_created_draft_can_be_read_from_its_location_header(
+        self,
+        create_post: CreatePost,
+        jwt_secret_ssm_param_value: str,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+        headers = {"Authorization": f"Bearer {jwt_token}"}
+        created = test_client.post(
+            BASE_URL,
+            headers=headers,
+            json=create_post.model_dump(by_alias=True) | {"publishedAt": None},
+        )
+
+        response = test_client.get(created.headers["Location"], headers=headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["title"] == create_post.title
+
     def test_fail_to_delete_post_due_to_not_found(
         self,
         jwt_secret_ssm_param_value: str,

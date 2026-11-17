@@ -157,16 +157,21 @@ class AttachmentService:
                 f"Failed to clean up attachment object {object_key=}: {cleanup_error}"
             )
 
-    def get_attachments(self, post_uuid: str) -> list[AttachmentResponse]:
+    def get_attachments(
+        self, post_uuid: str, include_unpublished: bool = False
+    ) -> list[AttachmentResponse]:
         self._logger.info(f"Get attachments for {post_uuid=}")
-        post = self._post_service.get_post(post_uuid)
+        post = self._post_service.get_post(post_uuid, include_unpublished)
         return [
             AttachmentResponse(**attachment.model_dump())
             for attachment in post.attachments or []
         ]
 
     def get_attachment_by_id(
-        self, post_uuid: str, attachment_uuid: str
+        self,
+        post_uuid: str,
+        attachment_uuid: str,
+        include_unpublished: bool = False,
     ) -> AttachmentResponse:
         safe_post_uuid = post_uuid.replace("\r", "").replace("\n", "")
         safe_attachment_uuid = attachment_uuid.replace("\r", "").replace("\n", "")
@@ -174,7 +179,7 @@ class AttachmentService:
             f"Get attachment attachment_uuid={safe_attachment_uuid!r} "
             f"from post_uuid={safe_post_uuid!r}"
         )
-        post = self._post_service.get_post(post_uuid)
+        post = self._post_service.get_post(post_uuid, include_unpublished)
         attachment = self._find_attachment(post.attachments, attachment_uuid)
         if attachment is None:
             error_message = (
@@ -185,8 +190,15 @@ class AttachmentService:
             raise AttachmentNotFoundException(error_message)
         return AttachmentResponse(**attachment.model_dump())
 
-    def get_attachment_download_url(self, post_uuid: str, attachment_uuid: str) -> str:
-        post = self._post_service.get_published_post_by_uuid(post_uuid)
+    def get_attachment_download_url(
+        self,
+        post_uuid: str,
+        attachment_uuid: str,
+        include_unpublished: bool = False,
+    ) -> str:
+        post = self._post_service.get_readable_post_by_uuid(
+            post_uuid, include_unpublished
+        )
         attachment = self._find_attachment(post.attachments, attachment_uuid)
         if attachment is None:
             raise AttachmentNotFoundException(

@@ -91,7 +91,7 @@ non-deleted posts, newest first, with each post's summary and Markdown content.
 |---|---|---|---|
 | POST | `/posts` | JWT | Create a new post |
 | GET | `/posts` | No | List published posts (paginated) |
-| GET | `/posts/{uuid}` | No | Get post by UUID |
+| GET | `/posts/{uuid}` | Optional JWT | Get post by UUID (a valid JWT also returns drafts and scheduled posts) |
 | PUT | `/posts/{uuid}` | JWT | Update post |
 | POST | `/posts/{uuid}/publish` | JWT | Write post Markdown to the remote blog server |
 | DELETE | `/posts/{uuid}` | JWT | Soft-delete post, then remove its attachment files (S3) and published file (blog server) |
@@ -239,7 +239,8 @@ endpoint for due posts if automatic publication is required.
 |---|---|
 | `GET /posts` | Includes non-deleted posts whose `publishedAt` is in the past |
 | `GET /posts/archive` | Groups non-deleted posts whose `publishedAt` is in the past |
-| Date/slug and UUID reads | Return only non-deleted posts whose `publishedAt` is in the past |
+| Date/slug reads | Return only non-deleted posts whose `publishedAt` is in the past |
+| UUID reads (post and its attachments) | Anonymous: only non-deleted posts whose `publishedAt` is in the past. With a valid JWT: also drafts and scheduled posts, so the `Location` of a new post can be read back. A token that is sent but invalid is rejected with 403. |
 | Remote publication | Writes raw Markdown through the authenticated publish endpoint |
 
 The API treats a post as public only when its publication timestamp is due.

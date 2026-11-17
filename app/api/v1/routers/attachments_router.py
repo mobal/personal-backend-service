@@ -4,7 +4,11 @@ from aws_lambda_powertools import Logger
 from fastapi import APIRouter, Depends, Path, Response, status
 from fastapi.responses import RedirectResponse
 
-from app.dependencies import get_attachment_service, get_jwt_bearer
+from app.dependencies import (
+    get_attachment_service,
+    get_jwt_bearer,
+    get_optional_jwt_bearer,
+)
 from app.models.auth import JWTToken
 from app.models.response import (
     Attachment as AttachmentResponse,
@@ -33,6 +37,12 @@ ERROR_RESPONSE_VALIDATION_FAILED = {
         "description": "Request body failed validation",
     }
 }
+
+OPTIONAL_JWT = (
+    "Reads are public for published posts; with a valid JWT they also work for "
+    "drafts and scheduled posts. Credentials that are sent must be valid, "
+    "otherwise the request fails with 403."
+)
 
 POST_UUID = Path(
     description="UUID of the post the attachment belongs to",
@@ -89,6 +99,7 @@ def add_attachment(
     "/{attachment_uuid}",
     status_code=status.HTTP_200_OK,
     responses={
+        **ERROR_RESPONSE_MISSING_OR_INVALID_JWT,
         **ERROR_RESPONSE_POST_NOT_FOUND,
         **ERROR_RESPONSE_ATTACHMENT_NOT_FOUND,
         **ERROR_RESPONSE_VALIDATION_FAILED,
@@ -96,35 +107,45 @@ def add_attachment(
     summary="Get an attachment by UUID",
     description=(
         "Returns attachment metadata with a stable, API-relative download URL. "
-        "The download endpoint redirects to a short-lived S3 URL."
+        "The download endpoint redirects to a short-lived S3 URL. " + OPTIONAL_JWT
     ),
 )
 def get_attachment_by_uuid(
     post_uuid: Annotated[str, POST_UUID],
     attachment_uuid: Annotated[str, ATTACHMENT_UUID],
     attachment_service: Annotated[AttachmentService, Depends(get_attachment_service)],
+    token: Annotated[JWTToken | None, Depends(get_optional_jwt_bearer)],
 ) -> AttachmentResponse:
-    return attachment_service.get_attachment_by_id(post_uuid, attachment_uuid)
+    return attachment_service.get_attachment_by_id(
+        post_uuid, attachment_uuid, include_unpublished=token is not None
+    )
 
 
 @router.get(
     "/{attachment_uuid}/download",
     status_code=status.HTTP_302_FOUND,
     response_class=RedirectResponse,
-    responses={**ERROR_RESPONSE_POST_NOT_FOUND, **ERROR_RESPONSE_ATTACHMENT_NOT_FOUND},
+    responses={
+        **ERROR_RESPONSE_MISSING_OR_INVALID_JWT,
+        **ERROR_RESPONSE_POST_NOT_FOUND,
+        **ERROR_RESPONSE_ATTACHMENT_NOT_FOUND,
+    },
     summary="Download an attachment",
     description=(
         "Redirects to a fresh signed S3 URL. The redirect is not cached; "
-        "the stable API URL can be reused."
+        "the stable API URL can be reused. " + OPTIONAL_JWT
     ),
 )
 def download_attachment(
     post_uuid: Annotated[str, POST_UUID],
     attachment_uuid: Annotated[str, ATTACHMENT_UUID],
     attachment_service: Annotated[AttachmentService, Depends(get_attachment_service)],
+    token: Annotated[JWTToken | None, Depends(get_optional_jwt_bearer)],
 ) -> RedirectResponse:
     return RedirectResponse(
-        url=attachment_service.get_attachment_download_url(post_uuid, attachment_uuid),
+        url=attachment_service.get_attachment_download_url(
+            post_uuid, attachment_uuid, include_unpublished=token is not None
+        ),
         status_code=status.HTTP_302_FOUND,
         headers={"Cache-Control": "no-store"},
     )
@@ -133,15 +154,22 @@ def download_attachment(
 @router.get(
     "",
     status_code=status.HTTP_200_OK,
-    responses={**ERROR_RESPONSE_POST_NOT_FOUND, **ERROR_RESPONSE_VALIDATION_FAILED},
+    responses={
+        **ERROR_RESPONSE_MISSING_OR_INVALID_JWT,
+        **ERROR_RESPONSE_POST_NOT_FOUND,
+        **ERROR_RESPONSE_VALIDATION_FAILED,
+    },
     summary="List attachments of a post",
     description=(
         "Returns the metadata (including stable, API-relative download URLs) "
-        "of every attachment linked to the post."
+        "of every attachment linked to the post. " + OPTIONAL_JWT
     ),
 )
 def get_attachments(
     post_uuid: Annotated[str, POST_UUID],
     attachment_service: Annotated[AttachmentService, Depends(get_attachment_service)],
+    token: Annotated[JWTToken | None, Depends(get_optional_jwt_bearer)],
 ) -> list[AttachmentResponse]:
-    return attachment_service.get_attachments(post_uuid)
+    return attachment_service.get_attachments(
+        post_uuid, include_unpublished=token is not None
+    )

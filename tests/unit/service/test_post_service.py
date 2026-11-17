@@ -527,3 +527,34 @@ class TestPostService:
             post_service.update_post(posts[0].id, {"content": "Updated content"})
 
         assert excinfo.value.response["Error"]["Code"] == "InternalServerError"
+
+    def test_get_post_returns_a_draft_only_when_unpublished_posts_are_included(
+        self,
+        mocker: MockerFixture,
+        post_service: PostService,
+        posts: list[Post],
+    ):
+        posts[0].published_at = None
+        mocker.patch.object(
+            PostRepository, "get_post_by_uuid", return_value=posts[0].model_dump()
+        )
+
+        with pytest.raises(PostNotFoundException):
+            post_service.get_post(posts[0].id)
+        assert post_service.get_post(posts[0].id, include_unpublished=True).id == (
+            posts[0].id
+        )
+
+    def test_get_post_never_returns_a_deleted_post(
+        self,
+        mocker: MockerFixture,
+        post_service: PostService,
+        posts: list[Post],
+    ):
+        posts[0].deleted_at = datetime.now(UTC).isoformat()
+        mocker.patch.object(
+            PostRepository, "get_post_by_uuid", return_value=posts[0].model_dump()
+        )
+
+        with pytest.raises(PostNotFoundException):
+            post_service.get_post(posts[0].id, include_unpublished=True)
