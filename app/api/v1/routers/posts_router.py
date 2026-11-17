@@ -263,9 +263,11 @@ def get_post_by_uuid(
     responses={**ERROR_RESPONSE_UNPROCESSABLE_CONTENT},
     summary="List published posts",
     description=(
-        "Public endpoint. Results are paginated; pass the returned "
-        "`exclusiveStartKey` to fetch the next page, a page without one is "
-        "the last. Soft-deleted posts are never returned."
+        "Public endpoint. Posts are returned newest first across all pages. "
+        "Results are paginated; pass the returned `exclusiveStartKey` to fetch "
+        "the next page, a page without one is the last. A cursor that was not "
+        "returned by this endpoint is rejected with 422. Soft-deleted posts "
+        "are never returned."
     ),
 )
 def get_posts(

@@ -237,7 +237,7 @@ endpoint for due posts if automatic publication is required.
 
 | Operation | Current behavior |
 |---|---|
-| `GET /posts` | Includes non-deleted posts whose `publishedAt` is in the past |
+| `GET /posts` | Includes non-deleted posts whose `publishedAt` is in the past, newest first across pages, up to 100 per page (follow `exclusiveStartKey` for more) |
 | `GET /posts/archive` | Groups non-deleted posts whose `publishedAt` is in the past |
 | Date/slug reads | Return only non-deleted posts whose `publishedAt` is in the past |
 | UUID reads (post and its attachments) | Anonymous: only non-deleted posts whose `publishedAt` is in the past. With a valid JWT: also drafts and scheduled posts, so the `Location` of a new post can be read back. A token that is sent but invalid is rejected with 403. |

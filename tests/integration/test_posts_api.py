@@ -69,6 +69,49 @@ class TestPostsApi:
         assert len(published) == len(posts)
         assert published == sorted(published, reverse=True)
 
+    def test_get_posts_pages_are_ordered_across_pages(
+        self,
+        mocker: MockerFixture,
+        posts: list[Post],
+        posts_table,
+        test_client: TestClient,
+    ):
+        mocker.patch("app.services.post_service.POSTS_PAGE_SIZE", 4)
+        now = datetime.now(UTC)
+        every_post = [item["id"] for item in posts_table.scan()["Items"]]
+        for age_in_days, post_id in enumerate(
+            random.sample(every_post, len(every_post))
+        ):
+            posts_table.update_item(
+                Key={"id": post_id},
+                UpdateExpression="SET published_at = :published_at",
+                ExpressionAttributeValues={
+                    ":published_at": (now - timedelta(days=age_in_days)).isoformat()
+                },
+            )
+
+        collected: list[dict] = []
+        cursor = None
+        while True:
+            params = {"exclusive_start_key": cursor} if cursor else {}
+            body = test_client.get(BASE_URL, params=params).json()
+            collected.extend(body["posts"])
+            cursor = body.get("exclusiveStartKey")
+            if cursor is None:
+                break
+
+        published = [post["publishedAt"] for post in collected]
+        assert len(collected) == len(every_post)
+        assert len({post["id"] for post in collected}) == len(every_post)
+        assert published == sorted(published, reverse=True)
+
+    def test_get_posts_with_a_malformed_cursor_is_rejected(
+        self, test_client: TestClient
+    ):
+        response = test_client.get(BASE_URL, params={"exclusive_start_key": "nope"})
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
     def test_fail_to_get_post_by_uuid_due_to_not_found(
         self, posts: list[Post], test_client: TestClient
     ):

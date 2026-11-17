@@ -4,7 +4,7 @@ from unittest.mock import ANY
 
 import pytest
 from botocore.exceptions import ClientError
-from fastapi import status
+from fastapi import HTTPException, status
 from pytest_mock import MockerFixture
 
 from app.exceptions import PostAlreadyExistsException, PostNotFoundException
@@ -432,8 +432,8 @@ class TestPostService:
     ):
         mocker.patch.object(
             PostRepository,
-            "get_posts",
-            return_value=[None, [post.model_dump() for post in posts]],
+            "get_all_posts",
+            return_value=[post.model_dump() for post in posts],
         )
 
         result = post_service.get_posts()
@@ -445,7 +445,7 @@ class TestPostService:
                 post.model_dump(exclude="attachments").items()
                 <= expected[post.id].model_dump(exclude="attachments").items()
             )
-        post_repository.get_posts.assert_called_once_with(ANY, None, ANY)
+        post_repository.get_all_posts.assert_called_once_with(ANY, ANY)
 
     def test_successfully_get_post_by_uuid(
         self,
@@ -558,3 +558,76 @@ class TestPostService:
 
         with pytest.raises(PostNotFoundException):
             post_service.get_post(posts[0].id, include_unpublished=True)
+
+    @staticmethod
+    def _summaries(count: int) -> list[dict]:
+        base = datetime(2026, 1, 1, tzinfo=UTC)
+        return [
+            {
+                "id": f"id-{index:02d}",
+                "title": f"Post {index}",
+                "published_at": (base + timedelta(days=index)).isoformat(),
+            }
+            for index in range(count)
+        ]
+
+    def test_get_posts_pages_through_every_post_newest_first(
+        self, mocker: MockerFixture, post_service: PostService
+    ):
+        summaries = self._summaries(7)
+        # The repository scans in hash order, not publication order.
+        mocker.patch.object(
+            PostRepository,
+            "get_all_posts",
+            return_value=sorted(summaries, key=lambda post: post["id"][::-1]),
+        )
+        mocker.patch("app.services.post_service.POSTS_PAGE_SIZE", 3)
+
+        ids: list[str] = []
+        cursor = None
+        pages = 0
+        while True:
+            page = post_service.get_posts(cursor)
+            pages += 1
+            ids.extend(post.id for post in page.posts)
+            cursor = page.exclusive_start_key
+            if cursor is None:
+                break
+
+        assert pages == 3
+        assert ids == [post["id"] for post in reversed(summaries)]
+
+    def test_get_posts_returns_no_cursor_when_everything_fits_on_one_page(
+        self, mocker: MockerFixture, post_service: PostService
+    ):
+        mocker.patch.object(
+            PostRepository, "get_all_posts", return_value=self._summaries(3)
+        )
+
+        page = post_service.get_posts()
+
+        assert len(page.posts) == 3
+        assert page.exclusive_start_key is None
+
+    def test_get_posts_cursor_survives_the_removal_of_its_post(
+        self, mocker: MockerFixture, post_service: PostService
+    ):
+        summaries = self._summaries(5)
+        get_all = mocker.patch.object(
+            PostRepository, "get_all_posts", return_value=list(summaries)
+        )
+        mocker.patch("app.services.post_service.POSTS_PAGE_SIZE", 2)
+        first = post_service.get_posts()
+
+        # The last post of the first page is deleted before the next request.
+        remaining = [p for p in summaries if p["id"] != first.posts[-1].id]
+        get_all.return_value = remaining
+        second = post_service.get_posts(first.exclusive_start_key)
+
+        assert [post.id for post in second.posts] == ["id-02", "id-01"]
+
+    def test_get_posts_rejects_a_malformed_cursor(self, post_service: PostService):
+        with pytest.raises(HTTPException) as excinfo:
+            post_service.get_posts("not-a-cursor")
+
+        assert excinfo.value.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT

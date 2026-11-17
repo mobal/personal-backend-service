@@ -13,6 +13,11 @@ class BucketNotFoundException(HTTPException):
         super().__init__(status.HTTP_500_INTERNAL_SERVER_ERROR, detail)
 
 
+class InvalidPageCursorException(HTTPException):
+    def __init__(self, detail: Any = None) -> None:
+        super().__init__(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=detail)
+
+
 class InvalidPostTitleException(HTTPException):
     def __init__(self, detail: Any = None) -> None:
         super().__init__(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=detail)

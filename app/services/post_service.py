@@ -1,3 +1,6 @@
+import base64
+import binascii
+import json
 import re
 import uuid
 from collections import Counter
@@ -12,6 +15,7 @@ from botocore.exceptions import ClientError
 from slugify import slugify
 
 from app.exceptions import (
+    InvalidPageCursorException,
     InvalidPostTitleException,
     PostAlreadyExistsException,
     PostNotFoundException,
@@ -31,6 +35,10 @@ class FilterExpressions:
     def published() -> Any:
         return Attr("published_at").lte(datetime.now(UTC).isoformat())
 
+
+# The listing is sorted in memory over every published post, so it can order
+# them globally; a blog this size keeps everything on one page.
+POSTS_PAGE_SIZE = 100
 
 POST_PATH_RE = re.compile(r"^(\d{4})/(\d{1,2})/(\d{1,2})/(.+)$")
 ALLOWED_POST_TAGS = bleach.ALLOWED_TAGS | {
@@ -98,6 +106,7 @@ class PostService:
     ERROR_POST_PATH_EXISTS = "There is already a post with this date and slug"
     ERROR_TITLE_WITHOUT_SLUG = "The title must contain at least one letter or digit"
     ERROR_POST_NOT_FOUND = "The requested post was not found"
+    ERROR_INVALID_CURSOR = "The pagination cursor is not valid"
 
     def __init__(self, post_repository: PostRepository):
         self._logger = Logger()
@@ -245,23 +254,55 @@ class PostService:
                 candidates.append(unpadded)
         return candidates
 
+    @staticmethod
+    def _listing_position(published_at: str, post_id: str) -> tuple[datetime, str]:
+        parsed = datetime.fromisoformat(published_at)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=UTC)
+        return parsed, post_id
+
+    @staticmethod
+    def _encode_cursor(post: dict[str, Any]) -> str:
+        raw = json.dumps([post["published_at"], post["id"]]).encode()
+        return base64.urlsafe_b64encode(raw).decode()
+
+    def _decode_cursor(self, cursor: str) -> tuple[datetime, str]:
+        try:
+            published_at, post_id = json.loads(base64.urlsafe_b64decode(cursor))
+            return self._listing_position(published_at, post_id)
+        except (binascii.Error, ValueError, TypeError) as exc:
+            raise InvalidPageCursorException(self.ERROR_INVALID_CURSOR) from exc
+
     def get_posts(self, exclusive_start_key: str | None = None) -> Page:
-        last_key, posts = self._post_repository.get_posts(
+        after = (
+            self._decode_cursor(exclusive_start_key) if exclusive_start_key else None
+        )
+        posts = self._post_repository.get_all_posts(
             FilterExpressions.NOT_DELETED & FilterExpressions.published(),
-            {"id": exclusive_start_key} if exclusive_start_key else None,
             ["id", "title", "meta", "post_path", "published_at", "updated_at"],
         )
-        # A scan returns items in hash order. Sorting gives readers a stable
-        # newest-first list for as long as all posts fit into one scan page
-        # (1 MB of stored items); across pages only each page is ordered.
-        posts.sort(key=lambda post: post["published_at"], reverse=True)
-        for post in posts:
+        # A table scan returns items in hash order and splits them into 1 MB
+        # pages (counted on the stored items, whatever is projected), so the
+        # order is established here, over all posts. The cursor is a position
+        # in that order, not a post: it stays valid when its post is removed.
+        posts.sort(
+            key=lambda post: self._listing_position(post["published_at"], post["id"]),
+            reverse=True,
+        )
+        if after is not None:
+            posts = [
+                post
+                for post in posts
+                if self._listing_position(post["published_at"], post["id"]) < after
+            ]
+        page, rest = posts[:POSTS_PAGE_SIZE], posts[POSTS_PAGE_SIZE:]
+        for post in page:
             self._attach_download_urls(post)
             if post.get("post_path"):
                 post["post_path"] = normalize_post_path(post["post_path"])
         return Page(
-            exclusive_start_key=last_key,
-            posts=[PostResponse(**post) for post in posts],
+            exclusive_start_key=self._encode_cursor(page[-1]) if rest else None,
+            posts=[PostResponse(**post) for post in page],
         )
 
     def get_published_posts(self) -> list[Post]:
