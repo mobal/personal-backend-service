@@ -419,8 +419,11 @@ uv run bandit --severity-level high --confidence-level high -r app/
 
 ## Makefile
 
+Run `make` or `make help` to list the targets (help is the default goal).
+
 | Target | Description |
 |---|---|
+| `help` | List the targets with their descriptions |
 | `all` | bandit + format + lint + test |
 | `build` | Build Lambda deployment package + layer (Docker) |
 | `format` | `ruff format app/ tests/` |
