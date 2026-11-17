@@ -10,6 +10,7 @@ coverage.xml
 dist
 docs
 plans
+docker
 infrastructure
 docker-compose.yml
 *.tfstate

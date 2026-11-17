@@ -376,10 +376,10 @@ Stages (`build-and-test`):
 - **SonarQube** (Python analysis + coverage)
 
 Docker end-to-end (`newman` job):
-- Builds the app image and starts LocalStack (DynamoDB, SSM, S3),
-  seeded by `scripts/init_localstack.py`
-- Starts the app gated on LocalStack's healthcheck and runs the Postman
-  collection with Newman (`/health`, post CRUD, archive, auth failures,
+- Builds the app image and the AWS Emulator image (DynamoDB, SSM, S3) and starts
+  both; the app seeds the emulator with `scripts/init_emulator.py` on start
+- Gates on the app's healthcheck and runs the Postman
+  collection with Newman, inside the emulator's network namespace (`/health`, post CRUD, archive, auth failures,
   attachments)
 
 ---
@@ -414,6 +414,63 @@ uv run ty check
 # Security scan
 uv run bandit --severity-level high --confidence-level high -r app/
 ```
+
+### Running locally with AWS Emulator
+
+The app needs DynamoDB, S3 and SSM, which [AWS Emulator](https://docs.aws.amazon.com/emulator/latest/userguide/)
+(CC0, runs in Docker) provides. AWS publishes no prebuilt image, so compose builds
+`docker/aws-emulator/Dockerfile` (the documented recipe, installing `LTS/latest`; rebuild
+to pick up new releases). On ARM, build with `--build-arg EMULATOR_RPM=aws-emulator-aarch64.rpm`.
+State is kept in memory: stopping the emulator wipes it.
+
+The emulator only serves HTTPS and its self-signed certificate is valid for `localhost`
+and `127.0.0.1` only. `docker-compose.yml` therefore starts the emulator and the app
+together, with the app in the emulator's network namespace so it can reach the
+endpoint as `https://127.0.0.1:9297`:
+
+```bash
+docker compose up -d --build --wait app
+curl localhost:8080/health
+
+# Postman collection: Newman must share the namespace (presigned URLs point at
+# 127.0.0.1:9297) and skip the self-signed certificate check
+docker run --rm --network "container:$(docker compose ps -q emulator)" \
+  -v "$PWD/postman:/postman:ro" postman/newman:latest \
+  run /postman/personal_backend_service.postman_collection.json \
+  --env-var baseUrl=http://localhost:8080 --ignore-redirects --insecure
+
+docker compose down -v
+```
+
+The app is published through the `emulator` service (`http://localhost:8080`; from other
+containers `http://emulator:8080`).
+
+To run the app on the host instead (for example with `--reload`), start only the emulator
+and seed it by hand:
+
+```bash
+docker compose up -d --build --wait emulator
+
+export AWS_ENDPOINT_URL=https://127.0.0.1:9297
+export AWS_CA_BUNDLE="$(mktemp)"
+docker compose cp emulator:/home/emulator/.aws/emulator/9297/ca.pem "$AWS_CA_BUNDLE"
+export AWS_DEFAULT_REGION=eu-central-1 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test
+export STAGE=e2e APP_NAME=personal-backend-service ATTACHMENTS_BUCKET_NAME=attachments
+export DEBUG=true DEFAULT_TIMEZONE=Europe/Budapest
+export JWT_SECRET_SSM_PARAM_NAME=/e2e/secrets/jwt
+export SSH_HOST=localhost SSH_USERNAME=ci SSH_ROOT_PATH=/root
+export SSH_PASSWORD_SSM_PARAM_NAME=/e2e/personal-backend-service/ssh/password
+
+uv run python -m scripts.init_emulator   # table, bucket and SSM parameters
+uv run uvicorn app.api_handler:app --reload --port 8080
+```
+
+Notes:
+- Emulator health: `curl --cacert "$AWS_CA_BUNDLE" https://127.0.0.1:9297/__admin/health` returns `ok`.
+- After restarting the emulator, seed it again and restart the app (new CA, empty state).
+- Newman needs `--insecure` against it, because the presigned S3 download check
+  follows an HTTPS URL with the self-signed certificate. The emulator is pinned to
+  nothing: the Dockerfile installs `LTS/latest`, so rebuild to pick up new releases.
 
 ---
 
@@ -482,7 +539,7 @@ terraform/*.tf              # Infra: API Gateway, Lambda, DynamoDB, S3, IAM
 
 .github/workflows/ci.yml    # CI: Bandit, Ruff, pytest, SonarQube, Newman e2e
 postman/                    # Newman e2e collection
-scripts/                    # LocalStack seeding, Lambda build/packaging
+scripts/                    # emulator seeding, Lambda build/packaging
 ```
 
 ---

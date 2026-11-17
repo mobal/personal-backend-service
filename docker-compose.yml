@@ -1,30 +1,48 @@
+# The whole stack on AWS Emulator (DynamoDB, S3 and SSM):
+#   docker compose up -d --build --wait app
+#
+# AWS Emulator only serves HTTPS and its self-signed certificate is valid for
+# localhost/127.0.0.1 only, so the app shares the emulator's network namespace
+# and reaches it as https://127.0.0.1:9297. Consequences:
+#   - the app is published (and reachable from other containers) through the
+#     `emulator` service: http://localhost:8080 on the host, http://emulator:8080
+#     from other containers on the compose network
+#   - presigned S3 URLs point at https://127.0.0.1:9297, so Newman has to run in
+#     the same namespace and skip certificate checks:
+#       docker run --rm --network container:$(docker compose ps -q emulator) \
+#         -v "$PWD/postman:/postman:ro" postman/newman:latest \
+#         run /postman/personal_backend_service.postman_collection.json \
+#         --env-var baseUrl=http://localhost:8080 --ignore-redirects --insecure
+#   - the CA is generated on every start into the shared `emulator-home` volume
+#   - state lives in memory and is gone when the emulator stops
 services:
-  localstack:
-    # pinned: the `latest`/2026.x images require a license token since 2026;
-    # 4.14.0 is the newest community edition (matches auth-service)
-    image: localstack/localstack:4.14.0
-    environment:
-      SERVICES: ssm,dynamodb,s3
-      DEFAULT_REGION: eu-central-1
+  emulator:
+    build: docker/aws-emulator
+    # -a off: accept unsigned requests (any dummy credentials work); -t off: no telemetry
+    command: ["-a", "off", "-t", "off"]
+    volumes:
+      - emulator-home:/home/emulator
+    ports:
+      - "127.0.0.1:9297:9297"
+      - "127.0.0.1:8080:8080" # the app, see network_mode below
     healthcheck:
-      # 4.14.0 reports core services as "running" once they have served
-      # traffic; accept both that and the boot-time "available" state.
-      test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health | grep -Eq '\"dynamodb\": \"(available|running)\"'"]
+      test: ["CMD-SHELL", "curl -fsS --cacert /home/emulator/.aws/emulator/9297/ca.pem https://127.0.0.1:9297/__admin/health"]
       interval: 5s
       timeout: 5s
       retries: 24
 
   app:
     build: .
+    network_mode: "service:emulator"
     # The runtime image intentionally excludes dev dependencies (aws-lambda-
     # powertools ships in the Lambda layer in production); sync the full lock
     # here so the app and the seed script can run in the container.
     command: >
       sh -c "uv sync --frozen &&
-             uv run python scripts/init_localstack.py &&
+             uv run python scripts/init_emulator.py &&
              uv run uvicorn app.api_handler:app --host 0.0.0.0 --port 8080"
-    ports:
-      - "8080:8080"
+    volumes:
+      - emulator-home:/emulator-home:ro
     environment:
       APP_NAME: personal-backend-service
       STAGE: e2e
@@ -32,7 +50,8 @@ services:
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       AWS_DEFAULT_REGION: eu-central-1
-      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ENDPOINT_URL: https://127.0.0.1:9297
+      AWS_CA_BUNDLE: /emulator-home/.aws/emulator/9297/ca.pem
       DEBUG: "true"
       DEFAULT_TIMEZONE: Europe/Budapest
       JWT_SECRET_SSM_PARAM_NAME: /e2e/secrets/jwt
@@ -41,10 +60,13 @@ services:
       SSH_USERNAME: ci
       SSH_ROOT_PATH: /root
     depends_on:
-      localstack:
+      emulator:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 24
+
+volumes:
+  emulator-home:

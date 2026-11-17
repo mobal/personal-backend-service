@@ -107,4 +107,4 @@ if __name__ == "__main__":
     create_tables()
     create_attachments_bucket()
     put_ssm_parameters()
-    print("localstack seeded")
+    print("emulator seeded")
