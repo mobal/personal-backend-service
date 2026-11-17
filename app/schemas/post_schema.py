@@ -6,10 +6,83 @@ from pydantic import ConfigDict, Field, StringConstraints, field_validator
 from app.models.camel_model import CamelModel
 from app.models.post import Meta
 
-PostText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3)]
-OptionalPostText = PostText | None
-Tags = Annotated[list[str], Field(min_length=1)]
+# Limits for incoming requests only; stored posts are read back unconstrained.
+# A post is one DynamoDB item (400 KB at most, with the attachment metadata
+# embedded) and the title is an index key (1 KB at most). Counting characters,
+# not bytes, the title, content and tag limits stay inside both with room for
+# multi-byte text.
+MAX_AUTHOR_LENGTH = 100
+MAX_TITLE_LENGTH = 200
+MAX_CONTENT_LENGTH = 100_000
+MAX_TAGS = 30
+MAX_TAG_LENGTH = 50
+MAX_META_CATEGORY_LENGTH = 100
+MAX_META_DESCRIPTION_LENGTH = 500
+MAX_META_LANGUAGE_LENGTH = 20
+
+
+AuthorText = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True, min_length=3, max_length=MAX_AUTHOR_LENGTH
+    ),
+]
+TitleText = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=3, max_length=MAX_TITLE_LENGTH),
+]
+ContentText = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True, min_length=3, max_length=MAX_CONTENT_LENGTH
+    ),
+]
+Tag = Annotated[str, StringConstraints(max_length=MAX_TAG_LENGTH)]
+Tags = Annotated[list[Tag], Field(min_length=1, max_length=MAX_TAGS)]
 OptionalTags = Tags | None
+
+
+class MetaInput(Meta):
+    category: Annotated[
+        str,
+        Field(
+            max_length=MAX_META_CATEGORY_LENGTH,
+            description="Section of the blog the post belongs to",
+            examples=["tech"],
+        ),
+    ]
+    description: Annotated[
+        str,
+        Field(
+            max_length=MAX_META_DESCRIPTION_LENGTH,
+            description="One-paragraph summary of the post, used in listings and feeds",
+            examples=["Working notes on the Analytical Engine."],
+        ),
+    ]
+    language: Annotated[
+        str,
+        Field(
+            max_length=MAX_META_LANGUAGE_LENGTH,
+            description="Language of the post",
+            examples=["en"],
+        ),
+    ]
+    keywords: Annotated[
+        Tags,
+        Field(
+            description="Search keywords describing the post",
+            examples=[["engine", "notes"]],
+        ),
+    ]
+    title: Annotated[
+        str,
+        Field(
+            max_length=MAX_TITLE_LENGTH,
+            description="SEO title of the page; may differ from the post title",
+            examples=["Notes on the Analytical Engine"],
+        ),
+    ]
+
 
 CreatePostExample = {
     "summary": "A minimal Markdown blog post",
@@ -32,36 +105,38 @@ CreatePostExample = {
 
 class CreatePost(CamelModel):
     author: Annotated[
-        PostText,
+        AuthorText,
         Field(
-            description="Author of the post, at least 3 characters",
+            description=f"Author of the post, 3 to {MAX_AUTHOR_LENGTH} characters",
             examples=["Ada Lovelace"],
         ),
     ]
     title: Annotated[
-        PostText,
+        TitleText,
         Field(
-            description="Title of the post, at least 3 characters; must be "
-            "unique among non-deleted posts",
+            description=f"Title of the post, 3 to {MAX_TITLE_LENGTH} characters; "
+            "must be unique among non-deleted posts",
             examples=["Notes on the Analytical Engine"],
         ),
     ]
     content: Annotated[
-        PostText,
+        ContentText,
         Field(
-            description="Body of the post in Markdown, at least 3 characters",
+            description="Body of the post in Markdown, 3 to "
+            f"{MAX_CONTENT_LENGTH} characters",
             examples=["**First draft** of the notes."],
         ),
     ]
     tags: Annotated[
         Tags,
         Field(
-            description="Free-form tags used for grouping posts",
+            description=f"Free-form tags used for grouping posts; up to {MAX_TAGS} "
+            f"tags of up to {MAX_TAG_LENGTH} characters",
             examples=[["notes", "analytical-engine"]],
         ),
     ]
     meta: Annotated[
-        Meta,
+        MetaInput,
         Field(description="SEO-style metadata embedded in the rendered page"),
     ]
     published_at: Annotated[
@@ -93,36 +168,38 @@ class CreatePost(CamelModel):
 
 class UpdatePost(CamelModel):
     author: Annotated[
-        OptionalPostText,
+        AuthorText | None,
         Field(
-            description="Author of the post, at least 3 characters",
+            description=f"Author of the post, 3 to {MAX_AUTHOR_LENGTH} characters",
             examples=["Ada Lovelace"],
         ),
     ] = None
     title: Annotated[
-        OptionalPostText,
+        TitleText | None,
         Field(
-            description="Title of the post, at least 3 characters; must be "
-            "unique among non-deleted posts",
+            description=f"Title of the post, 3 to {MAX_TITLE_LENGTH} characters; "
+            "must be unique among non-deleted posts",
             examples=["Notes on the Analytical Engine"],
         ),
     ] = None
     content: Annotated[
-        OptionalPostText,
+        ContentText | None,
         Field(
-            description="Body of the post in Markdown, at least 3 characters",
+            description="Body of the post in Markdown, 3 to "
+            f"{MAX_CONTENT_LENGTH} characters",
             examples=["**First draft** of the notes."],
         ),
     ] = None
     tags: Annotated[
         OptionalTags,
         Field(
-            description="Free-form tags used for grouping posts",
+            description=f"Free-form tags used for grouping posts; up to {MAX_TAGS} "
+            f"tags of up to {MAX_TAG_LENGTH} characters",
             examples=[["notes", "analytical-engine"]],
         ),
     ] = None
     meta: Annotated[
-        Meta | None,
+        MetaInput | None,
         Field(description="SEO-style metadata embedded in the rendered page"),
     ] = None
     published_at: Annotated[

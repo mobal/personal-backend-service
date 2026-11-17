@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from tests.helpers.utils import generate_jwt_token
 
 from app.models.post import Post
-from app.schemas.post_schema import CreatePost
+from app.schemas.post_schema import MAX_TITLE_LENGTH, CreatePost
 from app.services.publisher_service import PublisherService
 
 BASE_URL = "/api/v1/posts"
@@ -355,6 +355,25 @@ class TestPostsApi:
         )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    def test_fail_to_create_post_with_oversized_title(
+        self,
+        create_post: CreatePost,
+        jwt_secret_ssm_param_value: str,
+        test_client: TestClient,
+        user_dict: dict[str, str | None],
+    ):
+        jwt_token, _ = generate_jwt_token(jwt_secret_ssm_param_value, user_dict)
+
+        response = test_client.post(
+            BASE_URL,
+            headers={"Authorization": f"Bearer {jwt_token}"},
+            json=create_post.model_dump(by_alias=True)
+            | {"title": "t" * (MAX_TITLE_LENGTH + 1)},
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        assert response.json()["errors"][0]["loc"] == ["body", "title"]
 
     def test_fail_to_update_title_due_to_colliding_post_path(
         self,
