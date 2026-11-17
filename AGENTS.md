@@ -16,7 +16,6 @@
 - Configuration: `app/settings.py` using `pydantic-settings`
 - Tests use `moto.mock_aws`, seeded SSM parameters, and pytest env config from `pyproject.toml`
 - `.env` through `.env.prod` load with `override=True`; later files win
-- Review docs: `docs/review.md`; historical plans: `plans/`
 
 These facts may become stale. Inspect the repository before changing code; the repository is authoritative.
 
