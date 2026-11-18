@@ -524,16 +524,24 @@ Run `make` or `make help` to list the targets (help is the default goal).
 
 | Target | Description |
 |---|---|
-| `help` | List the targets with their descriptions |
-| `all` | bandit + format + lint + test |
-| `build` | Build Lambda deployment package + layer (Docker) |
-| `format` | `ruff format app/ tests/` |
+| `help` | List the targets with their descriptions (default goal) |
 | `install` | `uv sync` |
-| `lint` | `ruff check app/ tests/ --fix` |
-| `test` | rstest (parallel) with branch coverage (DynamoDB/SSM/S3 via moto) |
-| `tflint` | Terraform lint (`infrastructure/`) |
-| `bandit` | Security scan |
+| `format` | `ruff format app/ tests/` (rewrites files) |
+| `format-check` | `ruff format --check`, no changes |
+| `lint` | `ruff check app/ tests/`, no changes |
+| `fix` | `ruff format` plus `ruff check --fix` |
 | `ty` | Static type check |
+| `bandit` | Security scan |
+| `tflint` | Terraform lint (`infrastructure/`) |
+| `check` | bandit + format-check + lint + ty + test, like CI, without changing files |
+| `test` | rstest (parallel) with branch coverage (DynamoDB/SSM/S3 via moto); `TESTS=tests/unit` narrows it |
+| `test-fast` | rstest in parallel, no coverage |
+| `up` / `down` | Start / stop the AWS Emulator and the app with docker compose |
+| `e2e` | `up`, then run the Bruno collection against the stack |
+| `build` | Build Lambda deployment package + layer (Docker) |
+| `build-layer` / `build-lambda` | Build only the layer / only the API ZIP |
+| `upload-layer` / `upload-api` | Upload the built ZIPs to the artifacts bucket (AWS credentials) |
+| `clean` | Remove test, coverage and linter caches (`dist/` is kept) |
 
 ---
 

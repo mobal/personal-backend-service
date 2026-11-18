@@ -6,7 +6,7 @@
 - Package manager: `uv` (`uv sync`, lockfile: `uv.lock`)
 - Build: `make build`
 - Tests: `make test`
-- Lint / format / typecheck: `make lint`, `make format`, `make ty`
+- Lint / format / typecheck: `make lint`, `make format`, `make ty` (`make fix` applies fixes, `make check` runs everything without changing files)
 - Security / infra checks: `make bandit`, `make tflint`
 - Lambda entry point: `app/api_handler.py`
 - Architecture: `routers -> services -> repositories`
