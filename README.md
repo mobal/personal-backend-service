@@ -43,7 +43,7 @@ A production-grade personal blog backend. Posts are stored in **DynamoDB**, rend
 | Lint / Format | Ruff |
 | Type Checking | ty |
 | Security | Bandit |
-| CI | GitHub Actions (pytest, SonarQube, Bruno e2e) |
+| CI | GitHub Actions (rstest, SonarQube, Bruno e2e) |
 | Deployment | Terraform (AWS) |
 
 ---
@@ -370,7 +370,7 @@ flowchart LR
     C --> D["uv sync --locked"]
     D --> E["Bandit"]
     E --> F["ruff check + format"]
-    F --> G["pytest + coverage XML"]
+    F --> G["rstest + coverage XML"]
     G --> H["SonarQube scan"]
     H --> I["docker compose e2e (Bruno)"]
 ```
@@ -378,7 +378,7 @@ flowchart LR
 Stages (`build-and-test`):
 - **Bandit** (high severity, high confidence)
 - **ruff** (lint + format check)
-- **pytest** (branch coverage; XML report uploaded to Codecov/SonarQube)
+- **rstest** (pytest-compatible runner, parallel; branch coverage; XML report uploaded to Codecov/SonarQube)
 - **SonarQube** (Python analysis + coverage)
 
 Docker end-to-end (`bruno` job):
@@ -399,14 +399,18 @@ uv sync
 # Run locally (hot-reload)
 uv run uvicorn app.api_handler:app --reload --port 8080
 
-# Run tests
-pytest
+# Run tests (rstest, a pytest-compatible runner; parallel by default)
+uv run rstest
 
 # Unit tests only
-pytest tests/unit
+uv run rstest tests/unit
 
 # Integration tests only
-pytest tests/integration
+uv run rstest tests/integration
+
+# With branch coverage (keep app/ imports out of tests/conftest.py module level,
+# otherwise rstest workers miss their import-time lines)
+uv run rstest --cov=app --cov-branch
 
 # Lint
 uv run ruff check app/ tests/
@@ -526,7 +530,7 @@ Run `make` or `make help` to list the targets (help is the default goal).
 | `format` | `ruff format app/ tests/` |
 | `install` | `uv sync` |
 | `lint` | `ruff check app/ tests/ --fix` |
-| `test` | pytest with branch coverage (DynamoDB/SSM/S3 via moto) |
+| `test` | rstest (parallel) with branch coverage (DynamoDB/SSM/S3 via moto) |
 | `tflint` | Terraform lint (`infrastructure/`) |
 | `bandit` | Security scan |
 | `ty` | Static type check |
@@ -577,7 +581,7 @@ tests/
 
 terraform/*.tf              # Infra: API Gateway, Lambda, DynamoDB, S3, IAM
 
-.github/workflows/ci.yml    # CI: Bandit, Ruff, pytest, SonarQube, Bruno e2e
+.github/workflows/ci.yml    # CI: Bandit, Ruff, rstest, SonarQube, Bruno e2e
 collections/                # Bruno e2e collection (OpenCollection YAML)
 scripts/                    # emulator seeding, Lambda build/packaging
 ```

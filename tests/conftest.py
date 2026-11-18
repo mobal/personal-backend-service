@@ -3,13 +3,19 @@ import os
 import uuid
 from datetime import UTC, datetime
 from random import randint
+from typing import TYPE_CHECKING
 
 import boto3
 import pytest
 from moto import mock_aws
 
-from app.models.post import Attachment, Post
-from app.settings import Settings
+if TYPE_CHECKING:
+    from app.models.post import Attachment, Post
+    from app.settings import Settings
+
+# Do not import from app/ at module level here: rstest's parallel workers load this
+# file before coverage starts, so the import-time lines of those modules would be
+# reported as uncovered. Import inside the fixtures instead (annotations are lazy).
 
 
 @pytest.fixture(autouse=True)
@@ -39,11 +45,15 @@ def setup(monkeypatch):
 
 @pytest.fixture
 def settings() -> Settings:
+    from app.settings import Settings
+
     return Settings()
 
 
 @pytest.fixture
 def attachment(test_data: bytes, aws_default_region: str) -> Attachment:
+    from app.models.post import Attachment
+
     now = datetime.now(UTC)
     file_name = "lorem.txt"
     return Attachment(
@@ -154,6 +164,8 @@ def jwt_secret_ssm_param_value() -> str:
 
 @pytest.fixture
 def make_post(faker):
+    from app.models.post import Post
+
     def make() -> Post:
         now = datetime.now(UTC)
         slug = faker.slug()

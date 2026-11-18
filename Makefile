@@ -28,7 +28,7 @@ bandit: ## Scan app/ for security issues (high severity/confidence)
 	uv run -m bandit --severity-level high --confidence-level high -r app/ -vvv
 
 test: ## Run the tests with branch coverage
-	uv run -m pytest tests --cov=app --cov-report=term-missing --cov-branch
+	uv run rstest tests --cov=app --cov-report=term-missing --cov-branch
 
 tflint: ## Lint the Terraform/OpenTofu code in infrastructure/
 	tflint --init

@@ -56,9 +56,9 @@ jobs:
     - name: Run ty type checker
       run: make ty
 
-    - name: Running tests with Pytest and generate coverage
+    - name: Running tests with rstest and generate coverage
       run: |
-        uv run -m pytest --cov-report=term --cov-report=xml:$Coverage_File --cov=app
+        uv run rstest -n auto --cov=app --cov-branch --cov-report=term --cov-report=xml:$Coverage_File
 
     - name: Build and verify Lambda artifacts
       run: make build
