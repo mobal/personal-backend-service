@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
 [project]
 name = "personal-backend-service"
 version = "0.1.0"
@@ -37,6 +41,9 @@ dev = [
     "ruff>=0.15.0",
     "ty>=0.0.28",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
 
 [tool.pytest.ini_options]
 addopts = "--cache-clear --cov-branch --cov-report term --cov=app/ -n auto -r f"

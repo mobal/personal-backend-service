@@ -651,7 +651,7 @@ wheels = [
 [[package]]
 name = "personal-backend-service"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "aws-lambda-powertools", extra = ["validation"] },
     { name = "boto3" },

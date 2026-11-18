@@ -10,7 +10,7 @@ RUN apk add --no-cache gcc musl-dev libffi-dev curl
 COPY pyproject.toml uv.lock ./
 
 RUN pip install --no-cache-dir uv==0.12.19 \
-    && uv sync --frozen --no-dev
+    && uv sync --frozen --no-dev --no-install-project
 
 COPY . .
 
@@ -19,4 +19,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD curl -fsS http://localhost:8080/health || exit 1
 
-CMD ["uv", "run", "uvicorn", "app.api_handler:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uv", "run", "--no-sync", "uvicorn", "app.api_handler:app", "--host", "0.0.0.0", "--port", "8080"]
